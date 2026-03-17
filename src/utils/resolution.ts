@@ -203,8 +203,9 @@ export function resolveTest(context: ResolutionContext): ActionResult {
   const redMax = thresholds.red ?? getRedMaximum(attributePool);
   
   // Calculate per-die modifiers
-  const totalSkillBonus = skillBonus * diceCount;
   const totalWoundPenalty = woundPenalty * diceCount;
+  const effectiveDiceCountForSkill = approach === 'surge' ? 4 : diceCount;
+  const totalSkillBonus = skillBonus * effectiveDiceCountForSkill;
   const totalModifier = totalSkillBonus + totalWoundPenalty + situationalModifier;
   
   // Path 1: Take the Baseline (Green)
@@ -257,9 +258,7 @@ export function resolveTest(context: ResolutionContext): ActionResult {
       };
     }
     
-    const surgeSkillBonus = skillBonus * 4;
-    const surgeTotalModifier = surgeSkillBonus + totalWoundPenalty + situationalModifier;
-    const result = bandTN + surgeTotalModifier;
+    const result = bandTN + totalModifier;
     const capped = result > redMax;
     const finalResult = capped ? redMax : result;
     
@@ -271,14 +270,14 @@ export function resolveTest(context: ResolutionContext): ActionResult {
       criticalFailure: false,
       calculationBreakdown: {
         rollTotal: bandTN,
-        skillBonus: surgeSkillBonus,
-        skillBonusPerDie: skillBonus * 4,
+        skillBonus: totalSkillBonus,
+        skillBonusPerDie: skillBonus,
         woundPenalty: totalWoundPenalty,
         woundPenaltyPerDie: woundPenalty,
         situationalModifier,
         diceCount,
         isSurge: true,
-        totalModifier: surgeTotalModifier,
+        totalModifier,
         finalResult,
       },
     };

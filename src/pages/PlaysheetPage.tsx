@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCharacter } from '../context/CharacterContext';
 import { useGameState, WOUND_LABELS, WOUND_PENALTIES, type WoundLevel } from '../context/GameStateContext';
 import { ASPECTS, FUNCTIONS, ATTRIBUTES, type AspectName, type AttributeName, type ArmorAttributeName } from '../types/character';
@@ -15,17 +16,34 @@ const DEFENSE_ATTRIBUTES: Record<AspectName, AttributeName> = {
 };
 
 const HEALING_ATTRIBUTES: Record<AspectName, AttributeName> = {
-  Form: 'Endurance',    // Form wounds healed by Flesh
-  Flesh: 'Endurance',   // Flesh wounds healed by Flesh
-  Mind: 'Willpower',    // Mind wounds healed by Mind
-  Spirit: 'Resilience', // Spirit wounds healed by Spirit
+  Form: 'Endurance',
+  Flesh: 'Endurance',
+  Mind: 'Willpower',
+  Spirit: 'Resilience',
+};
+
+// Helper to convert skill rating to bonus per die
+const SKILL_RATING_TO_BONUS: Record<string, number> = {
+  'Poor': -1,
+  'Average': 0,
+  'Good': 1,
+  'Great': 2,
+  'Exceptional': 3,
+  'Extraordinary': 4,
 };
 
 export function PlaysheetPage() {
   const character = useCharacter();
   const gameState = useGameState();
+  const navigate = useNavigate();
+  
+  // Selection state for roll
+  const [selectedAttribute, setSelectedAttribute] = useState<AttributeName | null>(null);
+  const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
+  
+  // Healing state
   const [activeHealAspect, setActiveHealAspect] = useState<AspectName | null>(null);
-  const [healPoolRank, setHealPoolRank] = useState(5); // Default: d12
+  const [healPoolRank, setHealPoolRank] = useState(5);
   const [healSkillBonus, setHealSkillBonus] = useState(0);
   const [healModifier, setHealModifier] = useState(0);
   const [healResult, setHealResult] = useState<{ aspect: AspectName; successes: number; roll: number } | null>(null);
@@ -41,7 +59,6 @@ export function PlaysheetPage() {
   const currentSurge = character.computedCharacter.surge - gameState.surgeSpent;
   const surgePercentage = (currentSurge / character.computedCharacter.surge) * 100;
 
-  // Check if restoration points would heal the wound
   const wouldHeal = (aspect: AspectName) => {
     const currentLevel = gameState.wounds[aspect];
     if (currentLevel <= 1) return false;
@@ -49,7 +66,6 @@ export function PlaysheetPage() {
     return gameState.restorationPoints[aspect] >= pointsNeeded;
   };
 
-  // Apply healing if restoration points are sufficient
   const applyHealing = (aspect: AspectName) => {
     const currentLevel = gameState.wounds[aspect];
     if (currentLevel <= 1) return;
@@ -60,7 +76,6 @@ export function PlaysheetPage() {
     }
   };
 
-  // Natural healing roll using the resolution system
   const rollNaturalHealing = (aspect: AspectName) => {
     const healingAttr = HEALING_ATTRIBUTES[aspect];
     const diePoolEntry = character.attributeDiePools[healingAttr];
@@ -68,9 +83,9 @@ export function PlaysheetPage() {
     const result = resolveTest({
       attributePool: diePoolEntry.pool,
       poolRank: diePoolEntry.rank,
-      skillBonus: 0, // Natural healing doesn't use skill
+      skillBonus: 0,
       woundPenalty: gameState.woundPenalty,
-      situationalModifier: gameState.totalModifier,
+      situationalModifier: 0,
       isContest: false,
       targetNumber: 4,
       approach: 'roll',
@@ -87,7 +102,6 @@ export function PlaysheetPage() {
     });
   };
 
-  // Aided healing roll using the resolution system
   const rollAidedHealing = (aspect: AspectName) => {
     const poolEntry = DIE_POOL_TABLE.find((e: DiePoolEntry) => e.rank === healPoolRank) || DIE_POOL_TABLE[5];
     
@@ -112,6 +126,33 @@ export function PlaysheetPage() {
       roll: result.result,
     });
     setActiveHealAspect(null);
+  };
+
+  // Navigate to resolver with selected values
+  const goToResolver = () => {
+    if (!selectedAttribute) return;
+    
+    const attrEntry = character.attributeDiePools[selectedAttribute];
+    const skillBonus = selectedSkill 
+      ? SKILL_RATING_TO_BONUS[character.skills.find(s => s.skillId === selectedSkill)?.rating || 'Average'] ?? 0
+      : 0;
+    
+    navigate('/resolver', {
+      state: {
+        poolRank: attrEntry.rank,
+        skillBonus,
+        woundPenalty: gameState.woundPenalty,
+        attributeName: selectedAttribute,
+        skillName: selectedSkill,
+      }
+    });
+  };
+
+  // Get skill bonus for display
+  const getSelectedSkillBonus = () => {
+    if (!selectedSkill) return 0;
+    const skill = character.skills.find(s => s.skillId === selectedSkill);
+    return skill ? SKILL_RATING_TO_BONUS[skill.rating] ?? 0 : 0;
   };
 
   if (!character.hasCharacter) {
@@ -156,6 +197,55 @@ export function PlaysheetPage() {
         </div>
       </div>
 
+      {/* Roll Selection Bar */}
+      {selectedAttribute && (
+        <div className="bg-amber-900/30 border border-amber-500/50 rounded-lg p-4">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              <span className="text-amber-400 font-medium">Roll Setup:</span>
+              <div className="flex items-center gap-2">
+                <span className="bg-slate-700 px-3 py-1 rounded text-white">
+                  {selectedAttribute}
+                </span>
+                {selectedSkill && (
+                  <>
+                    <span className="text-slate-400">+</span>
+                    <span className="bg-slate-700 px-3 py-1 rounded text-white">
+                      {selectedSkill} ({getSelectedSkillBonus() >= 0 ? '+' : ''}{getSelectedSkillBonus()}/die)
+                    </span>
+                  </>
+                )}
+                {gameState.woundPenalty < 0 && (
+                  <>
+                    <span className="text-slate-400">+</span>
+                    <span className="bg-red-900/50 px-3 py-1 rounded text-red-400">
+                      {gameState.woundPenalty}/die wounds
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setSelectedAttribute(null);
+                  setSelectedSkill(null);
+                }}
+                className="bg-slate-600 hover:bg-slate-500 text-slate-200 px-4 py-2 rounded text-sm transition-colors"
+              >
+                Clear
+              </button>
+              <button
+                onClick={goToResolver}
+                className="bg-amber-500 hover:bg-amber-400 text-slate-900 px-6 py-2 rounded font-medium transition-colors"
+              >
+                🎲 Go to Resolver
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Healing Result Toast */}
       {healResult && (
         <div className="bg-slate-800 rounded-lg p-4 border border-green-500/50">
@@ -185,7 +275,10 @@ export function PlaysheetPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Attributes Grid */}
           <div className="bg-slate-800 rounded-lg p-4">
-            <h2 className="text-lg font-bold text-amber-400 mb-4">Attributes</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-amber-400">Attributes</h2>
+              <span className="text-xs text-slate-500">Click an attribute to select for rolling</span>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -218,11 +311,24 @@ export function PlaysheetPage() {
                           const attr = ATTRIBUTES.find(a => a.func === func.id && a.aspect === aspect.id);
                           if (!attr) return <td key={aspect.id} className="p-2"></td>;
                           const entry = character.attributeDiePools[attr.id];
+                          const isSelected = selectedAttribute === attr.id;
                           return (
-                            <td key={aspect.id} className="p-2 text-center border-b border-slate-700">
-                              <div className="font-medium text-slate-200">{attr.name}</div>
+                            <td 
+                              key={aspect.id} 
+                              className={`p-2 text-center border-b border-slate-700 cursor-pointer transition-all ${
+                                isSelected 
+                                  ? 'bg-amber-500/20 ring-2 ring-amber-500' 
+                                  : 'hover:bg-slate-700/50'
+                              }`}
+                              onClick={() => setSelectedAttribute(isSelected ? null : attr.id)}
+                            >
+                              <div className={`font-medium ${isSelected ? 'text-amber-400' : 'text-slate-200'}`}>
+                                {attr.name}
+                              </div>
                               <div className="text-xs text-slate-400">Rank {entry.rank}</div>
-                              <div className="text-sm font-bold text-cyan-400">{entry.pool.notation}</div>
+                              <div className={`text-sm font-bold ${isSelected ? 'text-amber-300' : 'text-cyan-400'}`}>
+                                {entry.pool.notation}
+                              </div>
                             </td>
                           );
                         })}
@@ -237,18 +343,29 @@ export function PlaysheetPage() {
           {/* Skills */}
           {character.skills.length > 0 && (
             <div className="bg-slate-800 rounded-lg p-4">
-              <h2 className="text-lg font-bold text-amber-400 mb-4">Skills</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-amber-400">Skills</h2>
+                <span className="text-xs text-slate-500">Click a skill to add to roll (optional)</span>
+              </div>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-2">
                 {character.skills.map(skillEntry => {
-                  const skill = character.skills.find(s => s.skillId === skillEntry.skillId);
-                  const rating = character.skills.find(s => s.skillId === skillEntry.skillId);
-                  if (!skill) return null;
-                  const skillData = { ...skillEntry, ...rating };
+                  const isSelected = selectedSkill === skillEntry.skillId;
+                  const bonus = SKILL_RATING_TO_BONUS[skillEntry.rating] ?? 0;
                   return (
-                    <div key={skillEntry.skillId} className="bg-slate-700/50 rounded p-2 text-sm">
-                      <div className="font-medium">{skillData.skillId}</div>
-                      <div className="text-xs text-slate-400">
-                        {skillData.rating} ({skillData.rating === 'Poor' ? '-1' : skillData.rating === 'Average' ? '0' : `+${['Good', 'Great', 'Exceptional', 'Extraordinary'].indexOf(skillData.rating) + 1}`}/die)
+                    <div 
+                      key={skillEntry.skillId} 
+                      className={`rounded p-2 text-sm cursor-pointer transition-all ${
+                        isSelected 
+                          ? 'bg-amber-500/20 ring-2 ring-amber-500' 
+                          : 'bg-slate-700/50 hover:bg-slate-700'
+                      }`}
+                      onClick={() => setSelectedSkill(isSelected ? null : skillEntry.skillId)}
+                    >
+                      <div className={`font-medium ${isSelected ? 'text-amber-400' : ''}`}>
+                        {skillEntry.skillId}
+                      </div>
+                      <div className={`text-xs ${isSelected ? 'text-amber-300/70' : 'text-slate-400'}`}>
+                        {skillEntry.rating} ({bonus >= 0 ? '+' : ''}{bonus}/die)
                       </div>
                     </div>
                   );
@@ -483,66 +600,6 @@ export function PlaysheetPage() {
                   />
                 </div>
               ))}
-            </div>
-          </div>
-
-          {/* Temporary Modifiers */}
-          <div className="bg-slate-800 rounded-lg p-4">
-            <h2 className="text-lg font-bold text-amber-400 mb-4">📊 Modifiers</h2>
-            
-            {gameState.modifiers.length > 0 && (
-              <div className="space-y-1 mb-3">
-                {gameState.modifiers.map(mod => (
-                  <div key={mod.id} className="flex items-center justify-between bg-slate-700/50 rounded px-2 py-1 text-sm">
-                    <span>{mod.description}</span>
-                    <div className="flex items-center gap-2">
-                      <span className={mod.value >= 0 ? 'text-green-400' : 'text-red-400'}>
-                        {mod.value >= 0 ? '+' : ''}{mod.value}
-                      </span>
-                      <button
-                        onClick={() => gameState.removeModifier(mod.id)}
-                        className="text-slate-500 hover:text-red-400"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                <div className="text-sm text-slate-400 pt-2 border-t border-slate-600">
-                  Total: <span className={gameState.totalModifier >= 0 ? 'text-green-400' : 'text-red-400'}>
-                    {gameState.totalModifier >= 0 ? '+' : ''}{gameState.totalModifier}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Description"
-                id="mod-description"
-                className="flex-1 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm"
-              />
-              <input
-                type="number"
-                placeholder="+/-"
-                id="mod-value"
-                className="w-16 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-center"
-              />
-              <button
-                onClick={() => {
-                  const desc = (document.getElementById('mod-description') as HTMLInputElement).value;
-                  const val = parseInt((document.getElementById('mod-value') as HTMLInputElement).value) || 0;
-                  if (desc) {
-                    gameState.addModifier(desc, val);
-                    (document.getElementById('mod-description') as HTMLInputElement).value = '';
-                    (document.getElementById('mod-value') as HTMLInputElement).value = '';
-                  }
-                }}
-                className="bg-amber-500 hover:bg-amber-400 text-slate-900 px-3 py-1 rounded text-sm"
-              >
-                Add
-              </button>
             </div>
           </div>
 

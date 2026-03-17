@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { DIE_POOL_TABLE } from '../data/diePoolTable';
 import type { DiePoolEntry } from '../data/diePoolTable';
 import { 
@@ -11,13 +12,45 @@ import {
 import { isBandAvailable, resultToScale } from '../data/actionEffortTable';
 import type { EffortBand, ActionResult, ContestResult } from '../types/resolution';
 
+// Interface for navigation state from playsheet
+interface PlaysheetState {
+  poolRank: number;
+  skillBonus: number;
+  woundPenalty: number;
+  attributeName?: string;
+  skillName?: string;
+}
+
 export function ResolverPage() {
-  // Actor configuration
-  const [actorPoolRank, setActorPoolRank] = useState(8); // Default: d12+d8 (Amber)
-  const [actorSkillBonus, setActorSkillBonus] = useState(0);
-  const [actorWoundPenalty, setActorWoundPenalty] = useState(0);
+  const location = useLocation();
+  const playsheetState = location.state as PlaysheetState | undefined;
+  
+  // Actor configuration - initialize from playsheet state if available
+  const [actorPoolRank, setActorPoolRank] = useState(playsheetState?.poolRank ?? 8);
+  const [actorSkillBonus, setActorSkillBonus] = useState(playsheetState?.skillBonus ?? 0);
+  const [actorWoundPenalty, setActorWoundPenalty] = useState(playsheetState?.woundPenalty ?? 0);
   const [actorModifier, setActorModifier] = useState(0);
   
+  // Track if values came from playsheet
+  const [hasPlaysheetData, setHasPlaysheetData] = useState(!!playsheetState);
+  
+  // Clear playsheet indicator when user manually changes values
+  useEffect(() => {
+    if (playsheetState) {
+      setHasPlaysheetData(true);
+    }
+  }, [playsheetState]);
+
+  // Sync state when playsheet data arrives
+  useEffect(() => {
+    if (playsheetState) {
+      setActorPoolRank(playsheetState.poolRank);
+      setActorSkillBonus(playsheetState.skillBonus);
+      setActorWoundPenalty(playsheetState.woundPenalty);
+      setHasPlaysheetData(true);
+    }
+  }, [playsheetState]);
+
   // Test type
   const [testType, setTestType] = useState<'challenge' | 'contest'>('challenge');
   const [targetNumber, setTargetNumber] = useState(4);
@@ -42,19 +75,65 @@ export function ResolverPage() {
   }, [opponentPoolRank]);
 
   // Calculate total modifiers
-  const actorTotalModifier = actorWoundPenalty + actorModifier;
-  // const opponentTotalModifier = opponentWoundPenalty + opponentModifier;
+  const actorTotalModifier = (actorSkillBonus + actorWoundPenalty) * actorPoolEntry.pool.dice.length + actorModifier;
+  const opponentTotalModifier = (opponentSkillBonus + opponentWoundPenalty) * opponentPoolEntry.pool.dice.length + opponentModifier;
 
   // Get band thresholds for display
   const actorThresholds = useMemo(() => {
     return getBandThresholds(actorPoolEntry.pool);
   }, [actorPoolEntry]);
+  
+  // Define the band styles in a static lookup object so that Tailwind sees all the class names. 
+  const bandStyles: Record<EffortBand, { bg: string; border: string; text: string; emoji: string }> = {
+    green: {
+      bg: 'bg-green-900/30',
+      border: 'border-green-500/50',
+      text: 'text-green-400',
+      emoji: '🟩',
+    },
+    yellow: {
+      bg: 'bg-yellow-900/30',
+      border: 'border-yellow-500/50',
+      text: 'text-yellow-400',
+      emoji: '🟨',
+    },
+    orange: {
+      bg: 'bg-orange-900/30',
+      border: 'border-orange-500/50',
+      text: 'text-orange-400',
+      emoji: '🟧',
+    },
+    red: {
+      bg: 'bg-red-900/30',
+      border: 'border-red-500/50',
+      text: 'text-red-400',
+      emoji: '🟥',
+    },
+  };
 
   // Check for foregone conclusion
   const foregoneCheck = useMemo(() => {
     if (testType !== 'contest') return null;
     return isForegoneConclusion(actorPoolEntry.rank, opponentPoolEntry.rank);
   }, [testType, actorPoolEntry.rank, opponentPoolEntry.rank]);
+
+    // When user manually changes pool rank, clear playsheet indicator
+    const handlePoolRankChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      setActorPoolRank(parseInt(e.target.value));
+      setHasPlaysheetData(false);
+    };
+  
+    // When user manually changes skill bonus, clear playsheet indicator
+    const handleSkillBonusChange = (delta: number) => {
+      setActorSkillBonus(prev => Math.max(-1, Math.min(4, prev + delta)));
+      setHasPlaysheetData(false);
+    };
+  
+    // When user manually changes wound penalty, clear playsheet indicator
+    const handleWoundPenaltyChange = (delta: number) => {
+      setActorWoundPenalty(prev => Math.max(-4, Math.min(0, prev + delta)));
+      setHasPlaysheetData(false);
+    };
 
   // Handle resolution
   const handleBaseline = () => {
@@ -425,6 +504,56 @@ export function ResolverPage() {
         <p className="text-slate-400 text-sm">Free-form dice resolution for any character or NPC</p>
       </div>
 
+      {/* Playsheet data indicator */}
+      {hasPlaysheetData && playsheetState && (
+        <div className="bg-amber-900/30 border border-amber-500/50 rounded-lg p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-amber-400">📋 Pre-loaded from Playsheet:</span>
+              <span className="text-white font-medium">
+                {playsheetState.attributeName}
+                {playsheetState.skillName && ` + ${playsheetState.skillName}`}
+              </span>
+            </div>
+            <button
+              onClick={() => setHasPlaysheetData(false)}
+              className="text-slate-400 hover:text-slate-300 text-sm"
+            >
+              ✕ Clear
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Challenge vs Contest */}
+      <div className="bg-slate-800 rounded-lg p-4 space-y-4">
+        <h2 className="text-lg font-bold text-amber-400">Test Type</h2>
+        <div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setTestType('challenge')}
+              className={`flex-1 py-2 rounded font-medium transition-colors ${
+                testType === 'challenge' 
+                  ? 'bg-amber-500 text-slate-900' 
+                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+            >
+              Challenge
+            </button>
+            <button
+              onClick={() => setTestType('contest')}
+              className={`flex-1 py-2 rounded font-medium transition-colors ${
+                testType === 'contest' 
+                  ? 'bg-amber-500 text-slate-900' 
+                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+            >
+              Contest
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="grid md:grid-cols-2 gap-6">
         {/* Actor Configuration */}
         <div className="bg-slate-800 rounded-lg p-4 space-y-4">
@@ -435,7 +564,7 @@ export function ResolverPage() {
             <label className="block text-sm text-slate-400 mb-1">Die Pool</label>
             <select
               value={actorPoolRank}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setActorPoolRank(parseInt(e.target.value))}
+              onChange={handlePoolRankChange}
               className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2"
             >
               {DIE_POOL_TABLE.map((entry: DiePoolEntry) => (
@@ -451,7 +580,7 @@ export function ResolverPage() {
             <label className="block text-sm text-slate-400 mb-1">Skill Bonus (per die)</label>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setActorSkillBonus(Math.max(-1, actorSkillBonus - 1))}
+                onClick={() => handleSkillBonusChange(-1)}
                 className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
               >
                 -
@@ -460,7 +589,7 @@ export function ResolverPage() {
                 {actorSkillBonus >= 0 ? '+' : ''}{actorSkillBonus}
               </span>
               <button
-                onClick={() => setActorSkillBonus(Math.min(4, actorSkillBonus + 1))}
+                onClick={() => handleSkillBonusChange(1)}
                 className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
               >
                 +
@@ -472,46 +601,48 @@ export function ResolverPage() {
           </div>
 
           {/* Wound Penalty */}
-          <div>
-            <label className="block text-sm text-slate-400 mb-1">Wound Penalty</label>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setActorWoundPenalty(Math.max(-4, actorWoundPenalty - 1))}
-                className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
-              >
-                -
-              </button>
-              <span className={`w-12 text-center font-bold ${actorWoundPenalty < 0 ? 'text-red-400' : 'text-slate-300'}`}>
-                {actorWoundPenalty}/die
-              </span>
-              <button
-                onClick={() => setActorWoundPenalty(Math.min(0, actorWoundPenalty + 1))}
-                className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
-              >
-                +
-              </button>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Wound Penalty (per die)</label>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleWoundPenaltyChange(-1)}
+                  className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
+                >
+                  -
+                </button>
+                <span className={`w-12 text-center font-bold ${actorWoundPenalty < 0 ? 'text-red-400' : 'text-slate-300'}`}>
+                  {actorWoundPenalty}
+                </span>
+                <button
+                  onClick={() => handleWoundPenaltyChange(1)}
+                  className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
+                >
+                  +
+                </button>
+              </div>
             </div>
-          </div>
 
-          {/* Situational Modifier */}
-          <div>
-            <label className="block text-sm text-slate-400 mb-1">Situational Modifier</label>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setActorModifier(Math.max(-4, actorModifier - 1))}
-                className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
-              >
-                -
-              </button>
-              <span className={`w-12 text-center font-bold ${actorModifier >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {actorModifier >= 0 ? '+' : ''}{actorModifier}
-              </span>
-              <button
-                onClick={() => setActorModifier(Math.min(4, actorModifier + 1))}
-                className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
-              >
-                +
-              </button>
+            {/* Situational Modifier - always manual */}
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Situational Modifier</label>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setActorModifier(Math.max(-4, actorModifier - 1))}
+                  className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
+                >
+                  -
+                </button>
+                <span className={`w-12 text-center font-bold ${actorModifier >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {actorModifier >= 0 ? '+' : ''}{actorModifier}
+                </span>
+                <button
+                  onClick={() => setActorModifier(Math.min(4, actorModifier + 1))}
+                  className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
+                >
+                  +
+                </button>
+              </div>
             </div>
           </div>
 
@@ -521,40 +652,17 @@ export function ResolverPage() {
             <span className={actorTotalModifier >= 0 ? 'text-green-400' : 'text-red-400'}>
               {actorTotalModifier >= 0 ? '+' : ''}{actorTotalModifier}
             </span>
+            {actorPoolEntry.pool.dice.length > 1 && (
+              <span className="text-slate-500 text-xs ml-2">
+                ({actorSkillBonus >= 0 ? '+' : ''}{actorSkillBonus}/die skill, {actorWoundPenalty}/die wounds, {actorModifier >= 0 ? '+' : ''}{actorModifier} situational)
+              </span>
+            )}
           </div>
         </div>
 
         {/* Test Configuration */}
         <div className="bg-slate-800 rounded-lg p-4 space-y-4">
-          <h2 className="text-lg font-bold text-amber-400">Test Type</h2>
           
-          {/* Challenge vs Contest */}
-          <div>
-            <label className="block text-sm text-slate-400 mb-1">Type</label>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setTestType('challenge')}
-                className={`flex-1 py-2 rounded font-medium transition-colors ${
-                  testType === 'challenge' 
-                    ? 'bg-amber-500 text-slate-900' 
-                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                }`}
-              >
-                Challenge
-              </button>
-              <button
-                onClick={() => setTestType('contest')}
-                className={`flex-1 py-2 rounded font-medium transition-colors ${
-                  testType === 'contest' 
-                    ? 'bg-amber-500 text-slate-900' 
-                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                }`}
-              >
-                Contest
-              </button>
-            </div>
-          </div>
-
           {/* Target Number (Challenge only) */}
           {testType === 'challenge' && (
           <div>
@@ -588,8 +696,8 @@ export function ResolverPage() {
 
           {/* Opponent (Contest only) */}
           {testType === 'contest' && (
-            <div className="space-y-4 pt-4 border-t border-slate-700">
-              <h3 className="text-md font-bold text-slate-300">Opponent</h3>
+            <div className="space-y-4 border-slate-700">
+              <h2 className="text-md font-bold text-slate-300">Opponent</h2>
               
               {/* Foregone Conclusion Warning */}
               {foregoneCheck?.isForegone && (
@@ -621,7 +729,7 @@ export function ResolverPage() {
 
               {/* Opponent Skill Bonus */}
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Skill Bonus</label>
+                <label className="block text-sm text-slate-400 mb-1">Skill Bonus (per die)</label>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setOpponentSkillBonus(Math.max(-1, opponentSkillBonus - 1))}
@@ -638,79 +746,91 @@ export function ResolverPage() {
                   >
                     +
                   </button>
+                  <span className="text-xs text-slate-500 ml-2">
+                    ({opponentSkillBonus === -1 ? 'Poor' : opponentSkillBonus === 0 ? 'Average' : ['Good', 'Great', 'Exceptional', 'Extraordinary'][opponentSkillBonus - 1]})
+                  </span>
                 </div>
               </div>
 
               {/* Opponent Modifiers */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">Wound Penalty</label>
+                  <label className="block text-sm text-slate-400 mb-1">Wound Penalty (per die)</label>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setOpponentWoundPenalty(Math.max(-4, opponentWoundPenalty - 1))}
-                      className="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-sm"
+                      className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
                     >
                       -
                     </button>
-                    <span className={`text-center font-bold ${opponentWoundPenalty < 0 ? 'text-red-400' : 'text-slate-300'}`}>
-                      {opponentWoundPenalty}/die
+                    <span className={`w-12 text-center font-bold ${opponentWoundPenalty < 0 ? 'text-red-400' : 'text-slate-300'}`}>
+                      {opponentWoundPenalty}
                     </span>
                     <button
                       onClick={() => setOpponentWoundPenalty(Math.min(0, opponentWoundPenalty + 1))}
-                      className="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-sm"
+                      className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
                     >
                       +
                     </button>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">Modifier</label>
+                  <label className="block text-sm text-slate-400 mb-1">Situational Modifier</label>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setOpponentModifier(Math.max(-4, opponentModifier - 1))}
-                      className="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-sm"
+                      className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
                     >
                       -
                     </button>
-                    <span className={`text-center font-bold ${opponentModifier >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    <span className={`w-12 text-center font-bold ${opponentModifier >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {opponentModifier >= 0 ? '+' : ''}{opponentModifier}
                     </span>
                     <button
                       onClick={() => setOpponentModifier(Math.min(4, opponentModifier + 1))}
-                      className="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-sm"
+                      className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
                     >
                       +
                     </button>
                   </div>
                 </div>
+              </div>            
+              {/* Total Modifier Display */}
+              <div className="bg-slate-700/50 rounded p-2 text-sm">
+                <span className="text-slate-400">Total Modifier: </span>
+                <span className={opponentTotalModifier >= 0 ? 'text-green-400' : 'text-red-400'}>
+                  {opponentTotalModifier >= 0 ? '+' : ''}{opponentTotalModifier}
+                </span>
+                {actorPoolEntry.pool.dice.length > 1 && (
+                  <span className="text-slate-500 text-xs ml-2">
+                    ({opponentSkillBonus >= 0 ? '+' : ''}{opponentSkillBonus}/die skill, {opponentWoundPenalty}/die wounds, {opponentModifier >= 0 ? '+' : ''}{opponentModifier} situational)
+                  </span>
+                )}
               </div>
             </div>
           )}
         </div>
       </div>
-{/* Band Thresholds Display */}
-<div className="bg-slate-800 rounded-lg p-4">
+
+      {/* Band Thresholds Display */}
+      <div className="bg-slate-800 rounded-lg p-4">
         <h2 className="text-lg font-bold text-amber-400 mb-3">Effort Bands — {actorPoolEntry.pool.notation}</h2>
         <div className="grid grid-cols-4 gap-2 text-center text-sm">
           {(['green', 'yellow', 'orange', 'red'] as EffortBand[]).map(band => {
             const available = isBandAvailable(actorPoolEntry.pool, band);
             const value = actorThresholds[band];
+            const style = bandStyles[band];
             return (
               <div 
                 key={band}
                 className={`rounded p-2 ${
                   available 
-                    ? `bg-${band === 'green' ? 'green' : band === 'yellow' ? 'yellow' : band === 'orange' ? 'orange' : 'red'}-900/30 border border-${band === 'green' ? 'green' : band === 'yellow' ? 'yellow' : band === 'orange' ? 'orange' : 'red'}-500/50`
+                    ? `${style.bg} border ${style.border}`
                     : 'bg-slate-800/50 border border-slate-600 opacity-50'
                 }`}
               >
-                <div className={`font-bold ${
-                  band === 'green' ? 'text-green-400' :
-                  band === 'yellow' ? 'text-yellow-400' :
-                  band === 'orange' ? 'text-orange-400' :
-                  'text-red-400'
-                }`}>
-                  {band === 'green' ? '🟩' : band === 'yellow' ? '🟨' : band === 'orange' ? '🟧' : '🟥'} {band.charAt(0).toUpperCase() + band.slice(1)}
+                <div className={`font-bold ${style.text}`}>
+                  {style.emoji} {band.charAt(0).toUpperCase() + band.slice(1)}
                 </div>
                 <div className="text-xl text-slate-200">
                   {available ? value : '—'}
@@ -747,7 +867,7 @@ export function ResolverPage() {
         >
         🟩 Take Baseline
         {isBandAvailable(actorPoolEntry.pool, 'green') && actorThresholds.green !== null && (
-            <div className="text-xs opacity-75">Result: {actorThresholds.green + actorSkillBonus * actorPoolEntry.pool.dice.length + actorTotalModifier}</div>
+            <div className="text-xs opacity-75">Result: {actorThresholds.green + actorTotalModifier}</div>
         )}
         </button>
         <button
