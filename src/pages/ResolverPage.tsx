@@ -952,12 +952,30 @@ export function ResolverPage() {
               }`}>
                 <div className="text-2xl font-bold">
                   {result.winner === 'actor' ? '🥇 Actor Wins!' :
-                   result.winner === 'opponent' ? '🥈 Opponent Wins!' :
-                   '⚔️ Tie!'}
+                  result.winner === 'opponent' ? '🥈 Opponent Wins!' :
+                  '⚔️ Tie!'}
                 </div>
-                {result.margin !== Infinity && (
+                {result.winner !== 'tie' && result.margin !== Infinity && (
                   <div className="text-sm text-slate-400">
-                    Margin: {result.margin}
+                    {(() => {
+                      const winnerSuccesses = result.winner === 'actor' 
+                        ? result.actor.successes 
+                        : result.opponent?.successes ?? 0;
+                      const winThreshold = winnerSuccesses * 4;
+                      const winScale = resultToScale(winThreshold);
+                      const relativeScale = winScale !== null ? winScale + 1 : null;
+                      
+                      return (
+                        <>
+                          <span className="text-white font-medium">{winnerSuccesses}</span> {winnerSuccesses === 1 ? 'success' : 'successes'}
+                          {relativeScale !== null && (
+                            <span className="ml-2">
+                              (Scale <span className="text-white font-medium">{relativeScale}x</span>)
+                            </span>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
               </div>

@@ -7,6 +7,7 @@ import { ICONS, DEFAULT_ICON, type IconEntry } from '../data/icons';
 import { DIE_POOL_TABLE } from '../data/diePoolTable';
 import type { DiePoolEntry } from '../data/diePoolTable';
 import { resolveTest } from '../utils/resolution';
+import { getScaleForPool } from '../data/actionEffortTable';
 
 const DEFENSE_ATTRIBUTES: Record<AspectName, AttributeName> = {
   Form: 'Toughness',
@@ -312,6 +313,7 @@ export function PlaysheetPage() {
                           if (!attr) return <td key={aspect.id} className="p-2"></td>;
                           const entry = character.attributeDiePools[attr.id];
                           const isSelected = selectedAttribute === attr.id;
+                          const scale = getScaleForPool(entry.pool);
                           return (
                             <td 
                               key={aspect.id} 
@@ -325,7 +327,9 @@ export function PlaysheetPage() {
                               <div className={`font-medium ${isSelected ? 'text-amber-400' : 'text-slate-200'}`}>
                                 {attr.name}
                               </div>
-                              <div className="text-xs text-slate-400">Rank {entry.rank}</div>
+                              <div className="text-xs text-slate-400">
+                                {scale !== null && scale !== undefined ? `${scale}x average` : `Rank ${entry.rank}`}
+                              </div>
                               <div className={`text-sm font-bold ${isSelected ? 'text-amber-300' : 'text-cyan-400'}`}>
                                 {entry.pool.notation}
                               </div>
