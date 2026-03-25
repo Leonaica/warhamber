@@ -54,4 +54,5 @@ export interface ContestResult {
   opponent?: ActionResult;
   winner: 'actor' | 'opponent' | 'tie';
   margin: number;
+  foregoneEnforced?: boolean;  // True when foregone conclusion overrode dice
 }

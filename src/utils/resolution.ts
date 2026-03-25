@@ -359,15 +359,8 @@ export function resolveContest(
   opponentContext: Omit<ResolutionContext, 'isContest' | 'opponentPool' | 'opponentRank'>
 ): ContestResult {
   const foregone = isForegoneConclusion(actorContext.poolRank, opponentContext.poolRank);
-  if (foregone.isForegone && foregone.winner) {
-    return {
-      actor: { result: 0, band: 'green', successes: 0, capped: false, criticalFailure: false },
-      opponent: { result: 0, band: 'green', successes: 0, capped: false, criticalFailure: false },
-      winner: foregone.winner,
-      margin: Infinity,
-    };
-  }
   
+  // Always roll both sides - we want the actual dice results
   const actorResult = resolveTest({
     ...actorContext,
     isContest: true,
@@ -380,8 +373,32 @@ export function resolveContest(
     opponentRank: actorContext.poolRank,
   });
   
-  // Critical failure causes automatic loss
+  // Helper to create enforced foregone result
+  const enforceForegoneWin = (winner: 'actor' | 'opponent'): ContestResult => {
+    if (winner === 'actor') {
+      return {
+        actor: { ...actorResult, successes: 1 },
+        opponent: { ...opponentResult, successes: 0 },
+        winner: 'actor',
+        margin: 1,
+        foregoneEnforced: true,
+      };
+    } else {
+      return {
+        actor: { ...actorResult, successes: 0 },
+        opponent: { ...opponentResult, successes: 1 },
+        winner: 'opponent',
+        margin: 1,
+        foregoneEnforced: true,
+      };
+    }
+  };
+  
+  // Handle critical failures - but foregone conclusion still wins if applicable
   if (actorResult.criticalFailure && opponentResult.criticalFailure) {
+    if (foregone.isForegone && foregone.winner) {
+      return enforceForegoneWin(foregone.winner);
+    }
     return {
       actor: { ...actorResult, successes: 0 },
       opponent: { ...opponentResult, successes: 0 },
@@ -391,6 +408,9 @@ export function resolveContest(
   }
   
   if (actorResult.criticalFailure) {
+    if (foregone.isForegone && foregone.winner === 'actor') {
+      return enforceForegoneWin('actor');
+    }
     return {
       actor: { ...actorResult, successes: 0 },
       opponent: { ...opponentResult, successes: 0 },
@@ -400,6 +420,9 @@ export function resolveContest(
   }
   
   if (opponentResult.criticalFailure) {
+    if (foregone.isForegone && foregone.winner === 'opponent') {
+      return enforceForegoneWin('opponent');
+    }
     return {
       actor: { ...actorResult, successes: 0 },
       opponent: { ...opponentResult, successes: 0 },
@@ -408,12 +431,18 @@ export function resolveContest(
     };
   }
   
-  // Normal comparison
+  // Normal comparison - calculate margin
   const margin = actorResult.result - opponentResult.result;
   
   if (margin > 0) {
-    // Actor wins
+    // Actor wins naturally
     const actorSuccesses = calculateContestSuccesses(margin);
+    
+    // But foregone said opponent should win - enforce it
+    if (foregone.isForegone && foregone.winner === 'opponent') {
+      return enforceForegoneWin('opponent');
+    }
+    
     return {
       actor: { ...actorResult, successes: actorSuccesses },
       opponent: { ...opponentResult, successes: 0 },
@@ -421,8 +450,14 @@ export function resolveContest(
       margin: Math.abs(margin),
     };
   } else if (margin < 0) {
-    // Opponent wins
+    // Opponent wins naturally
     const opponentSuccesses = calculateContestSuccesses(Math.abs(margin));
+    
+    // But foregone said actor should win - enforce it
+    if (foregone.isForegone && foregone.winner === 'actor') {
+      return enforceForegoneWin('actor');
+    }
+    
     return {
       actor: { ...actorResult, successes: 0 },
       opponent: { ...opponentResult, successes: opponentSuccesses },
@@ -430,7 +465,11 @@ export function resolveContest(
       margin: Math.abs(margin),
     };
   } else {
-    // Tie
+    // Tie - foregone winner takes it if applicable
+    if (foregone.isForegone && foregone.winner) {
+      return enforceForegoneWin(foregone.winner);
+    }
+    
     return {
       actor: { ...actorResult, successes: 0 },
       opponent: { ...opponentResult, successes: 0 },

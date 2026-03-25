@@ -945,6 +945,15 @@ export function ResolverPage() {
             <div className="space-y-4">
               {renderActionResult(result.actor, 'Actor')}
               {result.opponent && renderActionResult(result.opponent, 'Opponent')}
+              
+              {/* Foregone enforced notice */}
+              {result.foregoneEnforced && (
+                <div className="bg-amber-900/30 border border-amber-500/50 rounded p-2 text-sm text-center">
+                  <span className="text-amber-400">⚡ Foregone Conclusion Enforced</span>
+                  <span className="text-slate-400 ml-2">— Dice overridden, minimum 1 success awarded</span>
+                </div>
+              )}
+              
               <div className={`text-center p-4 rounded ${
                 result.winner === 'actor' ? 'bg-green-900/30 border border-green-500/50' :
                 result.winner === 'opponent' ? 'bg-red-900/30 border border-red-500/50' :
