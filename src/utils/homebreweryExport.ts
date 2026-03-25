@@ -134,7 +134,11 @@ FUNCTIONS.forEach(func => {
     powers.forEach(cp => {
       const power = POWERS.find(p => p.id === cp.powerId);
       if (power) {
-        const powerName = cp.label || power.name;
+        // Build display name
+        let powerName = power.name;
+        if (cp.label && cp.label !== power.name) {
+          powerName = `${power.name}: ${cp.label}`;
+        }
         const description = cp.description ? `${cp.description}` : '';
         lines.push(`**${power.emoji} ${powerName}** *[${cp.points} Points]* :: ${description}`);
       }
