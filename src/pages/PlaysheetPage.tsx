@@ -9,6 +9,7 @@ import type { DiePoolEntry } from '../data/diePoolTable';
 import { resolveTest } from '../utils/resolution';
 import { getScaleForPool } from '../data/actionEffortTable';
 import { POWERS } from '../data/powers';
+import { SKILLS } from '../data/skills';
 
 const DEFENSE_ATTRIBUTES: Record<AspectName, AttributeName> = {
   Form: 'Toughness',
@@ -356,6 +357,7 @@ export function PlaysheetPage() {
                 {character.skills.map(skillEntry => {
                   const isSelected = selectedSkill === skillEntry.skillId;
                   const bonus = SKILL_RATING_TO_BONUS[skillEntry.rating] ?? 0;
+                  const skill = SKILLS.find(s => s.id === skillEntry.skillId);
                   return (
                     <div 
                       key={skillEntry.skillId} 
@@ -367,9 +369,12 @@ export function PlaysheetPage() {
                       onClick={() => setSelectedSkill(isSelected ? null : skillEntry.skillId)}
                     >
                       <div className={`font-medium ${isSelected ? 'text-amber-400' : ''}`}>
-                        {skillEntry.skillId}
+                        {skill?.emoji} {skill?.name}
                       </div>
                       <div className={`text-xs ${isSelected ? 'text-amber-300/70' : 'text-slate-400'}`}>
+                        {skill?.description}
+                      </div>
+                      <div className={`text-xs ${isSelected ? 'text-amber-400' : '' }`}>
                         {skillEntry.rating} ({bonus >= 0 ? '+' : ''}{bonus}/die)
                       </div>
                     </div>
@@ -451,12 +456,21 @@ export function PlaysheetPage() {
                   🟥 Spend 3
                 </button>
               </div>
-              <button
-                onClick={gameState.resetSurge}
-                className="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-2 rounded text-sm transition-colors"
-              >
-                🌅 Long Rest (Reset Surge)
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => gameState.spendSurge(-1)}
+                  disabled={currentSurge >= character.computedCharacter.surge}
+                  className="flex-1 bg-green-700 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-200 px-3 py-2 rounded text-sm transition-colors"
+                >
+                  ⚡ Regain 1
+                </button>
+                <button
+                  onClick={gameState.resetSurge}
+                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-2 rounded text-sm transition-colors"
+                >
+                  🌅 Long Rest
+                </button>
+              </div>
             </div>
           </div>
 
