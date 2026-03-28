@@ -3,6 +3,7 @@ import { ASPECTS, FUNCTIONS, ATTRIBUTES, SKILL_RATINGS } from '../types/characte
 import { SKILLS } from '../data/skills';
 import { POWERS } from '../data/powers';
 import { getDiePoolEntry } from '../data/diePoolTable';
+import { getPowerDisplay } from './powerDisplay';
 
 // Convert die pool to Homebrewery die icons
 function dieIcons(pool: DiePool): string {
@@ -134,13 +135,9 @@ FUNCTIONS.forEach(func => {
     powers.forEach(cp => {
       const power = POWERS.find(p => p.id === cp.powerId);
       if (power) {
-        // Build display name
-        let powerName = power.name;
-        if (cp.label && cp.label !== power.name) {
-          powerName = `${power.name}: ${cp.label}`;
-        }
-        const description = cp.description ? `${cp.description}` : '';
-        lines.push(`**${power.emoji} ${powerName}** *[${cp.points} Points]* :: ${description}`);
+        const display = getPowerDisplay(power, cp.points, cp.label);
+        const description = cp.description ? ` ${cp.description}` : '';
+        lines.push(`**${power.emoji} ${display.title}** *[${display.systemReference}]* :: ${description}`);
       }
     });
   }

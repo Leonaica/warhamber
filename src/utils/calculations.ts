@@ -90,9 +90,9 @@ export function checkPowerPrerequisites(
 
   for (const prereq of power.prerequisites) {
     // Check if this prerequisite applies at current power level
-    if (prereq.appliesAtPoints !== undefined && currentPowerPoints !== undefined) {
-      if (currentPowerPoints < prereq.appliesAtPoints) {
-        continue; // Skip this prerequisite - power not high enough for it to apply
+    if (prereq.appliesAtPoints !== undefined) {
+      if (currentPowerPoints === undefined || currentPowerPoints < prereq.appliesAtPoints) {
+        continue;
       }
     }
     

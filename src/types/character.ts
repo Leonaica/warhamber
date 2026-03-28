@@ -187,6 +187,8 @@ export interface Power {
   prerequisites?: PowerPrerequisite[];
   repeatable?: boolean; // Can the power be taken multiple times?
   subPowers?: string[]; // Psionic Disciplines, Artifice Sciences, etc.
+  practitioner?: string;
+  subPowerAdjectives?: Record<string, string>; // Maps subpower to adjective form
 }
 
 // Prerequisites to use a power

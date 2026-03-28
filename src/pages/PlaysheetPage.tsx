@@ -10,6 +10,7 @@ import { resolveTest } from '../utils/resolution';
 import { getScaleForPool } from '../data/actionEffortTable';
 import { POWERS } from '../data/powers';
 import { SKILLS } from '../data/skills';
+import { getPowerDisplay } from '../utils/powerDisplay';
 
 const DEFENSE_ATTRIBUTES: Record<AspectName, AttributeName> = {
   Form: 'Toughness',
@@ -391,17 +392,14 @@ export function PlaysheetPage() {
               <div className="grid md:grid-cols-2 gap-2">
               {character.powers.map(powerEntry => {
                 const power = POWERS.find(p => p.id === powerEntry.powerId);
-                // Build display name
-                let displayName = power?.name || powerEntry.powerId;
-                if (powerEntry.label && powerEntry.label !== power?.name) {
-                  displayName = `${power?.name}: ${powerEntry.label}`;
-                }
+                if (!power) return null;
+                const display = getPowerDisplay(power, powerEntry.points, powerEntry.label);
                 return (
                   <div key={powerEntry.id} className="bg-slate-700/50 rounded p-2 text-sm">
                     <div className="font-medium">
-                      {power?.emoji} {displayName}
+                      {power.emoji} {display.title}
                     </div>
-                    <div className="text-xs text-slate-400">{powerEntry.points} pts</div>
+                    <div className="text-xs text-slate-400">{display.systemReference}</div>
                     {powerEntry.description && (
                       <div className="text-xs text-slate-500 mt-1">{powerEntry.description}</div>
                     )}
