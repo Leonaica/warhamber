@@ -24,48 +24,51 @@ function getLevelForPoints(power: Power, points: number): { name: string; cost: 
 export function getPowerDisplay(
   power: Power,
   points: number,
-  label?: string
+  label?: string,
+  customTitle?: string
 ): PowerDisplay {
   const level = getLevelForPoints(power, points);
-  const pointsStr = points > 0 ? `${points}` : `${points}`;
-  
-  // Minor Powers
+  const levelName = level?.name || '';
+  const pointsStr = points < 0 ? `–${Math.abs(points)}` : `${points}`;
+
+  // Minor Powers: "Limitation • –3 pts" or "Minor • 2 pts"
   if (power.id === 'minorPower') {
-    const title = label || 'Minor Power';
-    const category = points < 0 ? 'Limitation' : points === 0 ? 'Trivial' : 'Minor Power';
-    return { title, systemReference: `${category} • ${pointsStr} pts` };
+    const title = customTitle || label || 'Minor Power';
+    return { title, systemReference: `${levelName} • ${pointsStr} pts` };
   }
-  
+
   // Powers with subpowers (Psionics, Artifice)
   if (power.subPowers && power.practitioner && power.subPowerAdjectives) {
     const adjective = power.subPowerAdjectives[label || ''] || '';
-    const rank = level?.name || '';
     
-    if (label && adjective) {
-      // Construct: "Telepathic Psion", "Master Telepathic Psion", "Supreme Telepathic Psion"
-      let title: string;
-      if (rank === 'Adept' || rank === '') {
-        title = `${adjective} ${power.practitioner}`;
-      } else {
-        title = `${rank} ${adjective} ${power.practitioner}`;
-      }
-      return { title, systemReference: `${power.name} • ${adjective} ${rank} • ${pointsStr} pts` };
+    // systemReference always uses system terminology, not customTitle
+    const systemName = label && adjective
+      ? `${adjective} ${power.practitioner}`
+      : power.name;
+    const systemReference = `${levelName} • ${systemName} • ${pointsStr} pts`;
+    
+    // Title: customTitle takes precedence
+    if (customTitle) {
+      return { title: customTitle, systemReference };
     }
-    return { title: power.name, systemReference: `${power.name} • ${rank} ${adjective} ${power.practitioner} • ${pointsStr} pts` };
+    
+    // Construct title from discipline + rank + practitioner
+    if (label && adjective) {
+      const title = levelName === 'Adept' || levelName === ''
+        ? `${adjective} ${power.practitioner}`
+        : `${levelName} ${adjective} ${power.practitioner}`;
+      return { title, systemReference };
+    }
+    
+    return { title: power.name, systemReference };
   }
+
+  // Standard powers
+  // Title: customTitle > label > level name > power name
+  const title = customTitle || label || levelName || power.name;
   
-  // Standard powers with custom label
-  if (label) {
-    return {
-      title: label,
-      systemReference: level ? `${power.name} • ${level.name} • ${pointsStr} pts` : `${power.name} • ${pointsStr} pts`,
-    };
-  }
+  // systemReference always uses power.name (system reference), never customTitle
+  const systemReference = `${levelName} • ${power.name} • ${pointsStr} pts`;
   
-  // Standard powers - use level name as title
-  if (level) {
-    return { title: level.name, systemReference: `${power.name} • ${level.name} • ${pointsStr} pts` };
-  }
-  
-  return { title: power.name, systemReference: `${power.name} • ${pointsStr} pts` };
+  return { title, systemReference };
 }

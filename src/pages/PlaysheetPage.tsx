@@ -393,7 +393,7 @@ export function PlaysheetPage() {
               {character.powers.map(powerEntry => {
                 const power = POWERS.find(p => p.id === powerEntry.powerId);
                 if (!power) return null;
-                const display = getPowerDisplay(power, powerEntry.points, powerEntry.label);
+                const display = getPowerDisplay(power, powerEntry.points, powerEntry.label, powerEntry.customTitle);
                 return (
                   <div key={powerEntry.id} className="bg-slate-700/50 rounded p-2 text-sm">
                     <div className="font-medium">

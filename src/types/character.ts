@@ -179,6 +179,7 @@ export interface Power {
   id: string;
   name: string;
   emoji: string;
+  customTitle?: string;
   category: PowerCategory;
   description: string;
   requirements: string;
@@ -235,6 +236,7 @@ export interface CharacterPower {
   powerId: string;
   points: number;
   label: string; // Display name (defaults to tier name, editable)
+  customTitle?: string;
   description: string; // How this power manifests for the avatar
 }
 

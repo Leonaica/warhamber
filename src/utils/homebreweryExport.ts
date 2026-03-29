@@ -135,7 +135,7 @@ FUNCTIONS.forEach(func => {
     powers.forEach(cp => {
       const power = POWERS.find(p => p.id === cp.powerId);
       if (power) {
-        const display = getPowerDisplay(power, cp.points, cp.label);
+        const display = getPowerDisplay(power, cp.points, cp.label, cp.customTitle);
         const description = cp.description ? ` ${cp.description}` : '';
         lines.push(`**${power.emoji} ${display.title}** *[${display.systemReference}]* :: ${description}`);
       }
@@ -169,10 +169,10 @@ FUNCTIONS.forEach(func => {
     });
   }
   
-  // Artifacts
+  // Artifacts and Constructs
   if (artifacts.length > 0) {
     lines.push(``);
-    lines.push(`#### Creatures and Artifacts of Power`);
+    lines.push(`#### Artifacts and Constructs`);
     artifacts.forEach(artifact => {
       const qtyText = artifact.quantity > 1 ? ` x${artifact.quantity}` : '';
       lines.push(`**${artifact.name}** *[${artifact.cost} Points]*${qtyText} :: ${artifact.description}`);

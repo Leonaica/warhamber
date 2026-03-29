@@ -6,7 +6,7 @@ export const POWERS: Power[] = [
     name: 'Pattern',
     emoji: '🔷',
     category: 'Substance',
-    description: 'Sensing and mentally manipulating the Pattern underlying reality. Command order, structure, and destiny.',
+    description: 'Following and manipulating the Pattern to command order and destiny',
     requirements: 'Blood of Amber, Amber-level Willpower and Endurance',
     keyAttributes: ['Willpower', 'Intelligence', 'Memory', 'Charisma'],
     levels: [
@@ -24,13 +24,13 @@ export const POWERS: Power[] = [
     name: 'Logrus',
     emoji: '🐉',
     category: 'Substance',
-    description: 'Summoning the ghost of the Logrus to shape reality fluidly and unpredictably.',
+    description: 'Summoning the ghost of the Logrus to shape possibility into reality',
     requirements: 'Shape Shifting, Amber-level Spirit (Resilience)',
     keyAttributes: ['Resilience', 'Creativity', 'Wisdom', 'Presence'],
     levels: [
       { name: 'Initiate', cost: 45 },
       { name: 'Wyrm Rider', cost: 70 },
-      { name: 'Dragon', cost: 100 },
+      { name: 'Chaos Dragon', cost: 100 },
     ],
     prerequisites: [
       { type: 'power', powerId: 'shapeShifting', powerPoints: 35 },
@@ -43,7 +43,7 @@ export const POWERS: Power[] = [
     name: 'Tarot',
     emoji: '🃏',
     category: 'Substance',
-    description: 'Create and manipulate metaphysical links via archetypal imagery and spiritual symbolism.',
+    description: 'Connection made manifest through symbolism',
     requirements: 'Amber-level Resilience',
     keyAttributes: ['Willpower', 'Creativity', 'Memory', 'Presence'],
     levels: [
@@ -61,7 +61,7 @@ export const POWERS: Power[] = [
     name: 'Shape Shifting',
     emoji: '🦋',
     category: 'Substance',
-    description: 'Mastery over the Chaos manifest in oneself. Transform physically for offense, defense, or adaptation.',
+    description: 'Mastery over the Chaos manifest in oneself',
     requirements: 'Inborn power (must be taken at avatar creation)',
     keyAttributes: ['Endurance', 'Reflexes', 'Intuition', 'Allure'],
     levels: [
@@ -75,7 +75,7 @@ export const POWERS: Power[] = [
     name: 'Broken Pattern',
     emoji: '🧩',
     category: 'Semi-Substance',
-    description: 'Sensing and mentally manipulating the cracks in a reflection of the true Pattern.',
+    description: 'Reality seen through a shattered mirror',
     requirements: 'None (survival not guaranteed)',
     keyAttributes: ['Willpower', 'Creativity', 'Intuition', 'Presence'],
     levels: [
@@ -88,7 +88,7 @@ export const POWERS: Power[] = [
     name: 'Prime Magic',
     emoji: '✴️',
     category: 'Semi-Substance',
-    description: 'Direct manipulation and conjuration of Shadow reality without intermediary systems.',
+    description: 'Conjuring Shadow reality through magic',
     requirements: '2 dice in all Key Attributes, typically Master Wizard of Formulaic Magic',
     keyAttributes: ['Resilience', 'Intelligence', 'Memory', 'Presence'],
     levels: [
@@ -108,7 +108,7 @@ export const POWERS: Power[] = [
     name: 'Psionics',
     emoji: '🌀',
     category: 'Semi-Substance',
-    description: 'Sensing and manipulation of spirits and matter through the spirit-self.',
+    description: 'The living soul reaching out to act directly upon the world',
     requirements: 'None',
     keyAttributes: ['Resilience', 'Creativity', 'Wisdom', 'Presence'],
     practitioner: 'Psion',
@@ -132,7 +132,7 @@ export const POWERS: Power[] = [
     name: 'Pact Magic',
     emoji: '🔮',
     category: 'Shadow',
-    description: 'Faith-based miracles and spiritual empowerment from divine or supernatural patrons.',
+    description: 'Miracles granted in exchange for devotion or service',
     requirements: 'A willing patron',
     keyAttributes: ['Willpower', 'Intelligence', 'Wisdom', 'Presence'],
     levels: [
@@ -146,7 +146,7 @@ export const POWERS: Power[] = [
     name: 'Formulaic Magic',
     emoji: '📜',
     category: 'Shadow',
-    description: 'Traditional spellcasting through ritual and study. Weaving knots into the Essence of a Shadow.',
+    description: 'Weaving knots of power out of the Essence of a Shadow',
     requirements: 'The spark of magic, training',
     keyAttributes: ['Willpower', 'Intelligence', 'Memory', 'Charisma'],
     levels: [
@@ -160,7 +160,7 @@ export const POWERS: Power[] = [
     name: 'Innate Magic',
     emoji: '🧘',
     category: 'Shadow',
-    description: 'Magic fueled internally through your own spirit. Fast, personal, intuitive.',
+    description: 'The spirit as a living lens to focus ambient Essence',
     requirements: 'An inherent magical source',
     keyAttributes: ['Endurance', 'Creativity', 'Intuition', 'Presence'],
     levels: [
@@ -174,7 +174,7 @@ export const POWERS: Power[] = [
     name: 'Artifice',
     emoji: '⚙️',
     category: 'Shadow',
-    description: 'Command of machines and technology through ritualized science and machine spirits.',
+    description: 'Creation and communion with the spirits within machines',
     requirements: 'None',
     keyAttributes: ['Endurance', 'Intelligence', 'Perception', 'Charisma'],
     practitioner: 'Artificer',

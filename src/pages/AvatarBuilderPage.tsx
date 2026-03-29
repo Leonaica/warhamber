@@ -81,6 +81,12 @@ export function AvatarBuilderPage() {
     character.setPowers(character.powers.map(p => p.id === id ? { ...p, description } : p));
   };
 
+  const updatePowerCustomTitle = (id: string, customTitle: string) => {
+    character.setPowers(prev => prev.map(p =>
+      p.id === id ? { ...p, customTitle: customTitle || undefined } : p
+    ));
+  };
+
   const updatePowerPoints = (id: string, points: number) => {
     character.setPowers(character.powers.map(p => {
       if (p.id !== id) return p;
@@ -820,42 +826,59 @@ export function AvatarBuilderPage() {
                     {/* Label for this power purchase */}
                     <div className="mt-2">
                       <label className="block text-xs text-slate-400 mb-1">
-                        {power.subPowers ? (power.id === 'psionics' ? 'Discipline' : power.id === 'artifice' ? 'Science' : 'Type') : 'Label'}
+                        {power.subPowers ? (power.id === 'psionics' ? 'Discipline' : power.id === 'artifice' ? 'Science' : 'Type') : 'Title'}
                       </label>
                       {power.subPowers ? (
-                        (() => {
-                          // Get already-selected sub-powers for this power type (excluding current entry)
-                          const usedSubPowers = character.powers
-                            .filter(p => p.powerId === power.id && p.id !== powerEntry.id)
-                            .map(p => p.label)
-                            .filter(Boolean);
-                          
-                          return (
-                            <select
-                              value={powerEntry.label || ''}
-                              onChange={(e) => updatePowerLabel(powerEntry.id, e.target.value)}
-                              className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                            >
-                              <option value="">Select {power.id === 'psionics' ? 'Discipline' : power.id === 'artifice' ? 'Science' : 'Type'}...</option>
-                              {power.subPowers.map(sub => (
-                                <option 
-                                  key={sub} 
-                                  value={sub}
-                                  disabled={usedSubPowers.includes(sub)}
-                                >
-                                  {sub}{usedSubPowers.includes(sub) ? ' (already taken)' : ''}
-                                </option>
-                              ))}
-                            </select>
-                          );
-                        })()
+                        <div className="space-y-2">
+                          {/* Discipline selector */}
+                          <select
+                            value={powerEntry.label || ''}
+                            onChange={(e) => updatePowerLabel(powerEntry.id, e.target.value)}
+                            className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          >
+                            <option value="">Select {power.id === 'psionics' ? 'Discipline' : power.id === 'artifice' ? 'Science' : 'Type'}...</option>
+                            {power.subPowers.map(sub => (
+                              <option 
+                                key={sub} 
+                                value={sub}
+                                disabled={character.powers
+                                  .filter(p => p.powerId === power.id && p.id !== powerEntry.id)
+                                  .map(p => p.label)
+                                  .includes(sub)}
+                              >
+                                {sub}
+                              </option>
+                            ))}
+                          </select>
+                          {/* Custom title field */}
+                          <label className="block text-xs text-slate-400 mb-1">
+                            {'Title'}
+                          </label>
+                          <input
+                            type="text"
+                            value={powerEntry.customTitle || ''}
+                            onChange={(e) => updatePowerCustomTitle(powerEntry.id, e.target.value)}
+                            placeholder={(() => {
+                              const adjective = power.subPowerAdjectives?.[powerEntry.label || ''] || '';
+                              const rank = power.levels.find(l => powerEntry.points >= l.cost)?.name || '';
+                              if (powerEntry.label && adjective) {
+                                if (rank === 'Adept' || rank === '') {
+                                  return `${adjective} ${power.practitioner}`;
+                                }
+                                return `${rank} ${adjective} ${power.practitioner}`;
+                              }
+                              return 'Custom title';
+                            })()}
+                            className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          />
+                        </div>
                       ) : (
                         <input
                           type="text"
                           value={powerEntry.label || ''}
                           onChange={(e) => updatePowerLabel(powerEntry.id, e.target.value)}
                           placeholder={(() => {
-                            if (power.id === 'MinorPower') {
+                            if (power.id === 'minorPower') {
                               if (powerEntry.points < 0) return 'Limitation';
                               if (powerEntry.points === 0) return 'Trivial';
                               return 'Minor Power';
@@ -886,13 +909,13 @@ export function AvatarBuilderPage() {
           )}
         </section>
 
-        {/* Step 4: Artifacts, Allies, Shadows */}
+        {/* Step 4: Artifacts, Constructs, Allies, Shadows */}
         <section className="grid lg:grid-cols-3 gap-6">
-          {/* Artifacts */}
+          {/* Artifacts & Constructs */}
           <div className="bg-slate-800 rounded-lg p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-amber-400 flex items-center gap-2">
-                <span>💍</span> Artifacts
+                <span>💍</span> Artifacts & Constructs
               </h2>
               <button
                 onClick={addArtifact}
