@@ -226,7 +226,6 @@ export const ICONS: IconEntry[] = [
   { code: ':fas_hands_praying:', name: 'Praying', faClass: 'fa-solid fa-hands-praying', category: 'Divine', library: 'fontawesome' },
   { code: ':fas_hand_peace:', name: 'Peace', faClass: 'fa-solid fa-hand-peace', category: 'Divine', library: 'fontawesome' },
   { code: ':fas_church:', name: 'Church', faClass: 'fa-solid fa-church', category: 'Divine', library: 'fontawesome' },
-  { code: ':fas_candle_holder:', name: 'Candle', faClass: 'fa-solid fa-candle-holder', category: 'Divine', library: 'fontawesome' },
   { code: ':fas_bell:', name: 'Bell', faClass: 'fa-solid fa-bell', category: 'Divine', library: 'fontawesome' },
   // ===== DIVINE (Elderberry) =====
   { code: ':ei_cleric_channel_divinity:', name: 'Channel Divinity', eiChar: '\uE930', category: 'Divine', library: 'elderberry' },
@@ -284,7 +283,6 @@ export const ICONS: IconEntry[] = [
   { code: ':fas_users:', name: 'Group', faClass: 'fa-solid fa-users', category: 'Social', library: 'fontawesome' },
   { code: ':fas_people_group:', name: 'Community', faClass: 'fa-solid fa-people-group', category: 'Social', library: 'fontawesome' },
   { code: ':fas_user_group:', name: 'Team', faClass: 'fa-solid fa-user-group', category: 'Social', library: 'fontawesome' },
-  { code: ':fas_crown:', name: 'Crown', faClass: 'fa-solid fa-crown', category: 'Social', library: 'fontawesome' },
   // ===== SOCIAL (Elderberry) =====
   { code: ':ei_charmed:', name: 'Charmed', eiChar: '\uE91A', category: 'Social', library: 'elderberry' },
   { code: ':ei_deafened:', name: 'Deafened', eiChar: '\uE91B', category: 'Social', library: 'elderberry' },
@@ -320,7 +318,7 @@ export const ICONS: IconEntry[] = [
   { code: ':fas_key:', name: 'Key', faClass: 'fa-solid fa-key', category: 'Royalty', library: 'fontawesome' },
   { code: ':fas_gavel:', name: 'Gavel', faClass: 'fa-solid fa-gavel', category: 'Royalty', library: 'fontawesome' },
   { code: ':fas_hammer:', name: 'Hammer', faClass: 'fa-solid fa-hammer', category: 'Royalty', library: 'fontawesome' },
-  { code: ':fas_scales_balanced:', name: 'Scales', faClass: 'fa-solid fa-scales-balanced', category: 'Royalty', library: 'fontawesome' },
+  { code: ':fas_scale_balanced:', name: 'Scales', faClass: 'fa-solid fa-scales-balanced', category: 'Royalty', library: 'fontawesome' },
   { code: ':fas_gem:', name: 'Gem', faClass: 'fa-solid fa-gem', category: 'Royalty', library: 'fontawesome' },
   { code: ':fas_coins:', name: 'Coins', faClass: 'fa-solid fa-coins', category: 'Royalty', library: 'fontawesome' },
 
@@ -330,14 +328,7 @@ export const ICONS: IconEntry[] = [
   { code: ':fas_user_graduate:', name: 'Scholar', faClass: 'fa-solid fa-user-graduate', category: 'Default', library: 'fontawesome' },
   { code: ':fas_user_tie:', name: 'Noble', faClass: 'fa-solid fa-user-tie', category: 'Default', library: 'fontawesome' },
   { code: ':fas_user_shield:', name: 'Guardian', faClass: 'fa-solid fa-user-shield', category: 'Default', library: 'fontawesome' },
-  { code: ':ei_action:', name: 'Action', eiChar: '\uE00C', category: 'Default', library: 'elderberry' },
-  { code: ':ei_action1:', name: 'Action Alt', eiChar: '\uE00D', category: 'Default', library: 'elderberry' },
-  { code: ':ei_bonus_action:', name: 'Bonus Action', eiChar: '\uE021', category: 'Default', library: 'elderberry' },
-  { code: ':ei_bonus:', name: 'Bonus', eiChar: '\uE022', category: 'Default', library: 'elderberry' },
-  { code: ':ei_libro_juego:', name: 'Game Book', eiChar: '\uE06D', category: 'Default', library: 'elderberry' },
-  { code: ':ei_pantalla_dm:', name: 'DM Screen', eiChar: '\uE089', category: 'Default', library: 'elderberry' },
-  { code: ':ei_reaction:', name: 'Reaction', eiChar: '\uE09C', category: 'Default', library: 'elderberry' },
-  { code: ':ei_reaction1:', name: 'Reaction Alt', eiChar: '\uE09D', category: 'Default', library: 'elderberry' },
+
    // ===== DEFAULT (Elderberry) =====
    { code: ':ei_screen:', name: 'Screen', eiChar: '\uE901', category: 'Default', library: 'elderberry' },
    { code: ':ei_exhaust_1:', name: 'Exhaustion 1', eiChar: '\uE91C', category: 'Default', library: 'elderberry' },
