@@ -115,32 +115,30 @@ const stuffText = stuff >= 0 ? `+${stuff} Good Stuff` : `${stuff} Bad Stuff`;
 lines.push(`***${surge} Surge Points*** (${stuffText})`);
 lines.push(`___`);
 
+// Powers
+if (powers.length > 0) {
+  lines.push(`#### Powers`);
+  powers.forEach(cp => {
+    const power = POWERS.find(p => p.id === cp.powerId);
+    if (power) {
+      const display = getPowerDisplay(power, cp.points, cp.label, cp.customTitle);
+      const description = cp.description ? ` ${cp.description}` : '';
+      lines.push(`**${power.emoji} ${display.title}** *[${display.systemReference}]* :: ${description}`);
+    } 
+  });
+}
 // Mythic Aspect explanations (+20 or higher)
 ASPECTS.forEach(aspect => {
   if (aspects[aspect.id] >= 20 && aspectExplanations[aspect.id]?.trim()) {
-    lines.push(`***Mythic ${aspect.name}*** :: *${aspectExplanations[aspect.id].trim()}*`);
+    lines.push(`**${aspect.emoji} Mythic ${aspect.name}** :: ${aspectExplanations[aspect.id].trim()}`);
   }
 });
-
-// Mythic Function explanations (+20 or higher)
+// Mythic Function "Powers" (+20 or higher)
 FUNCTIONS.forEach(func => {
   if (functions[func.id] >= 20 && functionExplanations[func.id]?.trim()) {
-    lines.push(`***Mythic ${func.name}*** :: *${functionExplanations[func.id].trim()}*`);
+    lines.push(`**${func.emoji} Mythic ${func.name}** :: ${functionExplanations[func.id].trim()}`);
   }
 });
-
-  // Powers
-  if (powers.length > 0) {
-    lines.push(`#### Powers`);
-    powers.forEach(cp => {
-      const power = POWERS.find(p => p.id === cp.powerId);
-      if (power) {
-        const display = getPowerDisplay(power, cp.points, cp.label, cp.customTitle);
-        const description = cp.description ? ` ${cp.description}` : '';
-        lines.push(`**${power.emoji} ${display.title}** *[${display.systemReference}]* :: ${description}`);
-      }
-    });
-  }
 
   // Skills
   if (skills.length > 0) {

@@ -13,8 +13,8 @@ export const RATING_LABELS: Record<RatingValue, string> = {
   0: '💪 Amberite Norm',
   5: '🐅 Primeval Beast',
   10: '🐉 Supernatural',
-  15: '✨ Mythic',
-  20: '👑 Ranked',
+  15: '👑 Legend',
+  20: '✨ Mythic',
   25: '🪽 Paragon',
   30: '🔥 Incarnation',
 };
