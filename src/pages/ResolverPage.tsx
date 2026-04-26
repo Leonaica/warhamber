@@ -74,6 +74,21 @@ export function ResolverPage() {
     return DIE_POOL_TABLE.find((e: DiePoolEntry) => e.rank === opponentPoolRank) || DIE_POOL_TABLE[5];
   }, [opponentPoolRank]);
 
+  const formatRollEntry = (r: { value: number; rolls: number[] }) => {
+    return r.rolls.length > 1 ? r.rolls.join('+') : String(r.rolls[0]);
+  };
+  
+  const formatNonAdvantageRolls = (rolls: number[], explosions: { dieIndex: number; rolls: number[] }[]) => {
+    const explosionMap = new Map(explosions.map(e => [e.dieIndex, e.rolls]));
+    return rolls.map((roll, index) => {
+      const explosionRolls = explosionMap.get(index);
+      if (explosionRolls) {
+        return explosionRolls.join('+');
+      }
+      return String(roll);
+    });
+  };
+
   // Calculate total modifiers
   const actorTotalModifier = (actorSkillBonus + actorWoundPenalty) * actorPoolEntry.pool.dice.length + actorModifier;
   const opponentTotalModifier = (opponentSkillBonus + opponentWoundPenalty) * opponentPoolEntry.pool.dice.length + opponentModifier;
@@ -413,50 +428,40 @@ export function ResolverPage() {
           {ar.calculationBreakdown && (
             <div className="mt-3 pt-3 border-t border-slate-600 text-sm text-slate-400">
               <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                {ar.rollDetails ? (
-                  <>
-                    {ar.rollDetails.advantageDice && ar.rollDetails.advantageDice > 0 ? (
-                      <>
-                        <span>Roll (with {ar.rollDetails.advantageDice} adv):</span>
-                        <span className="text-white">
-                          [{ar.rollDetails.keptRolls?.join(', ')}]
-                          {ar.rollDetails.otherRolls && ar.rollDetails.otherRolls.length > 0 && (
-                            <span className="text-blue-300 ml-1">
-                            + [{ar.rollDetails.otherRolls.join(', ')}]
-                            </span>
-                          )}
-                          {ar.rollDetails.discardedRolls && ar.rollDetails.discardedRolls.length > 0 && (
-                            <span className="text-slate-500 ml-1">
-                              dropped [{ar.rollDetails.discardedRolls.join(', ')}]
-                            </span>
-                          )}
-                          {ar.rollDetails.explosions.length > 0 && (
-                            <span className="text-amber-400 ml-1">
-                              💥 {ar.rollDetails.explosions.map(e => e.rolls.join('+')).join(', ')}
-                            </span>
-                          )} = {ar.calculationBreakdown.rollTotal}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Roll:</span>
-                        <span className="text-white">
-                          [{ar.rollDetails.rolls.join(', ')}]
-                          {ar.rollDetails.explosions.length > 0 && (
-                            <span className="text-amber-400 ml-1">
-                              💥 {ar.rollDetails.explosions.map(e => e.rolls.join('+')).join(', ')}
-                            </span>
-                          )} = {ar.calculationBreakdown.rollTotal}
-                        </span>
-                      </>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <span>Base:</span>
-                    <span className="text-white">{ar.calculationBreakdown.rollTotal}</span>
-                  </>
-                )}
+              {ar.rollDetails ? (
+                <>
+                  {ar.rollDetails.advantageDice && ar.rollDetails.advantageDice > 0 ? (
+                    <>
+                      <span>Roll (with {ar.rollDetails.advantageDice} adv):</span>
+                      <span className="text-white">
+                        [{ar.rollDetails.keptRolls?.map(formatRollEntry).join(', ')}]
+                        {ar.rollDetails.otherRolls && ar.rollDetails.otherRolls.length > 0 && (
+                          <span className="text-blue-300 ml-1">
+                            + [{ar.rollDetails.otherRolls.map(formatRollEntry).join(', ')}]
+                          </span>
+                        )}
+                        {ar.rollDetails.discardedRolls && ar.rollDetails.discardedRolls.length > 0 && (
+                          <span className="text-slate-500 ml-1">
+                            dropped [{ar.rollDetails.discardedRolls.map(formatRollEntry).join(', ')}]
+                          </span>
+                        )} = {ar.calculationBreakdown?.rollTotal}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Roll:</span>
+                      <span className="text-white">
+                        [{formatNonAdvantageRolls(ar.rollDetails.rolls, ar.rollDetails.explosions).join(', ')}] = {ar.calculationBreakdown?.rollTotal}
+                      </span>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span>Base:</span>
+                  <span className="text-white">{ar.calculationBreakdown?.rollTotal}</span>
+                </>
+              )}
                 {ar.calculationBreakdown.isSurge ? (
                   <>
                     <span>Skill (surge):</span>

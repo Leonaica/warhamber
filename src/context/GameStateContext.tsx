@@ -1,7 +1,10 @@
 import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react';
 import type { AspectName } from '../types/character';
+import { WOUND_PENALTIES, WOUND_LABELS, type WoundLevel } from '../data/wounds';
 
-export type WoundLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+// Re-export wound utilities for convenience
+export type { WoundLevel } from '../data/wounds';
+export { WOUND_LABELS, WOUND_PENALTIES, WOUND_DAMAGE_RANGES, getWoundLevel, calculateStacking } from '../data/wounds';
 
 export interface WoundState {
   Form: WoundLevel;
@@ -23,32 +26,21 @@ export interface TemporaryModifier {
   value: number;
 }
 
-export interface ArmorValues {
-  Toughness: number;
-  Endurance: number;
-  Willpower: number;
-  Resilience: number;
-}
-
 interface GameStateContextValue {
-  // Surge
-  surgeSpent: number;
-  spendSurge: (amount: number) => void;
-  resetSurge: () => void;
-  
-  // Wounds
+  // Character wounds
   wounds: WoundState;
   setWound: (aspect: AspectName, level: WoundLevel) => void;
-  woundPenalty: number; // Highest penalty from any aspect
+  woundPenalty: number;
   
   // Restoration points (for healing)
   restorationPoints: RestorationPoints;
   addRestorationPoints: (aspect: AspectName, points: number) => void;
   clearRestorationPoints: (aspect: AspectName) => void;
   
-  // Armor
-  armor: ArmorValues;
-  setArmor: (defense: keyof ArmorValues, value: number) => void;
+  // Surge
+  surgeSpent: number;
+  spendSurge: (amount: number) => void;
+  resetSurge: () => void;
   
   // Temporary modifiers
   modifiers: TemporaryModifier[];
@@ -56,33 +48,17 @@ interface GameStateContextValue {
   removeModifier: (id: string) => void;
   totalModifier: number;
   
+  // Opponent tracking
+  opponentName: string;
+  setOpponentName: (name: string) => void;
+  opponentWounds: WoundState;
+  setOpponentWound: (aspect: AspectName, level: WoundLevel) => void;
+  opponentWoundPenalty: number;
+  resetOpponent: () => void;
+  
   // Reset all
   resetAll: () => void;
 }
-
-const WOUND_PENALTIES: Record<WoundLevel, number> = {
-  0: 0,   // No wound
-  1: 0,   // Near Miss
-  2: 0,   // Scrape
-  3: -1,  // Wound
-  4: -2,  // Bleeding Wound
-  5: -3,  // Life-Threatening
-  6: -4,  // Maimed
-  7: -5,  // Mortal Wound
-  8: -6,  // Death Blow
-};
-
-const WOUND_LABELS: Record<WoundLevel, { label: string; emoji: string }> = {
-  0: { label: 'None', emoji: '' },
-  1: { label: 'Near Miss', emoji: '⚠️' },
-  2: { label: 'Scrape', emoji: '🟢' },
-  3: { label: 'Wound', emoji: '🟡' },
-  4: { label: 'Bleeding Wound', emoji: '🟠' },
-  5: { label: 'Life-Threatening', emoji: '🔴' },
-  6: { label: 'Maimed', emoji: '🦿' },
-  7: { label: 'Mortal Wound', emoji: '☠️' },
-  8: { label: 'Death Blow', emoji: '⚰️' },
-};
 
 const defaultWounds: WoundState = {
   Form: 0,
@@ -98,29 +74,17 @@ const defaultRestoration: RestorationPoints = {
   Spirit: 0,
 };
 
-const defaultArmor: ArmorValues = {
-  Toughness: 0,
-  Endurance: 0,
-  Willpower: 0,
-  Resilience: 0,
-};
-
 const GameStateContext = createContext<GameStateContextValue | null>(null);
 
 export function GameStateProvider({ children }: { children: ReactNode }) {
-  const [surgeSpent, setSurgeSpent] = useState(0);
   const [wounds, setWounds] = useState<WoundState>(defaultWounds);
   const [restorationPoints, setRestorationPoints] = useState<RestorationPoints>(defaultRestoration);
-  const [armor, setArmorState] = useState<ArmorValues>(defaultArmor);
+  const [surgeSpent, setSurgeSpent] = useState(0);
   const [modifiers, setModifiers] = useState<TemporaryModifier[]>([]);
-
-  const spendSurge = useCallback((amount: number) => {
-    setSurgeSpent(prev => prev + amount);
-  }, []);
-
-  const resetSurge = useCallback(() => {
-    setSurgeSpent(0);
-  }, []);
+  
+  // Opponent tracking
+  const [opponentName, setOpponentName] = useState('');
+  const [opponentWounds, setOpponentWounds] = useState<WoundState>(defaultWounds);
 
   const setWound = useCallback((aspect: AspectName, level: WoundLevel) => {
     setWounds(prev => ({ ...prev, [aspect]: level }));
@@ -149,8 +113,12 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  const setArmor = useCallback((defense: keyof ArmorValues, value: number) => {
-    setArmorState(prev => ({ ...prev, [defense]: Math.max(0, value) }));
+  const spendSurge = useCallback((amount: number) => {
+    setSurgeSpent(prev => prev + amount);
+  }, []);
+
+  const resetSurge = useCallback(() => {
+    setSurgeSpent(0);
   }, []);
 
   const addModifier = useCallback((description: string, value: number) => {
@@ -166,30 +134,54 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     return modifiers.reduce((sum, m) => sum + m.value, 0);
   }, [modifiers]);
 
+  // Opponent tracking
+  const setOpponentWound = useCallback((aspect: AspectName, level: WoundLevel) => {
+    setOpponentWounds(prev => ({ ...prev, [aspect]: level }));
+  }, []);
+
+  const opponentWoundPenalty = useMemo(() => {
+    return Math.min(
+      WOUND_PENALTIES[opponentWounds.Form],
+      WOUND_PENALTIES[opponentWounds.Flesh],
+      WOUND_PENALTIES[opponentWounds.Mind],
+      WOUND_PENALTIES[opponentWounds.Spirit]
+    );
+  }, [opponentWounds]);
+
+  const resetOpponent = useCallback(() => {
+    setOpponentName('');
+    setOpponentWounds(defaultWounds);
+  }, []);
+
   const resetAll = useCallback(() => {
-    setSurgeSpent(0);
     setWounds(defaultWounds);
     setRestorationPoints(defaultRestoration);
-    setArmorState(defaultArmor);
+    setSurgeSpent(0);
     setModifiers([]);
+    setOpponentName('');
+    setOpponentWounds(defaultWounds);
   }, []);
 
   const value: GameStateContextValue = {
-    surgeSpent,
-    spendSurge,
-    resetSurge,
     wounds,
     setWound,
     woundPenalty,
     restorationPoints,
     addRestorationPoints,
     clearRestorationPoints,
-    armor,
-    setArmor,
+    surgeSpent,
+    spendSurge,
+    resetSurge,
     modifiers,
     addModifier,
     removeModifier,
     totalModifier,
+    opponentName,
+    setOpponentName,
+    opponentWounds,
+    setOpponentWound,
+    opponentWoundPenalty,
+    resetOpponent,
     resetAll,
   };
 
@@ -207,5 +199,3 @@ export function useGameState() {
   }
   return context;
 }
-
-export { WOUND_PENALTIES, WOUND_LABELS };

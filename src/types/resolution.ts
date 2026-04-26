@@ -26,9 +26,9 @@ export interface ActionResult {
     rolls: number[];
     explosions: { dieIndex: number; rolls: number[] }[];
     advantageDice?: number;
-    keptRolls?: number[];
-    discardedRolls?: number[];
-    otherRolls?: number[];
+    keptRolls?: { value: number; rolls: number[] }[];
+    discardedRolls?: { value: number; rolls: number[] }[];
+    otherRolls?: { value: number; rolls: number[] }[];
     criticalFailureCheck?: {
       allMinimum: boolean;
       confirmationRoll?: number;

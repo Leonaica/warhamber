@@ -8,11 +8,17 @@ import type {
   CharacterAspectRatings,
   CharacterFunctionRatings,
   AttributeName,
+  CharacterWeapon,
+  ArmorValues,
+  ArmorAttributeName,
 } from '../types/character';
 import { ATTRIBUTES } from '../types/character';
 import { getDiePoolEntry } from '../data/diePoolTable';
+import { calculateImmaterialSize } from '../utils/damage';
 import { computeCharacter } from '../utils/calculations';
 import { DEFAULT_ICON } from '../data/icons';
+export { WOUND_DAMAGE_RANGES, getWoundLevel, calculateStacking } from '../data/wounds';
+export type { WoundLevel as DamageWoundLevel } from '../data/wounds';
 
 interface CharacterState {
   name: string;
@@ -27,6 +33,9 @@ interface CharacterState {
   artifacts: Artifact[];
   allies: Ally[];
   personalShadows: PersonalShadow[];
+  weapons: CharacterWeapon[];
+  armor: ArmorValues;
+  size: number;
 }
 
 interface CharacterContextValue extends CharacterState {
@@ -34,6 +43,7 @@ interface CharacterContextValue extends CharacterState {
   computedCharacter: ReturnType<typeof computeCharacter>;
   attributeValues: Record<AttributeName, number>;
   attributeDiePools: Record<AttributeName, ReturnType<typeof getDiePoolEntry>>;
+  immaterialSize: number;
   
   // Actions
   setName: (name: string | ((prev: string) => string)) => void;
@@ -48,6 +58,11 @@ interface CharacterContextValue extends CharacterState {
   setArtifacts: (artifacts: Artifact[] | ((prev: Artifact[]) => Artifact[])) => void;
   setAllies: (allies: Ally[] | ((prev: Ally[]) => Ally[])) => void;
   setPersonalShadows: (shadows: PersonalShadow[] | ((prev: PersonalShadow[]) => PersonalShadow[])) => void;
+  addWeapon: (weapon: Omit<CharacterWeapon, 'id'>) => void;
+  updateWeapon: (id: string, updates: Partial<CharacterWeapon>) => void;
+  removeWeapon: (id: string) => void;
+  setArmor: (defense: ArmorAttributeName, value: number) => void;
+  setSize: (size: number | ((prev: number) => number)) => void;
   
   // Bulk operations
   loadCharacter: (data: Partial<CharacterState>) => void;
@@ -69,6 +84,13 @@ const defaultFunctions: CharacterFunctionRatings = {
   Force: 0,
 };
 
+const defaultArmor: ArmorValues = {
+  Toughness: 0,
+  Endurance: 0,
+  Willpower: 0,
+  Resilience: 0,
+};
+
 const CharacterContext = createContext<CharacterContextValue | null>(null);
 
 export function CharacterProvider({ children }: { children: ReactNode }) {
@@ -84,6 +106,9 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
   const [artifactsState, setArtifactsState] = useState<Artifact[]>([]);
   const [alliesState, setAlliesState] = useState<Ally[]>([]);
   const [personalShadowsState, setPersonalShadowsState] = useState<PersonalShadow[]>([]);
+  const [weapons, setWeapons] = useState<CharacterWeapon[]>([]);
+  const [armorState, setArmorState] = useState<ArmorValues>(defaultArmor);
+  const [sizeState, setSizeState] = useState(0);
 
   // Wrapper setters that support both direct values and callback functions
   const setName = useCallback((value: string | ((prev: string) => string)) => {
@@ -126,6 +151,27 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
     setPersonalShadowsState(prev => typeof value === 'function' ? value(prev) : value);
   }, []);
 
+  const addWeapon = useCallback((weapon: Omit<CharacterWeapon, 'id'>) => {
+    const id = crypto.randomUUID();
+    setWeapons(prev => [...prev, { ...weapon, id }]);
+  }, []);
+  
+  const updateWeapon = useCallback((id: string, updates: Partial<CharacterWeapon>) => {
+    setWeapons(prev => prev.map(w => w.id === id ? { ...w, ...updates } : w));
+  }, []);
+  
+  const removeWeapon = useCallback((id: string) => {
+    setWeapons(prev => prev.filter(w => w.id !== id));
+  }, []);
+
+  const setArmor = useCallback((defense: ArmorAttributeName, value: number) => {
+    setArmorState(prev => ({ ...prev, [defense]: Math.max(0, value) }));
+  }, []);
+  
+  const setSize = useCallback((value: number | ((prev: number) => number)) => {
+    setSizeState(prev => typeof value === 'function' ? value(prev) : value);
+  }, []);
+
   const computedCharacter = useMemo(() => {
     return computeCharacter(nameState, campaignLimitState, aspectsState, functionsState, skillsState, powersState, artifactsState, alliesState, personalShadowsState);
   }, [nameState, campaignLimitState, aspectsState, functionsState, skillsState, powersState, artifactsState, alliesState, personalShadowsState]);
@@ -145,6 +191,13 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
     }
     return pools;
   }, [attributeValues]);
+
+  // Calculate Immaterial Size from Charisma and Presence
+  const immaterialSize = useMemo(() => {
+    const charismaRank = attributeDiePools['Charisma']?.rank ?? 0;
+    const presenceRank = attributeDiePools['Presence']?.rank ?? 0;
+    return calculateImmaterialSize(charismaRank, presenceRank);
+  }, [attributeDiePools]);
 
   const setAspectExplanation = useCallback((aspectId: string, explanation: string) => {
     setAspectExplanationsState(prev => ({ ...prev, [aspectId]: explanation }));
@@ -167,6 +220,9 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
     if (data.artifacts) setArtifactsState(data.artifacts);
     if (data.allies) setAlliesState(data.allies);
     if (data.personalShadows) setPersonalShadowsState(data.personalShadows);
+    if (data.weapons) setWeapons(data.weapons);
+    if (data.armor) setArmorState(data.armor);
+    if (data.size !== undefined) setSizeState(data.size);
   }, []);
 
   const saveCharacter = useCallback(() => {
@@ -183,44 +239,56 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
       artifacts: artifactsState,
       allies: alliesState,
       personalShadows: personalShadowsState,
+      weapons,
+      armor: armorState,
+      size: sizeState,
     };
     return JSON.stringify(data, null, 2);
-  }, [nameState, avatarIconState, campaignLimitState, aspectsState, functionsState, aspectExplanationsState, functionExplanationsState, skillsState, powersState, artifactsState, alliesState, personalShadowsState]);
+  }, [nameState, avatarIconState, campaignLimitState, aspectsState, functionsState, aspectExplanationsState, functionExplanationsState, skillsState, powersState, artifactsState, alliesState, personalShadowsState, weapons, armorState, sizeState]);
 
-const hasCharacter = nameState.trim() !== '' || skillsState.length > 0 || powersState.length > 0;
+  const hasCharacter = nameState.trim() !== '' || skillsState.length > 0 || powersState.length > 0;
 
-const value: CharacterContextValue = {
-  name: nameState,
-  campaignLimit: campaignLimitState,
-  avatarIcon: avatarIconState,
-  aspects: aspectsState,
-  functions: functionsState,
-  aspectExplanations: aspectExplanationsState,
-  functionExplanations: functionExplanationsState,
-  skills: skillsState,
-  powers: powersState,
-  artifacts: artifactsState,
-  allies: alliesState,
-  personalShadows: personalShadowsState,
-  computedCharacter,
-  attributeValues,
-  attributeDiePools,
-  setName,
-  setCampaignLimit,
-  setAvatarIcon,
-  setAspects,
-  setFunctions,
-  setAspectExplanation,
-  setFunctionExplanation,
-  setSkills,
-  setPowers,
-  setArtifacts,
-  setAllies,
-  setPersonalShadows,
-  loadCharacter,
-  saveCharacter,
-  hasCharacter,
-};
+  const value: CharacterContextValue = {
+    name: nameState,
+    campaignLimit: campaignLimitState,
+    avatarIcon: avatarIconState,
+    aspects: aspectsState,
+    functions: functionsState,
+    aspectExplanations: aspectExplanationsState,
+    functionExplanations: functionExplanationsState,
+    skills: skillsState,
+    powers: powersState,
+    artifacts: artifactsState,
+    allies: alliesState,
+    personalShadows: personalShadowsState,
+    computedCharacter,
+    attributeValues,
+    attributeDiePools,
+    immaterialSize,
+    weapons,
+    armor: armorState,
+    size: sizeState,
+    addWeapon,
+    updateWeapon,
+    removeWeapon,
+    setArmor,
+    setSize,
+    setName,
+    setCampaignLimit,
+    setAvatarIcon,
+    setAspects,
+    setFunctions,
+    setAspectExplanation,
+    setFunctionExplanation,
+    setSkills,
+    setPowers,
+    setArtifacts,
+    setAllies,
+    setPersonalShadows,
+    loadCharacter,
+    saveCharacter,
+    hasCharacter,
+  };
 
   return (
     <CharacterContext.Provider value={value}>

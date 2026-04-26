@@ -131,8 +131,6 @@ export const ATTRIBUTES: Attribute[] = [
   { id: 'Presence', name: 'Presence', func: 'Force', aspect: 'Spirit', description: 'Spiritual gravitas, emotional impact on others' },
 ];
 
-export type ArmorAttributeName = 'Toughness' | 'Endurance' | 'Willpower' | 'Resilience';
-
 export interface DiePool {
   dice: number[];
   notation: string; // e.g., "2d12 + d6" or "d4÷2"
@@ -265,6 +263,69 @@ export interface PersonalShadow {
   cost: number;
 }
 
+export type SizeValue = -3 | -2 | -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+export const SIZE_OPTIONS: { value: SizeValue; label: string }[] = [
+  { value: -3, label: 'Minuscule' },
+  { value: -2, label: 'Puny' },
+  { value: -1, label: 'Small' },
+  { value: 0, label: 'Average' },
+  { value: 1, label: 'Hulking' },
+  { value: 2, label: 'Enormous' },
+  { value: 3, label: 'Massive' },
+  { value: 4, label: 'Immense' },
+  { value: 5, label: 'Monumental' },
+  { value: 6, label: 'Titanic' },
+];
+
+export type FormAttackType = 'Impact' | 'Slashing' | 'Piercing' | 'Energy' | 'Corrosive' | 'Freeze' | 'Explosive';
+export type FleshAttackType = 'Asphyxiation' | 'Poison' | 'Disease' | 'Drain' | 'DeathMagic' | 'Hemorrhage';
+export type MindAttackType = 'Pain' | 'Fatigue' | 'Domination' | 'Intrusion' | 'Hallucination' | 'Torture';
+export type SpiritAttackType = 'NegativeEnergy' | 'SoulBlade' | 'ExistentialHorror' | 'EmpathicOverload' | 'Possession';
+
+export type AttackType = FormAttackType | FleshAttackType | MindAttackType | SpiritAttackType;
+
+export const ATTACK_TYPES_BY_ASPECT: Record<AspectName, AttackType[]> = {
+  Form: ['Impact', 'Slashing', 'Piercing', 'Energy', 'Corrosive', 'Freeze', 'Explosive'],
+  Flesh: ['Asphyxiation', 'Poison', 'Disease', 'Drain', 'DeathMagic', 'Hemorrhage'],
+  Mind: ['Pain', 'Fatigue', 'Domination', 'Intrusion', 'Hallucination', 'Torture'],
+  Spirit: ['NegativeEnergy', 'SoulBlade', 'ExistentialHorror', 'EmpathicOverload', 'Possession'],
+};
+
+export type WeaponCategory = 'Melee' | 'Pistol' | 'Gun' | 'Heavy' | 'Mounted' | 'Thrown';
+
+export type WeaponHandedness = 'One-handed' | 'Two-handed';
+
+export interface WeaponAttack {
+  id: string;
+  aspect: AspectName;
+  type: AttackType;
+  magnitude: number;
+  penetration: number | [number, number];
+  range: string;
+  isConditional?: boolean;
+  condition?: string;
+}
+
+export interface CharacterWeapon {
+  id: string;
+  name: string;
+  attacks: WeaponAttack[];
+  category: string;
+  handedness: 'One-handed' | 'Two-handed';
+  ammo?: string;
+  notes?: string[];
+}
+
+export interface ArmorValues {
+  Toughness: number;
+  Endurance: number;
+  Willpower: number;
+  Resilience: number;
+}
+
+export type ArmorAttributeName = 'Toughness' | 'Endurance' | 'Willpower' | 'Resilience';
+
 export interface Character {
   name: string;
   campaignLimit: number;
@@ -283,6 +344,11 @@ export interface Character {
   artifacts: Artifact[];
   allies: Ally[];
   personalShadows: PersonalShadow[];
+  
+  // Step 5: Equipment
+  weapons: CharacterWeapon[];
+  armor: ArmorValues;
+  size: number;
   
   // Derived values (computed)
   attributes: Record<AttributeName, number>;

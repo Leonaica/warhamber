@@ -44,12 +44,11 @@ export function rollPool(pool: DiePool): { total: number; rolls: number[]; explo
 
 function rollWithAdvantage(pool: DiePool, advantageDice: number): {
   result: number;
-  keptRolls: number[];
-  discardedRolls: number[];
+  keptRolls: { value: number; rolls: number[] }[];
+  discardedRolls: { value: number; rolls: number[] }[];
   otherRolls: { value: number; rolls: number[] }[];
   explosions: { dieIndex: number; rolls: number[] }[];
 } {
-  // Separate d12s from other dice
   const d12Indices: number[] = [];
   const otherDice: { index: number; size: number }[] = [];
   
@@ -64,7 +63,6 @@ function rollWithAdvantage(pool: DiePool, advantageDice: number): {
   const originalD12Count = d12Indices.length;
   const explosions: { dieIndex: number; rolls: number[] }[] = [];
   
-  // Roll all d12s (original + advantage), tracking explosions
   const allD12Results: { value: number; rolls: number[] }[] = [];
   for (let i = 0; i < originalD12Count + advantageDice; i++) {
     const result = rollDie(12);
@@ -74,7 +72,6 @@ function rollWithAdvantage(pool: DiePool, advantageDice: number): {
     }
   }
   
-  // Roll other dice (with explosions)
   const otherRolls: { value: number; rolls: number[] }[] = [];
   for (const { index, size } of otherDice) {
     const result = rollDie(size);
@@ -84,7 +81,7 @@ function rollWithAdvantage(pool: DiePool, advantageDice: number): {
     }
   }
   
-  // Sort d12s by total value descending, keep highest N
+  // Sort by TOTAL value descending (including explosions), keep highest N
   const sortedD12s = [...allD12Results].sort((a, b) => b.value - a.value);
   const keptD12s = sortedD12s.slice(0, originalD12Count);
   const discardedD12s = sortedD12s.slice(originalD12Count);
@@ -94,8 +91,8 @@ function rollWithAdvantage(pool: DiePool, advantageDice: number): {
   
   return {
     result,
-    keptRolls: keptD12s.map(r => r.rolls[0]),
-    discardedRolls: discardedD12s.map(r => r.rolls[0]),
+    keptRolls: keptD12s.map(r => ({ value: r.value, rolls: r.rolls })),
+    discardedRolls: discardedD12s.map(r => ({ value: r.value, rolls: r.rolls })),
     otherRolls,
     explosions,
   };
@@ -202,7 +199,6 @@ export function resolveTest(context: ResolutionContext): ActionResult {
   const diceCount = attributePool.dice.length;
   const redMax = thresholds.red ?? getRedMaximum(attributePool);
   
-  // Calculate per-die modifiers
   const totalWoundPenalty = woundPenalty * diceCount;
   const effectiveDiceCountForSkill = approach === 'surge' ? 4 : diceCount;
   const totalSkillBonus = skillBonus * effectiveDiceCountForSkill;
@@ -285,7 +281,6 @@ export function resolveTest(context: ResolutionContext): ActionResult {
   
   // Path 2: Trust to Chance (Roll)
   let advantageDice = 0;
-  let otherRolls: number[] | undefined;
 
   if (isContest && opponentRank !== undefined) {
     advantageDice = calculateAdvantageDice(poolRank, opponentRank);
@@ -294,17 +289,18 @@ export function resolveTest(context: ResolutionContext): ActionResult {
   let rollTotal: number;
   let rolls: number[];
   let explosions: { dieIndex: number; rolls: number[] }[];
-  let keptRolls: number[] | undefined;
-  let discardedRolls: number[] | undefined;
+  let keptRolls: { value: number; rolls: number[] }[] | undefined;
+  let discardedRolls: { value: number; rolls: number[] }[] | undefined;
+  let otherRolls: { value: number; rolls: number[] }[] | undefined;
   
   if (advantageDice > 0) {
     const advResult = rollWithAdvantage(attributePool, advantageDice);
     rollTotal = advResult.result;
-    rolls = [...advResult.keptRolls, ...advResult.otherRolls.map(r => r.rolls[0])];
+    rolls = [...advResult.keptRolls.map(r => r.rolls[0]), ...advResult.otherRolls.map(r => r.rolls[0])];
     explosions = advResult.explosions;
     keptRolls = advResult.keptRolls;
     discardedRolls = advResult.discardedRolls;
-    otherRolls = advResult.otherRolls.map(r => r.rolls[0]);
+    otherRolls = advResult.otherRolls;
   } else {
     const rollResult = rollPool(attributePool);
     rollTotal = rollResult.total;
@@ -431,14 +427,11 @@ export function resolveContest(
     };
   }
   
-  // Normal comparison - calculate margin
   const margin = actorResult.result - opponentResult.result;
   
   if (margin > 0) {
-    // Actor wins naturally
     const actorSuccesses = calculateContestSuccesses(margin);
     
-    // But foregone said opponent should win - enforce it
     if (foregone.isForegone && foregone.winner === 'opponent') {
       return enforceForegoneWin('opponent');
     }
@@ -450,10 +443,8 @@ export function resolveContest(
       margin: Math.abs(margin),
     };
   } else if (margin < 0) {
-    // Opponent wins naturally
     const opponentSuccesses = calculateContestSuccesses(Math.abs(margin));
     
-    // But foregone said actor should win - enforce it
     if (foregone.isForegone && foregone.winner === 'actor') {
       return enforceForegoneWin('actor');
     }
@@ -465,7 +456,6 @@ export function resolveContest(
       margin: Math.abs(margin),
     };
   } else {
-    // Tie - foregone winner takes it if applicable
     if (foregone.isForegone && foregone.winner) {
       return enforceForegoneWin(foregone.winner);
     }

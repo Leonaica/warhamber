@@ -10,6 +10,9 @@ import { generateHomebreweryMarkdown } from '../utils/homebreweryExport';
 import { CharacterSheet } from '../components/CharacterSheet';
 import { IconPicker } from '../components/IconPicker';
 import { ICONS, DEFAULT_ICON, type IconEntry } from '../data/icons';
+import { WeaponEditor } from '../components/WeaponEditor';
+import { ArmorEditor } from '../components/ArmorEditor';
+import type { CharacterWeapon } from '../types/character';
 
 export function AvatarBuilderPage() {
   const character = useCharacter();
@@ -261,6 +264,10 @@ export function AvatarBuilderPage() {
 
   const totalPointsSpent = character.computedCharacter.totalPointsSpent;
   const stuff = character.computedCharacter.stuff;
+
+  // State for editing weapons 
+  const [editingWeapon, setEditingWeapon] = useState<CharacterWeapon | null>(null);
+  const [showWeaponEditor, setShowWeaponEditor] = useState(false);
 
   return (
     <>
@@ -1109,6 +1116,125 @@ export function AvatarBuilderPage() {
                 {character.personalShadows.reduce((sum, s) => sum + s.cost, 0)} pts
               </span>
             </div>
+          </div>
+        </section>
+
+        {/* Step 5: Equipment */}
+        <section className="space-y-6">
+          <div className="bg-slate-800 rounded-lg p-4">
+            <h2 className="text-xl font-bold text-amber-400 mb-2">⚔️ Equipment</h2>
+            <p className="text-sm text-slate-400 mb-6">
+              Define your character's weapons and armor. These will be available during combat.
+            </p>
+
+            {/* Weapons */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-bold text-white">Weapons</h3>
+                <button
+                  onClick={() => {
+                    setEditingWeapon(null);
+                    setShowWeaponEditor(true);
+                  }}
+                  className="bg-amber-500 hover:bg-amber-400 text-slate-900 px-4 py-2 rounded font-medium text-sm"
+                >
+                  + Add Weapon
+                </button>
+              </div>
+
+              {character.weapons.length === 0 && !showWeaponEditor && (
+                <div className="text-center py-8 bg-slate-700/30 rounded">
+                  <div className="text-slate-500 text-sm">No weapons added yet.</div>
+                  <div className="text-slate-600 text-xs mt-1">Add weapons to use in combat.</div>
+                </div>
+              )}
+
+              {character.weapons.map(weapon => (
+                <div key={weapon.id} className="bg-slate-700/50 rounded p-3 mb-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-white font-medium">{weapon.name}</div>
+                      <div className="text-xs text-slate-400">
+                        {weapon.category} • {weapon.handedness}
+                        {weapon.attacks.length > 0 && ` • ${weapon.attacks.length} attack${weapon.attacks.length > 1 ? 's' : ''}`}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setEditingWeapon(weapon);
+                          setShowWeaponEditor(true);
+                        }}
+                        className="text-amber-400 hover:text-amber-300 text-sm"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => character.removeWeapon(weapon.id)}
+                        className="text-red-400 hover:text-red-300 text-sm"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Attack summary */}
+                  {weapon.attacks.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {weapon.attacks.map(attack => {
+                        const penValue = typeof attack.penetration === 'number' 
+                          ? attack.penetration 
+                          : Array.isArray(attack.penetration) 
+                            ? attack.penetration[0] 
+                            : 0;
+                        return (
+                          <span key={attack.id} className="bg-slate-600 rounded px-2 py-1 text-xs text-slate-300">
+                            {ASPECTS.find(a => a.id === attack.aspect)?.emoji} {attack.magnitude} {attack.type}
+                            {penValue > 0 && ` (Pen ${attack.penetration})`}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                  
+                  {/* Notes */}
+                  {weapon.notes && weapon.notes.length > 0 && (
+                    <div className="mt-2 text-xs text-slate-500">
+                      {weapon.notes.map((note, i) => (
+                        <div key={i}>• {note}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {showWeaponEditor && (
+                <div className="mt-4">
+                  <WeaponEditor
+                    weapon={editingWeapon || undefined}
+                    onSave={(weaponData) => {
+                      if (editingWeapon) {
+                        character.updateWeapon(editingWeapon.id, weaponData);
+                      } else {
+                        character.addWeapon(weaponData);
+                      }
+                      setShowWeaponEditor(false);
+                      setEditingWeapon(null);
+                    }}
+                    onCancel={() => {
+                      setShowWeaponEditor(false);
+                      setEditingWeapon(null);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Armor */}
+            <ArmorEditor
+              armor={character.armor}
+              setArmor={character.setArmor}
+            />
           </div>
         </section>
 

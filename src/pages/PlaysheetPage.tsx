@@ -11,6 +11,7 @@ import { getScaleForPool } from '../data/actionEffortTable';
 import { POWERS } from '../data/powers';
 import { SKILLS } from '../data/skills';
 import { getPowerDisplay } from '../utils/powerDisplay';
+import { DAMAGE_MAGNITUDE_TABLE } from '../data/damageTable';
 
 const DEFENSE_ATTRIBUTES: Record<AspectName, AttributeName> = {
   Form: 'Toughness',
@@ -26,7 +27,6 @@ const HEALING_ATTRIBUTES: Record<AspectName, AttributeName> = {
   Spirit: 'Resilience',
 };
 
-// Helper to convert skill rating to bonus per die
 const SKILL_RATING_TO_BONUS: Record<string, number> = {
   'Poor': -1,
   'Average': 0,
@@ -36,6 +36,13 @@ const SKILL_RATING_TO_BONUS: Record<string, number> = {
   'Extraordinary': 4,
 };
 
+export interface CombatPageState {
+  mode?: 'attacker' | 'defender';
+  weaponId?: string;
+  attackIndex?: number;
+  defenderAspect?: AspectName;
+}
+
 export function PlaysheetPage() {
   const character = useCharacter();
   const gameState = useGameState();
@@ -44,13 +51,17 @@ export function PlaysheetPage() {
   // Selection state for roll
   const [selectedAttribute, setSelectedAttribute] = useState<AttributeName | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
-  
+
   // Healing state
   const [activeHealAspect, setActiveHealAspect] = useState<AspectName | null>(null);
   const [healPoolRank, setHealPoolRank] = useState(5);
   const [healSkillBonus, setHealSkillBonus] = useState(0);
   const [healModifier, setHealModifier] = useState(0);
   const [healResult, setHealResult] = useState<{ aspect: AspectName; successes: number; roll: number } | null>(null);
+
+  // Opponent name editing
+  const [editingOpponentName, setEditingOpponentName] = useState(false);
+  const [opponentNameInput, setOpponentNameInput] = useState(gameState.opponentName);
 
   const renderIcon = (icon: IconEntry) => {
     return icon.library === 'fontawesome' ? (
@@ -132,7 +143,6 @@ export function PlaysheetPage() {
     setActiveHealAspect(null);
   };
 
-  // Navigate to resolver with selected values
   const goToResolver = () => {
     if (!selectedAttribute) return;
     
@@ -152,11 +162,29 @@ export function PlaysheetPage() {
     });
   };
 
-  // Get skill bonus for display
   const getSelectedSkillBonus = () => {
     if (!selectedSkill) return 0;
     const skill = character.skills.find(s => s.skillId === selectedSkill);
     return skill ? SKILL_RATING_TO_BONUS[skill.rating] ?? 0 : 0;
+  };
+
+  const goToCombatAsAttacker = (weaponId: string, attackIndex: number = 0) => {
+    navigate('/combat', {
+      state: {
+        mode: 'attacker',
+        weaponId,
+        attackIndex,
+      } as CombatPageState
+    });
+  };
+
+  const goToCombatAsDefender = (aspect?: AspectName) => {
+    navigate('/combat', {
+      state: {
+        mode: 'defender',
+        defenderAspect: aspect,
+      } as CombatPageState
+    });
   };
 
   if (!character.hasCharacter) {
@@ -375,7 +403,7 @@ export function PlaysheetPage() {
                       <div className={`text-xs ${isSelected ? 'text-amber-300/70' : 'text-slate-400'}`}>
                         {skill?.description}
                       </div>
-                      <div className={`text-xs ${isSelected ? 'text-amber-400' : '' }`}>
+                      <div className={`text-xs ${isSelected ? 'text-amber-400' : ''}`}>
                         {skillEntry.rating} ({bonus >= 0 ? '+' : ''}{bonus}/die)
                       </div>
                     </div>
@@ -390,25 +418,100 @@ export function PlaysheetPage() {
             <div className="bg-slate-800 rounded-lg p-4">
               <h2 className="text-lg font-bold text-amber-400 mb-4">Powers</h2>
               <div className="grid md:grid-cols-2 gap-2">
-              {character.powers.map(powerEntry => {
-                const power = POWERS.find(p => p.id === powerEntry.powerId);
-                if (!power) return null;
-                const display = getPowerDisplay(power, powerEntry.points, powerEntry.label, powerEntry.customTitle);
-                return (
-                  <div key={powerEntry.id} className="bg-slate-700/50 rounded p-2 text-sm">
-                    <div className="font-medium">
-                      {power.emoji} {display.title}
+                {character.powers.map(powerEntry => {
+                  const power = POWERS.find(p => p.id === powerEntry.powerId);
+                  if (!power) return null;
+                  const display = getPowerDisplay(power, powerEntry.points, powerEntry.label, powerEntry.customTitle);
+                  return (
+                    <div key={powerEntry.id} className="bg-slate-700/50 rounded p-2 text-sm">
+                      <div className="font-medium">
+                        {power.emoji} {display.title}
+                      </div>
+                      <div className="text-xs text-slate-400">{display.systemReference}</div>
+                      {powerEntry.description && (
+                        <div className="text-xs text-slate-500 mt-1">{powerEntry.description}</div>
+                      )}
                     </div>
-                    <div className="text-xs text-slate-400">{display.systemReference}</div>
-                    {powerEntry.description && (
-                      <div className="text-xs text-slate-500 mt-1">{powerEntry.description}</div>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
               </div>
             </div>
           )}
+
+          {/* Weapons */}
+          <div className="bg-slate-800 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-amber-400">⚔️ Weapons</h2>
+              {character.weapons.length > 0 && (
+                <span className="text-xs text-slate-500">Click an attack to enter combat</span>
+              )}
+            </div>
+            
+            {character.weapons.length === 0 ? (
+              <div className="text-center py-6 bg-slate-700/30 rounded">
+                <div className="text-slate-500 text-sm">No weapons equipped.</div>
+                <div className="text-slate-600 text-xs mt-1">Add weapons in the Avatar Builder.</div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {character.weapons.map(weapon => (
+                  <div key={weapon.id} className="bg-slate-700/50 rounded p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <span className="text-white font-medium">{weapon.name}</span>
+                        <span className="text-xs text-slate-400 ml-2">
+                          {weapon.category} • {weapon.handedness}
+                          {weapon.ammo && ` • ${weapon.ammo}`}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Attack modes */}
+                    <div className="space-y-1.5">
+                      {weapon.attacks.map((attack, idx) => {
+                        const aspectInfo = ASPECTS.find(a => a.id === attack.aspect);
+                        const magnitudeInfo = DAMAGE_MAGNITUDE_TABLE.find(m => m.magnitude === attack.magnitude);
+                        const pen = typeof attack.penetration === 'number' ? attack.penetration : attack.penetration[0];
+                        
+                        return (
+                          <button
+                            key={attack.id}
+                            onClick={() => goToCombatAsAttacker(weapon.id, idx)}
+                            className="w-full flex items-center justify-between bg-slate-600/50 hover:bg-red-900/30 border border-slate-600 hover:border-red-500/50 rounded px-3 py-2 text-sm transition-all group"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">{aspectInfo?.emoji}</span>
+                              <div className="text-left">
+                                <div className="text-slate-200 group-hover:text-white">
+                                  {attack.type}
+                                  {attack.isConditional && <span className="text-amber-400 ml-1">⚠️</span>}
+                                </div>
+                                <div className="text-xs text-slate-400">
+                                  {attack.range && `${attack.range} • `}
+                                  Magnitude {attack.magnitude} ({magnitudeInfo?.pool.notation || '?'})
+                                  {pen > 0 && ` • Pen ${pen}`}
+                                </div>
+                              </div>
+                            </div>
+                            <span className="text-slate-500 group-hover:text-red-400 text-lg">⚔️</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* Notes */}
+                    {weapon.notes && weapon.notes.length > 0 && (
+                      <div className="mt-2 text-xs text-slate-500">
+                        {weapon.notes.map((note, i) => (
+                          <div key={i}>• {note}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right Column: Play State */}
@@ -486,7 +589,7 @@ export function PlaysheetPage() {
                 const woundInfo = WOUND_LABELS[woundLevel];
                 const defenseAttr = DEFENSE_ATTRIBUTES[aspect.id];
                 const diePool = character.attributeDiePools[defenseAttr];
-                const armor = gameState.armor[defenseAttr as ArmorAttributeName];
+                const armor = character.armor[defenseAttr as ArmorAttributeName];
                 const restoration = gameState.restorationPoints[aspect.id];
                 const canHeal = wouldHeal(aspect.id);
                 const healingAttr = HEALING_ATTRIBUTES[aspect.id];
@@ -613,21 +716,136 @@ export function PlaysheetPage() {
 
           {/* Armor */}
           <div className="bg-slate-800 rounded-lg p-4">
-            <h2 className="text-lg font-bold text-amber-400 mb-4">🛡️ Armor</h2>
-            <div className="grid grid-cols-2 gap-2">
-              {(['Toughness', 'Endurance', 'Willpower', 'Resilience'] as const).map(defense => (
-                <div key={defense} className="flex items-center gap-2">
-                  <label className="text-sm text-slate-400 w-20">{defense}</label>
-                  <input
-                    type="number"
-                    value={gameState.armor[defense]}
-                    onChange={(e) => gameState.setArmor(defense, parseInt(e.target.value) || 0)}
-                    min="0"
-                    className="w-16 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-center"
-                  />
-                </div>
-              ))}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-amber-400">🛡️ Armor</h2>
+              <button
+                onClick={() => goToCombatAsDefender()}
+                className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
+              >
+                🛡️ Defend
+              </button>
             </div>
+            <div className="space-y-2">
+              {(['Toughness', 'Endurance', 'Willpower', 'Resilience'] as const).map(defense => {
+                const aspect = ASPECTS.find(a => DEFENSE_ATTRIBUTES[a.id] === defense);
+                const armorValue = character.armor[defense];
+                return (
+                  <button
+                    key={defense}
+                    onClick={() => goToCombatAsDefender(aspect?.id)}
+                    className="w-full flex items-center justify-between bg-slate-700/50 hover:bg-blue-900/30 border border-slate-600 hover:border-blue-500/50 rounded px-3 py-2 text-sm transition-all group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{aspect?.emoji}</span>
+                      <div className="text-left">
+                        <div className="text-slate-200 group-hover:text-white">{defense}</div>
+                        <div className="text-xs text-slate-400">vs {aspect?.name} attacks</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`font-bold ${armorValue > 0 ? 'text-cyan-400' : 'text-slate-500'}`}>
+                        {armorValue}
+                      </span>
+                      <span className="text-slate-500 group-hover:text-blue-400">→</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="text-xs text-slate-500 mt-2 text-center">
+              Click an armor type to enter defense mode
+            </div>
+          </div>
+
+          {/* Opponent Tracking */}
+          <div className="bg-slate-800 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-amber-400">👾 Opponent</h2>
+              <button
+                onClick={gameState.resetOpponent}
+                className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1 rounded text-sm transition-colors"
+              >
+                🔄 New Opponent
+              </button>
+            </div>
+
+            {/* Opponent Name */}
+            {editingOpponentName ? (
+              <div className="flex gap-2 mb-3">
+                <input
+                  type="text"
+                  value={opponentNameInput}
+                  onChange={(e) => setOpponentNameInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      gameState.setOpponentName(opponentNameInput);
+                      setEditingOpponentName(false);
+                    }
+                  }}
+                  className="flex-1 bg-slate-700 border border-slate-600 rounded px-3 py-1 text-sm text-white"
+                  placeholder="Opponent name..."
+                  autoFocus
+                />
+                <button
+                  onClick={() => {
+                    gameState.setOpponentName(opponentNameInput);
+                    setEditingOpponentName(false);
+                  }}
+                  className="bg-amber-500 hover:bg-amber-400 text-slate-900 px-3 py-1 rounded text-sm font-medium"
+                >
+                  ✓
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  setOpponentNameInput(gameState.opponentName);
+                  setEditingOpponentName(true);
+                }}
+                className="w-full text-left bg-slate-700/50 hover:bg-slate-700 rounded px-3 py-2 mb-3 text-sm transition-colors"
+              >
+                {gameState.opponentName ? (
+                  <span className="text-white">{gameState.opponentName}</span>
+                ) : (
+                  <span className="text-slate-500 italic">Click to name opponent...</span>
+                )}
+              </button>
+            )}
+
+            {/* Opponent Wounds */}
+            <div className="space-y-2">
+              {ASPECTS.map(aspect => {
+                const woundLevel = gameState.opponentWounds[aspect.id];
+                const woundInfo = WOUND_LABELS[woundLevel];
+                return (
+                  <div key={aspect.id} className="flex items-center justify-between bg-slate-700/30 rounded px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <span>{aspect.emoji}</span>
+                      <span className="text-sm text-slate-300">{aspect.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {woundInfo.emoji && <span className="text-sm">{woundInfo.emoji}</span>}
+                      <select
+                        value={woundLevel}
+                        onChange={(e) => gameState.setOpponentWound(aspect.id, parseInt(e.target.value) as WoundLevel)}
+                        className="bg-slate-600 border border-slate-500 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      >
+                        {Array.from({ length: 9 }, (_, i) => (
+                          <option key={i} value={i}>
+                            {i === 0 ? 'None' : `L${i} ${WOUND_LABELS[i as WoundLevel].label}`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {gameState.opponentWoundPenalty < 0 && (
+              <div className="mt-2 p-2 bg-red-900/20 border border-red-500/30 rounded text-xs text-red-400">
+                Opponent Penalty: {gameState.opponentWoundPenalty}/die
+              </div>
+            )}
           </div>
 
           {/* Reset */}

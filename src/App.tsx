@@ -5,6 +5,7 @@ import { Layout } from './components/Layout';
 import { AvatarBuilderPage } from './pages/AvatarBuilderPage';
 import { PlaysheetPage } from './pages/PlaysheetPage';
 import { ResolverPage } from './pages/ResolverPage';
+import { CombatPage } from './pages/CombatPage';
 
 function App() {
   return (
@@ -20,6 +21,11 @@ function App() {
           <Route path="/resolver" element={
             <GameStateProvider>
               <Layout><ResolverPage /></Layout>
+            </GameStateProvider>
+          } />
+          <Route path="/combat" element={
+            <GameStateProvider>
+              <Layout><CombatPage /></Layout>
             </GameStateProvider>
           } />
         </Routes>
