@@ -19,6 +19,12 @@ import { DEFAULT_ICON } from '../data/icons';
 export { WOUND_DAMAGE_RANGES, getWoundLevel, calculateStacking } from '../data/wounds';
 export type { WoundLevel as DamageWoundLevel } from '../data/wounds';
 
+export interface PaceValues {
+  walking: { mph: number; kph: number; ms: number };
+  sprinting: { mph: number; kph: number; ms: number };
+  multiplier: number;
+}
+
 interface CharacterState {
   name: string;
   campaignLimit: number;
@@ -35,6 +41,7 @@ interface CharacterState {
   weapons: CharacterWeapon[];
   armor: ArmorValues;
   size: number;
+  paceMultiplier: number;
 }
 
 interface CharacterContextValue extends CharacterState {
@@ -43,6 +50,7 @@ interface CharacterContextValue extends CharacterState {
   attributeValues: Record<AttributeName, number>;
   attributeDiePools: Record<AttributeName, ReturnType<typeof getDiePoolEntry>>;
   immaterialSize: number;
+  pace: PaceValues;
   
   // Actions
   setName: (name: string | ((prev: string) => string)) => void;
@@ -62,6 +70,7 @@ interface CharacterContextValue extends CharacterState {
   removeWeapon: (id: string) => void;
   setArmor: (defense: ArmorAttributeName, value: number) => void;
   setSize: (size: number | ((prev: number) => number)) => void;
+  setPaceMultiplier: (value: number | ((prev: number) => number)) => void;
   
   // Bulk operations
   loadCharacter: (data: Partial<CharacterState>) => void;
@@ -108,6 +117,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
   const [weapons, setWeapons] = useState<CharacterWeapon[]>([]);
   const [armorState, setArmorState] = useState<ArmorValues>(defaultArmor);
   const [sizeState, setSizeState] = useState(0);
+  const [paceMultiplierState, setPaceMultiplierState] = useState(1);
 
   // Wrapper setters that support both direct values and callback functions
   const setName = useCallback((value: string | ((prev: string) => string)) => {
@@ -171,6 +181,10 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
     setSizeState(prev => typeof value === 'function' ? value(prev) : value);
   }, []);
 
+  const setPaceMultiplier = useCallback((value: number | ((prev: number) => number)) => {
+    setPaceMultiplierState(prev => typeof value === 'function' ? value(prev) : value);
+  }, []);
+
   const computedCharacter = useMemo(() => {
     return computeCharacter(
       nameState,
@@ -211,6 +225,31 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
     return calculateImmaterialSize(charismaRank, presenceRank);
   }, [attributeDiePools]);
 
+  // Calculate Pace from Reflexes and Material Size
+  const pace = useMemo((): PaceValues => {
+    const reflexesMax = attributeDiePools['Reflexes']?.pool.max ?? 0;
+    const multiplier = paceMultiplierState;
+    
+    // Walking = (Reflexes die pool ÷ 2 + Material Size) × multiplier
+    const walkingMph = Math.round((reflexesMax / 2 + sizeState) * multiplier);
+    // Sprint = (Reflexes die pool + Material Size) × 2 × multiplier
+    const sprintingMph = Math.round((reflexesMax + sizeState) * 2 * multiplier);
+    
+    return {
+      walking: {
+        mph: walkingMph,
+        kph: Math.round(walkingMph * 1.60934),
+        ms: Math.round(walkingMph * 0.44704 * 10) / 10,
+      },
+      sprinting: {
+        mph: sprintingMph,
+        kph: Math.round(sprintingMph * 1.60934),
+        ms: Math.round(sprintingMph * 0.44704 * 10) / 10,
+      },
+      multiplier,
+    };
+  }, [attributeDiePools, sizeState, paceMultiplierState]);
+
   const setAspectExplanation = useCallback((aspectId: string, explanation: string) => {
     setAspectExplanationsState(prev => ({ ...prev, [aspectId]: explanation }));
   }, []);
@@ -235,6 +274,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
     if (data.weapons) setWeapons(data.weapons);
     if (data.armor) setArmorState(data.armor);
     if (data.size !== undefined) setSizeState(data.size);
+    if (data.paceMultiplier !== undefined) setPaceMultiplierState(data.paceMultiplier);
   }, []);
 
   const saveCharacter = useCallback(() => {
@@ -254,9 +294,10 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
       weapons,
       armor: armorState,
       size: sizeState,
+      paceMultiplier: paceMultiplierState,
     };
     return JSON.stringify(data, null, 2);
-  }, [nameState, avatarIconState, campaignLimitState, aspectsState, functionsState, aspectExplanationsState, functionExplanationsState, skillsState, powersState, artifactsState, alliesState, personalShadowsState, weapons, armorState, sizeState]);
+  }, [nameState, avatarIconState, campaignLimitState, aspectsState, functionsState, aspectExplanationsState, functionExplanationsState, skillsState, powersState, artifactsState, alliesState, personalShadowsState, weapons, armorState, sizeState, paceMultiplierState]);
 
   const hasCharacter = nameState.trim() !== '' || skillsState.length > 0 || powersState.length > 0;
 
@@ -277,14 +318,17 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
     attributeValues,
     attributeDiePools,
     immaterialSize,
+    pace,
     weapons,
     armor: armorState,
     size: sizeState,
+    paceMultiplier: paceMultiplierState,
     addWeapon,
     updateWeapon,
     removeWeapon,
     setArmor,
     setSize,
+    setPaceMultiplier,
     setName,
     setCampaignLimit,
     setAvatarIcon,

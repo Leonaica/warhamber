@@ -269,6 +269,16 @@ export function AvatarBuilderPage() {
               </div>
             </div>
             <div className="w-48">
+              <label className="block text-sm text-slate-400 mb-1">Campaign Point Limit</label>
+              <StepperInput
+                value={character.campaignLimit}
+                onValueChange={character.setCampaignLimit}
+                min={0}
+                step={10}
+                className="text-slate-100"
+              />
+            </div>
+            <div className="w-48">
               <label className="block text-sm text-slate-400 mb-1">Material Size</label>
               <select
                 value={character.size}
@@ -283,14 +293,22 @@ export function AvatarBuilderPage() {
               </select>
             </div>
             <div className="w-48">
-              <label className="block text-sm text-slate-400 mb-1">Campaign Point Limit</label>
-              <StepperInput
-                value={character.campaignLimit}
-                onValueChange={character.setCampaignLimit}
-                min={0}
-                step={10}
-                className="text-slate-100"
-              />
+              <label className="block text-sm text-slate-400 mb-1">Pace Multiplier</label>
+              <select
+                value={character.paceMultiplier}
+                onChange={(e) => character.setPaceMultiplier(parseFloat(e.target.value))}
+                className="h-8 w-full bg-slate-700 border border-slate-600 rounded px-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              >
+                <option value={0.25}>0.25x — Crawl</option>
+                <option value={0.5}>0.5x — Slow</option>
+                <option value={0.75}>0.75x — Below Average</option>
+                <option value={1}>1x — Normal</option>
+                <option value={1.25}>1.25x — Quick</option>
+                <option value={1.5}>1.5x — Fast</option>
+                <option value={2}>2x — Very Fast</option>
+                <option value={3}>3x — Superhuman</option>
+                <option value={4}>4x — Legendary</option>
+              </select>
             </div>
             <button
               onClick={handleLoad}
@@ -340,6 +358,12 @@ export function AvatarBuilderPage() {
                   <span className="text-slate-500 font-normal ml-1">
                     ({SIZE_OPTIONS.find(s => s.value === character.size)?.description ?? 'to 200kg'})
                   </span>
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400">Pace: </span>
+                <span className="font-bold text-amber-400">
+                  {character.paceMultiplier}x
                 </span>
               </div>
             </div>

@@ -216,6 +216,10 @@ export function PlaysheetPage() {
       character.artifacts,
       character.allies,
       character.personalShadows,
+      character.weapons,
+      character.armor,
+      character.size,
+      character.pace,
       character.computedCharacter.stuff,
       character.computedCharacter.surge
     );
@@ -941,6 +945,33 @@ export function PlaysheetPage() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+
+          {/* Pace */}
+          <div className="bg-slate-800 rounded-lg p-4">
+            <h2 className="text-lg font-bold text-amber-400 mb-4">🏃 Pace</h2>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-slate-700/50 rounded p-3">
+                <div className="text-xs text-slate-400 mb-1">Walking</div>
+                <div className="text-lg font-bold text-cyan-400">{character.pace.walking.mph} mph</div>
+                <div className="text-xs text-slate-500">{character.pace.walking.kph} kph • {character.pace.walking.ms} m/s</div>
+              </div>
+              <div className="bg-slate-700/50 rounded p-3">
+                <div className="text-xs text-slate-400 mb-1">Sprinting</div>
+                <div className="text-lg font-bold text-amber-400">{character.pace.sprinting.mph} mph</div>
+                <div className="text-xs text-slate-500">{character.pace.sprinting.kph} kph • {character.pace.sprinting.ms} m/s</div>
+              </div>
+            </div>
+            {character.paceMultiplier !== 1 && (
+              <div className="mt-3 text-center">
+                <span className="bg-amber-900/40 text-amber-400 px-3 py-1 rounded-full text-sm">
+                  ×{character.paceMultiplier} multiplier
+                </span>
+              </div>
+            )}
+            <div className="mt-3 text-xs text-slate-500 text-center">
+              Based on Reflexes {character.attributeDiePools['Reflexes'].pool.notation} + Size {character.size >= 0 ? '+' : ''}{character.size}
             </div>
           </div>
 

@@ -1,5 +1,5 @@
-import type { CharacterAspectRatings, CharacterFunctionRatings, CharacterSkill, CharacterPower, Artifact, Ally, PersonalShadow, DiePool } from '../types/character';
-import { ASPECTS, FUNCTIONS, ATTRIBUTES, SKILL_RATINGS } from '../types/character';
+import type { CharacterAspectRatings, CharacterFunctionRatings, CharacterSkill, CharacterPower, Artifact, Ally, PersonalShadow, CharacterWeapon, ArmorValues, DiePool } from '../types/character';
+import { ASPECTS, FUNCTIONS, ATTRIBUTES, SKILL_RATINGS, SIZE_OPTIONS, WEAPON_RANGES } from '../types/character';
 import { SKILLS } from '../data/skills';
 import { POWERS } from '../data/powers';
 import { getDiePoolEntry } from '../data/diePoolTable';
@@ -48,6 +48,27 @@ function attrAbbr(name: string): string {
   return abbrs[name] || name.substring(0, 3);
 }
 
+// Format penetration value
+function formatPenetration(penetration: number | [number, number]): string {
+  if (Array.isArray(penetration)) {
+    return penetration[0] === penetration[1] 
+      ? `${penetration[0]}` 
+      : `${penetration[0]}-${penetration[1]}`;
+  }
+  return penetration > 0 ? `${penetration}` : '';
+}
+
+// Format attack type with proper spacing
+function formatAttackType(type: string): string {
+  // Convert camelCase to Title Case with spaces
+  return type.replace(/([A-Z])/g, ' $1').trim();
+}
+
+export interface PaceValues {
+  walking: { mph: number; kph: number; ms: number };
+  sprinting: { mph: number; kph: number; ms: number };
+  multiplier: number;
+}
 
 export function generateHomebreweryMarkdown(
   name: string,
@@ -62,6 +83,10 @@ export function generateHomebreweryMarkdown(
   artifacts: Artifact[],
   allies: Ally[],
   personalShadows: PersonalShadow[],
+  weapons: CharacterWeapon[],
+  armor: ArmorValues,
+  size: number,
+  pace: PaceValues,
   stuff: number,
   surge: number
 ): string {
@@ -75,23 +100,15 @@ export function generateHomebreweryMarkdown(
   lines.push(`___`);
   
   // Attributes table header
-  lines.push(`| ||🧱 **Form**|🧬 **Flesh**|🧠 **Mind**|🔥 **Spirit**|`);
+  lines.push(`|||🧱 **Form**|🧬 **Flesh**|🧠 **Mind**|🔥 **Spirit**|`);
   lines.push(`|:------------------|:------:|:------:|:------:|:------:|:------:|`);
-  
-  // Calculate total points for aspects + functions
-  // const aspectTotal = aspects.Form + aspects.Flesh + aspects.Mind + aspects.Spirit;
-  // const functionTotal = functions.Resist + functions.Adapt + functions.Perceive + functions.Force;
-  // const attributeTotal = aspectTotal + functionTotal;
-  // Aspect ratings row - first cell empty, second cell is total, then aspect values
-  // lines.push(`| |[${attributeTotal}]|${aspects.Form}|${aspects.Flesh}|${aspects.Mind}|${aspects.Spirit}|`);
-  
-  // Simplified Aspect ratings row - two empty cells, then aspect values
+
+  // Simplified Aspect ratings row
   lines.push(`| | |${aspects.Form}|${aspects.Flesh}|${aspects.Mind}|${aspects.Spirit}|`);
 
   // Function rows with attributes
   FUNCTIONS.forEach(func => {
     const funcRating = functions[func.id];
-    // emoji + name | function rating | then 4 attribute cells
     const cells = [`${func.emoji} **${func.name}**`, `${funcRating}`];
     
     ASPECTS.forEach(aspect => {
@@ -110,45 +127,56 @@ export function generateHomebreweryMarkdown(
   lines.push(`___`);
   lines.push(``);
   
-// Surge
-const stuffText = stuff >= 0 ? `+${stuff} Good Stuff` : `${stuff} Bad Stuff`;
-lines.push(`***${surge} Surge Points*** (${stuffText})`);
-lines.push(`___`);
+  // Surge and Stuff
+  const stuffText = stuff >= 0 ? `+${stuff} Good Stuff` : `${stuff} Bad Stuff`;
+  lines.push(`***${surge} Surge Points*** (${stuffText})`);
+  lines.push(``);
+  // Size (only show if not Average)
+  const sizeOption = SIZE_OPTIONS.find(s => s.value === size);
+  if (sizeOption && sizeOption.value !== 0) {
+    lines.push(`**Size:** ${sizeOption.label} (${sizeOption.value >= 0 ? '+' : ''}${sizeOption.value})`);
+  }
+  
+  // Pace (mph only)
+  const paceMultiplierText = pace.multiplier !== 1 ? ` (${pace.multiplier}x)` : '';
+  lines.push(`**Pace:** ${pace.walking.mph}/${pace.sprinting.mph} mph${paceMultiplierText}`);
 
-// Powers
-if (powers.length > 0) {
-  lines.push(`#### Powers`);
-  powers.forEach(cp => {
-    const power = POWERS.find(p => p.id === cp.powerId);
-    if (power) {
-      const display = getPowerDisplay(power, cp.points, cp.label, cp.customTitle);
-      const description = cp.description ? ` ${cp.description}` : '';
-      lines.push(`**${power.emoji} ${display.title}** *[${display.systemReference}]* :: ${description}`);
-    } 
+  lines.push(`___`);
+
+  // Powers
+  if (powers.length > 0) {
+    lines.push(`#### Powers`);
+    powers.forEach(cp => {
+      const power = POWERS.find(p => p.id === cp.powerId);
+      if (power) {
+        const display = getPowerDisplay(power, cp.points, cp.label, cp.customTitle);
+        const description = cp.description ? ` ${cp.description}` : '';
+        lines.push(`**${power.emoji} ${display.title}** *[${display.systemReference}]* :: ${description}`);
+      } 
+    });
+  }
+  
+  // Mythic Aspect explanations (+20 or higher)
+  ASPECTS.forEach(aspect => {
+    if (aspects[aspect.id] >= 20 && aspectExplanations[aspect.id]?.trim()) {
+      lines.push(`**${aspect.emoji} Mythic ${aspect.name}** :: ${aspectExplanations[aspect.id].trim()}`);
+    }
   });
-}
-// Mythic Aspect explanations (+20 or higher)
-ASPECTS.forEach(aspect => {
-  if (aspects[aspect.id] >= 20 && aspectExplanations[aspect.id]?.trim()) {
-    lines.push(`**${aspect.emoji} Mythic ${aspect.name}** :: ${aspectExplanations[aspect.id].trim()}`);
-  }
-});
-// Mythic Function "Powers" (+20 or higher)
-FUNCTIONS.forEach(func => {
-  if (functions[func.id] >= 20 && functionExplanations[func.id]?.trim()) {
-    lines.push(`**${func.emoji} Mythic ${func.name}** :: ${functionExplanations[func.id].trim()}`);
-  }
-});
+  
+  // Mythic Function "Powers" (+20 or higher)
+  FUNCTIONS.forEach(func => {
+    if (functions[func.id] >= 20 && functionExplanations[func.id]?.trim()) {
+      lines.push(`**${func.emoji} Mythic ${func.name}** :: ${functionExplanations[func.id].trim()}`);
+    }
+  });
 
   // Skills
   if (skills.length > 0) {
-    // Calculate skill costs
     const skillCostTotal = skills.reduce((sum, skill) => {
       const rating = SKILL_RATINGS.find(r => r.rating === skill.rating);
       return sum + (rating?.cost || 0);
     }, 0);
     
-    // Calculate cap and max
     const willpowerPool = getDiePoolEntry(functions['Resist'] + aspects['Mind']).pool.dice.reduce((s, d) => s + d, 0);
     const memoryPool = getDiePoolEntry(functions['Perceive'] + aspects['Mind']).pool.dice.reduce((s, d) => s + d, 0);
     const skillCap = Math.min(Math.floor(willpowerPool / 4), 4);
@@ -161,10 +189,48 @@ FUNCTIONS.forEach(func => {
       if (skill) {
         const rating = SKILL_RATINGS.find(r => r.rating === skillEntry.rating);
         const modText = rating ? ` (${rating.modifier >= 0 ? '+' : ''}${rating.modifier})` : '';
-        const specialtyText = skillEntry.specialty ? ` ${skillEntry.specialty}` : '';
+        const specialtyText = skillEntry.specialty ? ` (${skillEntry.specialty})` : '';
         lines.push(`**${skill.name}** :: ${skillEntry.rating}${modText}${specialtyText}`);
       }
     });
+  }
+  
+  // Weapons
+  if (weapons.length > 0) {
+    lines.push(``);
+    lines.push(`#### Weapons`);
+    weapons.forEach(weapon => {
+      const attackTexts = weapon.attacks.map(attack => {
+        const aspectEmoji = ASPECTS.find(a => a.id === attack.aspect)?.emoji || '';
+        const penValue = typeof attack.penetration === 'number' 
+          ? attack.penetration 
+          : Array.isArray(attack.penetration) ? attack.penetration[0] : 0;
+        const penText = penValue > 0 ? ` Pen ${formatPenetration(attack.penetration)}` : '';
+        const rangeLabel = WEAPON_RANGES.find(r => r.value === attack.range)?.label || attack.range;
+        const conditionalText = attack.isConditional ? ` *${attack.condition}*` : '';
+        return `${aspectEmoji}${attack.magnitude} ${formatAttackType(attack.type)}${penText} (${rangeLabel})${conditionalText}`;
+      });
+      
+      const notesText = weapon.notes && weapon.notes.length > 0 
+        ? `. ${weapon.notes.join('. ')}` 
+        : '';
+      const ammoText = weapon.ammo ? ` [${weapon.ammo}]` : '';
+      
+      lines.push(`**${weapon.name}** *[${weapon.category}, ${weapon.handedness}${ammoText}]* :: ${attackTexts.join(', ')}${notesText}`);
+    });
+  }
+  
+  // Armor
+  const hasArmor = armor.Toughness > 0 || armor.Endurance > 0 || armor.Willpower > 0 || armor.Resilience > 0;
+  if (hasArmor) {
+    lines.push(``);
+    lines.push(`#### Armor`);
+    const armorParts: string[] = [];
+    if (armor.Toughness > 0) armorParts.push(`Toughness +${armor.Toughness}`);
+    if (armor.Endurance > 0) armorParts.push(`Endurance +${armor.Endurance}`);
+    if (armor.Willpower > 0) armorParts.push(`Willpower +${armor.Willpower}`);
+    if (armor.Resilience > 0) armorParts.push(`Resilience +${armor.Resilience}`);
+    lines.push(armorParts.join(', '));
   }
   
   // Artifacts and Constructs
