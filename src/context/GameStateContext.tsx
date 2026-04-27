@@ -38,6 +38,54 @@ export interface ReactionPools {
   spiritParry: number;
 }
 
+export interface OpponentCombatData {
+  name: string;
+  // Attacker info (when opponent is attacking)
+  attackAspect: AspectName;
+  attackMagnitude: number;
+  attackPenetration: number;
+  damageModifier: number;
+  // Defender info (when opponent is defending)
+  resistanceRanks: {
+    Toughness: number;
+    Endurance: number;
+    Willpower: number;
+    Resilience: number;
+  };
+  armor: {
+    Toughness: number;
+    Endurance: number;
+    Willpower: number;
+    Resilience: number;
+  };
+  materialSize: number;
+  immaterialSize: number;
+  resistanceModifier: number;
+}
+
+const defaultOpponentCombatData: OpponentCombatData = {
+  name: '',
+  attackAspect: 'Form',
+  attackMagnitude: 3,
+  attackPenetration: 0,
+  damageModifier: 0,
+  resistanceRanks: {
+    Toughness: 2,
+    Endurance: 2,
+    Willpower: 2,
+    Resilience: 2,
+  },
+  armor: {
+    Toughness: 0,
+    Endurance: 0,
+    Willpower: 0,
+    Resilience: 0,
+  },
+  materialSize: 0,
+  immaterialSize: 0,
+  resistanceModifier: 0,
+};
+
 interface GameStateContextValue {
   // Character wounds
   wounds: WoundState;
@@ -72,6 +120,8 @@ interface GameStateContextValue {
   opponentWounds: WoundState;
   setOpponentWound: (aspect: AspectName, level: WoundLevel) => void;
   opponentWoundPenalty: number;
+  opponentCombatData: OpponentCombatData;
+  updateOpponentCombatData: (updates: Partial<OpponentCombatData>) => void;
   resetOpponent: () => void;
   
   // Reset all
@@ -103,6 +153,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   // Opponent tracking
   const [opponentName, setOpponentName] = useState('');
   const [opponentWounds, setOpponentWounds] = useState<WoundState>(defaultWounds);
+  const [opponentCombatData, setOpponentCombatData] = useState<OpponentCombatData>(defaultOpponentCombatData);
 
   const setWound = useCallback((aspect: AspectName, level: WoundLevel) => {
     setWounds(prev => ({ ...prev, [aspect]: level }));
@@ -199,9 +250,14 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     );
   }, [opponentWounds]);
 
+  const updateOpponentCombatData = useCallback((updates: Partial<OpponentCombatData>) => {
+    setOpponentCombatData(prev => ({ ...prev, ...updates }));
+  }, []);
+
   const resetOpponent = useCallback(() => {
     setOpponentWounds({ Form: 0, Flesh: 0, Mind: 0, Spirit: 0 });
     setOpponentName('');
+    setOpponentCombatData(defaultOpponentCombatData);
     resetReactionPools();
   }, [resetReactionPools]);
 
@@ -212,6 +268,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     setModifiers([]);
     setOpponentName('');
     setOpponentWounds(defaultWounds);
+    setOpponentCombatData(defaultOpponentCombatData);
   }, []);
 
   const value: GameStateContextValue = {
@@ -237,6 +294,8 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     opponentWounds,
     setOpponentWound,
     opponentWoundPenalty,
+    opponentCombatData,
+    updateOpponentCombatData,
     resetOpponent,
     resetAll,
   };

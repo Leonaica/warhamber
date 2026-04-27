@@ -81,28 +81,47 @@ export function CombatPage() {
   const location = useLocation();
   const state = location.state as CombatPageState | null;
 
-  // Combat mode
-  const combatMode = state?.mode || 'attacker';
+  // Combat mode (initial value from navigation state, but switchable)
+  const [combatMode, setCombatMode] = useState<'attacker' | 'defender'>(state?.mode || 'attacker');
   
-  // Weapon selection
+  // Weapon selection (only used when player is attacker)
   const [selectedWeaponId, setSelectedWeaponId] = useState<string>(state?.weaponId || '');
   const [selectedAttackIndex, setSelectedAttackIndex] = useState(state?.attackIndex || 0);
   
-  // Editable attack values (pre-filled from weapon, but modifiable)
-  const [attackAspect, setAttackAspect] = useState<AspectName>(state?.defenderAspect || 'Form');
-  const [attackMagnitude, setAttackMagnitude] = useState(3);
-  const [attackPenetration, setAttackPenetration] = useState<number>(0);
+  // Compute initial attack values from weapon when navigating as attacker
+  const initialWeapon = state?.weaponId 
+    ? character.weapons.find(w => w.id === state.weaponId) 
+    : null;
+  const initialAttackIndex = state?.attackIndex ?? 0;
+  const initialAttack = initialWeapon?.attacks[initialAttackIndex];
+
+  // Attack values - local state that syncs with opponent data when in defender mode
+  const [attackAspect, setAttackAspect] = useState<AspectName>(
+    initialAttack?.aspect || state?.defenderAspect || gameState.opponentCombatData.attackAspect
+  );
+  const [attackMagnitude, setAttackMagnitude] = useState(
+    initialAttack?.magnitude || gameState.opponentCombatData.attackMagnitude
+  );
+  const [attackPenetration, setAttackPenetration] = useState<number>(
+    initialAttack 
+      ? (Array.isArray(initialAttack.penetration) ? initialAttack.penetration[0] : initialAttack.penetration) 
+      : gameState.opponentCombatData.attackPenetration
+  );
+  const [damageModifier, setDamageModifier] = useState(
+    gameState.opponentCombatData.damageModifier
+  );
   
-  // Defender configuration
-  const [damageModifier, setDamageModifier] = useState(0);
-  const [resistanceModifier, setResistanceModifier] = useState(0);
-  const [customArmor, setCustomArmor] = useState<number | null>(null);
+  // Defender values - local state that syncs with opponent data when in attacker mode
   const [customResistanceRank, setCustomResistanceRank] = useState<number | null>(null);
+  const [customArmor, setCustomArmor] = useState<number | null>(null);
   const [customMaterialSize, setCustomMaterialSize] = useState<number | null>(null);
   const [customImmaterialSize, setCustomImmaterialSize] = useState<number | null>(null);
+  const [resistanceModifier, setResistanceModifier] = useState(
+    gameState.opponentCombatData.resistanceModifier
+  );
   
-  // Target selection: self or opponent
-  const [applyToOpponent, setApplyToOpponent] = useState(combatMode === 'attacker');
+  // Target selection: derived from mode
+  const applyToOpponent = combatMode === 'attacker';
   
   // Results
   const [damageResult, setDamageResult] = useState<DamageResult | null>(null);
@@ -110,36 +129,68 @@ export function CombatPage() {
   // The aspect being attacked is determined by the attack's aspect
   const attackedAspect = attackAspect;
 
-  // Get selected weapon
+  // Get selected weapon (only relevant when player is attacker)
   const selectedWeapon = useMemo(() => {
     if (!selectedWeaponId) return null;
     return character.weapons.find(w => w.id === selectedWeaponId) || null;
   }, [selectedWeaponId, character.weapons]);
 
-  // Get current attack from weapon
+  // Get current attack from weapon (only relevant when player is attacker)
   const weaponAttack = useMemo((): WeaponAttack | null => {
     if (!selectedWeapon || selectedWeapon.attacks.length === 0) return null;
     return selectedWeapon.attacks[selectedAttackIndex] || selectedWeapon.attacks[0];
   }, [selectedWeapon, selectedAttackIndex]);
 
-  // Material Size (physical body size)
-  const materialSize = customMaterialSize !== null ? customMaterialSize : character.size;
+  // Determine which values to use based on combat mode
+  // When player is attacker: defender side uses opponent data
+  // When player is defender: defender side uses character data
   
-  // Immaterial Size (soul/warp presence)
-  const immaterialSize = customImmaterialSize !== null ? customImmaterialSize : character.immaterialSize;
+  const isPlayerDefender = combatMode === 'defender';
+  
+  // Resistance attribute for the attacked aspect
+  const resistanceAttr = getResistanceAttribute(attackedAspect);
+  
+  // Resistance rank: from opponent (if player is attacker) or character (if player is defender)
+  const baseResistanceRank = isPlayerDefender
+    ? character.attributeDiePools[resistanceAttr].rank
+    : gameState.opponentCombatData.resistanceRanks[resistanceAttr as keyof typeof gameState.opponentCombatData.resistanceRanks];
+  const resistanceRank = customResistanceRank !== null ? customResistanceRank : baseResistanceRank;
+  
+  // Size values: from opponent (if player is attacker) or character (if player is defender)
+  const materialSize = customMaterialSize !== null 
+    ? customMaterialSize 
+    : isPlayerDefender 
+      ? character.size 
+      : gameState.opponentCombatData.materialSize;
+  const immaterialSize = customImmaterialSize !== null 
+    ? customImmaterialSize 
+    : isPlayerDefender 
+      ? character.immaterialSize 
+      : gameState.opponentCombatData.immaterialSize;
 
   // Determine which size applies based on aspect
   const isPhysicalAspect = attackedAspect === 'Form' || attackedAspect === 'Flesh';
   const effectiveSize = isPhysicalAspect ? materialSize : immaterialSize;
+
+  // Armor: from opponent (if player is attacker) or character (if player is defender)
+  const baseArmorValue = isPlayerDefender
+    ? character.armor[resistanceAttr as ArmorAttributeName]
+    : gameState.opponentCombatData.armor[resistanceAttr as keyof typeof gameState.opponentCombatData.armor];
+  const armorValue = customArmor !== null ? customArmor : baseArmorValue;
+
+  // Total resistance
+  const totalResistance = resistanceRank + effectiveSize + resistanceModifier;
 
   // Handle aspect change - reset defender customizations since they're aspect-dependent
   const handleAspectChange = (aspect: AspectName) => {
     setAttackAspect(aspect);
     setCustomResistanceRank(null);
     setCustomArmor(null);
+    // Save to opponent data
+    gameState.updateOpponentCombatData({ attackAspect: aspect });
   };
 
-  // Handle weapon selection - pre-fill attack values
+  // Handle weapon selection - pre-fill attack values (only when player is attacker)
   const handleWeaponSelect = (weaponId: string) => {
     setSelectedWeaponId(weaponId);
     setSelectedAttackIndex(0);
@@ -158,7 +209,7 @@ export function CombatPage() {
     }
   };
 
-  // Handle attack mode selection
+  // Handle attack mode selection (only when player is attacker)
   const handleAttackModeSelect = (idx: number) => {
     setSelectedAttackIndex(idx);
     if (selectedWeapon && selectedWeapon.attacks[idx]) {
@@ -172,17 +223,10 @@ export function CombatPage() {
     }
   };
 
-  // Get resistance info for selected aspect
+  // Resistance info for display
   const resistanceInfo = useMemo(() => {
-    const resistAttr = getResistanceAttribute(attackedAspect);
-    const baseRank = character.attributeDiePools[resistAttr].rank;
-    const rank = customResistanceRank !== null ? customResistanceRank : baseRank;
-    const totalResistance = rank + effectiveSize;
-    return { attribute: resistAttr, rank, sizeBonus: effectiveSize, totalResistance };
-  }, [character.attributeDiePools, attackedAspect, customResistanceRank, effectiveSize]);
-
-  // Get armor for selected aspect (use custom if set)
-  const armorValue = customArmor !== null ? customArmor : character.armor[resistanceInfo.attribute as ArmorAttributeName];
+    return { attribute: resistanceAttr, rank: resistanceRank, sizeBonus: effectiveSize, totalResistance };
+  }, [resistanceAttr, resistanceRank, effectiveSize, totalResistance]);
 
   // Effective armor after penetration (minimum 0)
   const effectiveArmor = Math.max(0, armorValue - attackPenetration);
@@ -192,11 +236,11 @@ export function CombatPage() {
     return calculateWoundProbabilities({
       weaponMagnitude: attackMagnitude,
       damageModifier,
-      resistance: resistanceInfo.rank + effectiveSize + resistanceModifier,
+      resistance: resistanceRank + effectiveSize + resistanceModifier,
       armor: armorValue,
       penetration: attackPenetration,
     });
-  }, [attackMagnitude, damageModifier, resistanceInfo.rank, effectiveSize, resistanceModifier, armorValue, attackPenetration]);
+  }, [attackMagnitude, damageModifier, resistanceRank, effectiveSize, resistanceModifier, armorValue, attackPenetration]);
 
   // Calculate damage
   const handleCalculate = () => {
@@ -204,7 +248,7 @@ export function CombatPage() {
       weaponMagnitude: attackMagnitude,
       weaponPenetration: attackPenetration,
       attackedAspect,
-      resistanceRank: resistanceInfo.rank,
+      resistanceRank: resistanceRank,
       sizeModifier: effectiveSize,
       armorValue,
       damageModifier,
@@ -232,7 +276,7 @@ export function CombatPage() {
     setDamageResult(null);
   };
 
-  // Reset attack fields to weapon defaults
+  // Reset attack fields to weapon defaults (only when player is attacker)
   const handleResetToDefaults = () => {
     if (weaponAttack) {
       setAttackAspect(weaponAttack.aspect);
@@ -242,6 +286,52 @@ export function CombatPage() {
       setCustomResistanceRank(null);
       setCustomArmor(null);
     }
+  };
+
+  // Save opponent data when leaving the page or switching modes
+  const saveOpponentData = () => {
+    if (isPlayerDefender) {
+      // Player is defender, so opponent is attacker - save attack values
+      gameState.updateOpponentCombatData({
+        attackAspect,
+        attackMagnitude,
+        attackPenetration,
+        damageModifier,
+      });
+    } else {
+      // Player is attacker, so opponent is defender - save defense values
+      gameState.updateOpponentCombatData({
+        resistanceRanks: {
+          ...gameState.opponentCombatData.resistanceRanks,
+          [resistanceAttr]: resistanceRank,
+        },
+        armor: {
+          ...gameState.opponentCombatData.armor,
+          [resistanceAttr]: armorValue,
+        },
+        materialSize,
+        immaterialSize,
+        resistanceModifier,
+      });
+    }
+  };
+
+  // Handle mode switch - save current opponent data before switching
+  const handleModeSwitch = (newMode: 'attacker' | 'defender') => {
+    saveOpponentData();
+    setCombatMode(newMode);
+    setDamageResult(null);
+    // Reset custom values when switching modes
+    setCustomResistanceRank(null);
+    setCustomArmor(null);
+    setCustomMaterialSize(null);
+    setCustomImmaterialSize(null);
+  };
+
+  // Handle navigation back to playsheet - save opponent data
+  const handleNavigateBack = () => {
+    saveOpponentData();
+    navigate('/playsheet');
   };
 
   // Render wound badge
@@ -301,10 +391,10 @@ export function CombatPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-amber-400">⚔️ Combat Resolution</h1>
-            <p className="text-slate-400 text-sm mt-1">Calculate damage from attacks and apply wounds. All values are editable — adjust as needed for narrative circumstances.</p>
+            <p className="text-slate-400 text-sm mt-1">Calculate damage from attacks and apply wounds.</p>
           </div>
           <button
-            onClick={() => navigate('/playsheet')}
+            onClick={handleNavigateBack}
             className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-4 py-2 rounded text-sm transition-colors"
           >
             ← Back to Playsheet
@@ -316,41 +406,36 @@ export function CombatPage() {
       <div className={`rounded-lg p-4 ${
         combatMode === 'attacker' ? 'bg-red-900/20 border border-red-500/30' : 'bg-blue-900/20 border border-blue-500/30'
       }`}>
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <span className={`text-2xl`}>{combatMode === 'attacker' ? '🗡️' : '🛡️'}</span>
-            <div>
-              <div className={`font-bold ${combatMode === 'attacker' ? 'text-red-400' : 'text-blue-400'}`}>
-                {combatMode === 'attacker' ? 'Attacker Mode' : 'Defender Mode'}
-              </div>
-              <div className="text-xs text-slate-400">
-                {combatMode === 'attacker' 
-                  ? 'You are attacking an opponent' 
-                  : 'You are defending against an attack'}
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-400">Apply damage to:</span>
+        {/* Mode Selection */}
+        <div className="bg-slate-800 rounded-lg p-4">
+          <div className="flex items-center justify-center gap-3">
             <button
-              onClick={() => setApplyToOpponent(true)}
-              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                applyToOpponent
+              onClick={() => handleModeSwitch('attacker')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                combatMode === 'attacker'
                   ? 'bg-red-600 text-white'
                   : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
               }`}
             >
-              👾 Opponent
+              <span className="text-xl">🗡️</span>
+              <div className="text-left">
+                <div>Attacker</div>
+                <div className="text-xs font-normal opacity-75">Damage to opponent</div>
+              </div>
             </button>
             <button
-              onClick={() => setApplyToOpponent(false)}
-              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                !applyToOpponent
+              onClick={() => handleModeSwitch('defender')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                combatMode === 'defender'
                   ? 'bg-blue-600 text-white'
                   : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
               }`}
             >
-              🧑 Self
+              <span className="text-xl">🛡️</span>
+              <div className="text-left">
+                <div>Defender</div>
+                <div className="text-xs font-normal opacity-75">Damage to self</div>
+              </div>
             </button>
           </div>
         </div>
@@ -360,12 +445,21 @@ export function CombatPage() {
       <div className="bg-slate-800 rounded-lg p-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-bold text-amber-400">👾 Opponent</h2>
-          <button
-            onClick={gameState.resetOpponent}
-            className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1 rounded text-sm transition-colors"
-          >
-            🔄 New Opponent
-          </button>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={gameState.opponentName}
+              onChange={(e) => gameState.setOpponentName(e.target.value)}
+              placeholder="Opponent name..."
+              className="bg-slate-700 border border-slate-600 rounded px-3 py-1 text-sm text-white placeholder-slate-500 w-40"
+            />
+            <button
+              onClick={gameState.resetOpponent}
+              className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1 rounded text-sm transition-colors"
+            >
+              🔄 New Opponent
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {ASPECTS.map(aspect => {
@@ -402,58 +496,69 @@ export function CombatPage() {
         <div className="bg-slate-800 rounded-lg p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-red-400">🗡️ Attacker</h2>
-            {selectedWeaponId && weaponAttack && (
-              <button
-                onClick={handleResetToDefaults}
-                className="text-xs text-amber-400 hover:text-amber-300 underline"
-              >
-                Reset to weapon defaults
-              </button>
+            {isPlayerDefender ? (
+              <span className="text-xs text-blue-400">Opponent's attack</span>
+            ) : (
+              selectedWeaponId && weaponAttack && (
+                <button
+                  onClick={handleResetToDefaults}
+                  className="text-xs text-amber-400 hover:text-amber-300 underline"
+                >
+                  Reset to weapon defaults
+                </button>
+              )
             )}
           </div>
 
-          {/* Weapon Selection */}
-          <div>
-            <label className="block text-sm text-slate-400 mb-1">Weapon</label>
-            <select
-              value={selectedWeaponId}
-              onChange={(e) => handleWeaponSelect(e.target.value)}
-              className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white"
-            >
-              <option value="">— Select a weapon —</option>
-              {character.weapons.map(w => (
-                <option key={w.id} value={w.id}>{w.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Attack Mode Selection (for multi-attack weapons) */}
-          {selectedWeapon && selectedWeapon.attacks.length > 1 && (
-            <div>
-              <label className="block text-sm text-slate-400 mb-1">Attack Mode</label>
-              <div className="flex flex-wrap gap-2">
-                {selectedWeapon.attacks.map((attack: WeaponAttack, idx: number) => (
-                  <button
-                    key={attack.id}
-                    onClick={() => handleAttackModeSelect(idx)}
-                    className={`px-3 py-1 rounded text-sm transition-colors ${
-                      selectedAttackIndex === idx
-                        ? 'bg-amber-500 text-slate-900 font-medium'
-                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                    }`}
-                  >
-                    {ASPECTS.find(a => a.id === attack.aspect)?.emoji} {attack.magnitude}
-                    {attack.isConditional && ' ⚠️'}
-                  </button>
-                ))}
+          {/* Weapon Selection - only when player is attacker */}
+          {!isPlayerDefender && (
+            <>
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Weapon</label>
+                <select
+                  value={selectedWeaponId}
+                  onChange={(e) => handleWeaponSelect(e.target.value)}
+                  className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white"
+                >
+                  <option value="">— Select a weapon —</option>
+                  {character.weapons.map(w => (
+                    <option key={w.id} value={w.id}>{w.name}</option>
+                  ))}
+                </select>
               </div>
-            </div>
+
+              {/* Attack Mode Selection (for multi-attack weapons) */}
+              {selectedWeapon && selectedWeapon.attacks.length > 1 && (
+                <div>
+                  <label className="block text-sm text-slate-400 mb-1">Attack Mode</label>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedWeapon.attacks.map((attack: WeaponAttack, idx: number) => (
+                      <button
+                        key={attack.id}
+                        onClick={() => handleAttackModeSelect(idx)}
+                        className={`px-3 py-1 rounded text-sm transition-colors ${
+                          selectedAttackIndex === idx
+                            ? 'bg-amber-500 text-slate-900 font-medium'
+                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                      >
+                        {ASPECTS.find(a => a.id === attack.aspect)?.emoji} {attack.magnitude}
+                        {attack.isConditional && ' ⚠️'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Editable Attack Fields */}
           <div className="bg-slate-700/50 rounded p-3 space-y-3">
             <div className="text-xs text-slate-500 italic mb-2">
-              Values pre-filled from weapon sheet. Edit as needed for special circumstances.
+              {isPlayerDefender 
+                ? "Enter the opponent's attack values."
+                : "Values pre-filled from weapon sheet. Edit as needed for special circumstances."
+              }
             </div>
 
             <div>
@@ -479,7 +584,11 @@ export function CombatPage() {
               <label className="block text-sm text-slate-400 mb-1">Magnitude</label>
               <select
                 value={attackMagnitude}
-                onChange={(e) => setAttackMagnitude(parseInt(e.target.value))}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  setAttackMagnitude(val);
+                  if (isPlayerDefender) gameState.updateOpponentCombatData({ attackMagnitude: val });
+                }}
                 className="w-full bg-slate-600 border border-slate-500 rounded px-3 py-2 text-sm"
               >
                 {DAMAGE_MAGNITUDE_TABLE.map((m: DamageMagnitudeEntry) => (
@@ -490,21 +599,25 @@ export function CombatPage() {
               </select>
             </div>
 
-            <div>
+            <div className="inline-flex items-center gap-2">
               <label className="block text-sm text-slate-400 mb-1">Penetration</label>
-              <input
-                type="number"
+              <StepperInput
                 value={attackPenetration}
-                onChange={(e) => setAttackPenetration(Math.max(0, parseInt(e.target.value) || 0))}
-                min="0"
-                className="w-full bg-slate-600 border border-slate-500 rounded px-3 py-2 text-sm"
+                onChange={(delta) => {
+                  const newVal = Math.min(Math.max(attackPenetration + delta, 0), 100);
+                  setAttackPenetration(newVal);
+                  if (isPlayerDefender) gameState.updateOpponentCombatData({ attackPenetration: newVal });
+                }}
+                min={0}
+                max={100}
+                className="w-12 bg-slate-600 border border-slate-500 rounded px-3 py-2 text-sm"
               />
               <div className="text-xs text-slate-500 mt-1">Reduces target's armor by this amount</div>
             </div>
           </div>
 
-          {/* Weapon Notes */}
-          {selectedWeapon?.notes && selectedWeapon.notes.length > 0 && (
+          {/* Weapon Notes - only when player is attacker */}
+          {!isPlayerDefender && selectedWeapon?.notes && selectedWeapon.notes.length > 0 && (
             <div className="bg-amber-900/20 border border-amber-500/30 rounded p-2">
               <div className="text-xs text-amber-400 font-medium mb-1">Weapon Notes:</div>
               {selectedWeapon.notes.map((note: string, idx: number) => (
@@ -513,8 +626,8 @@ export function CombatPage() {
             </div>
           )}
 
-          {/* Conditional Attack Warning */}
-          {weaponAttack?.isConditional && (
+          {/* Conditional Attack Warning - only when player is attacker */}
+          {!isPlayerDefender && weaponAttack?.isConditional && (
             <div className="bg-amber-900/20 border border-amber-500/30 rounded p-2">
               <div className="text-xs text-amber-400 font-medium">⚠️ Conditional Attack</div>
               <div className="text-xs text-slate-300">{weaponAttack.condition || 'This attack mode has conditional requirements.'}</div>
@@ -526,7 +639,11 @@ export function CombatPage() {
             <label className="block text-sm text-slate-400 mb-1">Damage Modifier</label>
             <StepperInput
               value={damageModifier}
-              onChange={(delta) => setDamageModifier(prev => Math.min(Math.max(prev + delta, -20), 20))}
+              onChange={(delta) => {
+                const newVal = Math.min(Math.max(damageModifier + delta, -20), 20);
+                setDamageModifier(newVal);
+                if (isPlayerDefender) gameState.updateOpponentCombatData({ damageModifier: newVal });
+              }}
               min={-20}
               max={20}
               className={damageModifier >= 0 ? 'text-green-400' : 'text-red-400'}
@@ -538,7 +655,10 @@ export function CombatPage() {
 
         {/* RIGHT: Defender */}
         <div className="bg-slate-800 rounded-lg p-4 space-y-4">
-          <h2 className="text-lg font-bold text-blue-400">🛡️ Defender</h2>
+          <h2 className="text-lg font-bold text-blue-400">
+            🛡️ Defender
+            {!isPlayerDefender && <span className="text-xs text-slate-500 ml-2">(Opponent)</span>}
+          </h2>
 
           {/* Aspect Being Attacked - display only, determined by attacker's aspect */}
           <div className="bg-slate-700/50 rounded p-3">
@@ -575,22 +695,33 @@ export function CombatPage() {
               <div className="flex justify-between items-center">
                 <span className="text-sm text-slate-400">Base Rank</span>
                 <StepperInput
-                  value={resistanceInfo.rank}
+                  value={resistanceRank}
                   onChange={(delta) => {
-                    const baseRank = character.attributeDiePools[resistanceInfo.attribute].rank;
-                    const current = customResistanceRank ?? baseRank;
-                    setCustomResistanceRank(Math.min(Math.max(current + delta, 0), 20));
+                    const newVal = Math.min(Math.max(resistanceRank + delta, 0), 20);
+                    setCustomResistanceRank(newVal);
+                    if (!isPlayerDefender) {
+                      gameState.updateOpponentCombatData({
+                        resistanceRanks: {
+                          ...gameState.opponentCombatData.resistanceRanks,
+                          [resistanceAttr]: newVal,
+                        },
+                      });
+                    }
                   }}
                   min={0}
                   max={20}
                   className="text-white"
                   buttonClassName="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
-                  toggle={{
-                    isCustom: customResistanceRank !== null,
-                    onToggle: () => setCustomResistanceRank(customResistanceRank === null ? resistanceInfo.rank : null),
-                    customLabel: 'Custom',
-                    defaultLabel: 'Sheet',
-                  }}
+                  toggle={
+                    isPlayerDefender
+                      ? {
+                          isCustom: customResistanceRank !== null,
+                          onToggle: () => setCustomResistanceRank(customResistanceRank === null ? baseResistanceRank : null),
+                          customLabel: 'Custom',
+                          defaultLabel: 'Sheet',
+                        }
+                      : undefined
+                  }
                 />
               </div>
 
@@ -614,7 +745,7 @@ export function CombatPage() {
 
               <div className="flex justify-between items-center border-t border-slate-600 pt-2">
                 <span className="text-sm text-slate-300 font-medium">Total Resistance</span>
-                <span className="text-cyan-400 font-bold text-lg">{resistanceInfo.totalResistance + resistanceModifier}</span>
+                <span className="text-cyan-400 font-bold text-lg">{totalResistance}</span>
               </div>
             </div>
           </div>
@@ -632,24 +763,31 @@ export function CombatPage() {
               <StepperInput
                 value={materialSize}
                 onChange={(delta) => {
-                  const current = customMaterialSize ?? character.size;
-                  setCustomMaterialSize(Math.min(Math.max(current + delta, -3), 6));
+                  const newVal = Math.min(Math.max(materialSize + delta, -3), 6);
+                  setCustomMaterialSize(newVal);
+                  if (!isPlayerDefender) {
+                    gameState.updateOpponentCombatData({ materialSize: newVal });
+                  }
                 }}
                 min={-3}
                 max={6}
                 className={materialSize > 0 ? 'text-green-400' : materialSize < 0 ? 'text-red-400' : 'text-white'}
                 displayFn={(v) => v > 0 ? `+${v}` : String(v)}
                 buttonClassName="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
-                toggle={{
-                  isCustom: customMaterialSize !== null,
-                  onToggle: () => setCustomMaterialSize(customMaterialSize === null ? character.size : null),
-                  customLabel: 'Custom',
-                  defaultLabel: 'Sheet',
-                }}
+                toggle={
+                  isPlayerDefender
+                    ? {
+                        isCustom: customMaterialSize !== null,
+                        onToggle: () => setCustomMaterialSize(customMaterialSize === null ? character.size : null),
+                        customLabel: 'Custom',
+                        defaultLabel: 'Sheet',
+                      }
+                    : undefined
+                }
               />
             </div>
             <div className="text-xs text-slate-500">
-              {getSizeLabel(materialSize)} {materialSize !== character.size && <span className="text-amber-400">(modified)</span>}
+              {getSizeLabel(materialSize)} {isPlayerDefender && materialSize !== character.size && <span className="text-amber-400">(modified)</span>}
             </div>
 
             {/* Immaterial Size */}
@@ -661,25 +799,32 @@ export function CombatPage() {
               <StepperInput
                 value={immaterialSize}
                 onChange={(delta) => {
-                  const current = customImmaterialSize ?? character.immaterialSize;
-                  setCustomImmaterialSize(Math.min(Math.max(current + delta, -3), 6));
+                  const newVal = Math.min(Math.max(immaterialSize + delta, -3), 6);
+                  setCustomImmaterialSize(newVal);
+                  if (!isPlayerDefender) {
+                    gameState.updateOpponentCombatData({ immaterialSize: newVal });
+                  }
                 }}
                 min={-3}
                 max={6}
                 className={immaterialSize > 0 ? 'text-green-400' : immaterialSize < 0 ? 'text-red-400' : 'text-white'}
                 displayFn={(v) => v > 0 ? `+${v}` : String(v)}
                 buttonClassName="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
-                toggle={{
-                  isCustom: customImmaterialSize !== null,
-                  onToggle: () => setCustomImmaterialSize(customImmaterialSize === null ? character.immaterialSize : null),
-                  customLabel: 'Custom',
-                  defaultLabel: 'Calc',
-                }}
+                toggle={
+                  isPlayerDefender
+                    ? {
+                        isCustom: customImmaterialSize !== null,
+                        onToggle: () => setCustomImmaterialSize(customImmaterialSize === null ? character.immaterialSize : null),
+                        customLabel: 'Custom',
+                        defaultLabel: 'Calc',
+                      }
+                    : undefined
+                }
               />
             </div>
             <div className="text-xs text-slate-500">
-              {getSizeLabel(immaterialSize)} {immaterialSize !== character.immaterialSize && <span className="text-amber-400">(modified)</span>}
-              {customImmaterialSize === null && (
+              {getSizeLabel(immaterialSize)} {isPlayerDefender && immaterialSize !== character.immaterialSize && <span className="text-amber-400">(modified)</span>}
+              {isPlayerDefender && customImmaterialSize === null && (
                 <span className="text-slate-600 ml-1">(Charisma + Presence dice − 2)</span>
               )}
             </div>
@@ -705,21 +850,33 @@ export function CombatPage() {
           <div className="bg-slate-700/50 rounded p-3">
             <div className="text-sm text-slate-400 mb-2">Armor vs {attackedAspect}</div>
             <StepperInput
-              value={customArmor !== null ? customArmor : armorValue}
+              value={armorValue}
               onChange={(delta) => {
-                const current = customArmor ?? armorValue;
-                setCustomArmor(Math.min(Math.max(current + delta, 0), 20));
+                const newVal = Math.min(Math.max(armorValue + delta, 0), 20);
+                setCustomArmor(newVal);
+                if (!isPlayerDefender) {
+                  gameState.updateOpponentCombatData({
+                    armor: {
+                      ...gameState.opponentCombatData.armor,
+                      [resistanceAttr]: newVal,
+                    },
+                  });
+                }
               }}
               min={0}
               max={20}
               className="text-white"
               buttonClassName="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
-              toggle={{
-                isCustom: customArmor !== null,
-                onToggle: () => setCustomArmor(customArmor === null ? armorValue : null),
-                customLabel: 'Custom',
-                defaultLabel: 'Sheet',
-              }}
+              toggle={
+                isPlayerDefender
+                  ? {
+                      isCustom: customArmor !== null,
+                      onToggle: () => setCustomArmor(customArmor === null ? baseArmorValue : null),
+                      customLabel: 'Custom',
+                      defaultLabel: 'Sheet',
+                    }
+                  : undefined
+              }
             />
             <div className="flex justify-between text-sm mt-2">
               <span className="text-slate-400">Penetration</span>
@@ -731,7 +888,7 @@ export function CombatPage() {
                 {effectiveArmor}
               </span>
             </div>
-            {customArmor !== null && (
+            {!isPlayerDefender && customArmor !== null && (
               <div className="text-xs text-amber-400 mt-1">
                 Custom armor value — adjust for cover, special qualities, etc.
               </div>
@@ -743,7 +900,13 @@ export function CombatPage() {
             <label className="block text-sm text-slate-400 mb-1">Resistance Modifier</label>
             <StepperInput
               value={resistanceModifier}
-              onChange={(delta) => setResistanceModifier(prev => Math.min(Math.max(prev + delta, -20), 20))}
+              onChange={(delta) => {
+                const newVal = Math.min(Math.max(resistanceModifier + delta, -20), 20);
+                setResistanceModifier(newVal);
+                if (!isPlayerDefender) {
+                  gameState.updateOpponentCombatData({ resistanceModifier: newVal });
+                }
+              }}
               min={-20}
               max={20}
               className={resistanceModifier >= 0 ? 'text-green-400' : 'text-red-400'}

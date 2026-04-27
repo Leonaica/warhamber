@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import type { AspectName, AttackType, WeaponAttack, CharacterWeapon, WeaponCategory, WeaponHandedness } from '../types/character';
-import { ASPECTS, ATTACK_TYPES_BY_ASPECT } from '../types/character';
+import type { AspectName, AttackType, WeaponAttack, CharacterWeapon, WeaponCategory, WeaponHandedness, WeaponRange } from '../types/character';
+import { ASPECTS, ATTACK_TYPES_BY_ASPECT, WEAPON_RANGES } from '../types/character';
 import { DAMAGE_MAGNITUDE_TABLE, type DamageMagnitudeEntry } from '../data/damageTable';
+import StepperInput from './StepperInput';
 
 interface WeaponEditorProps {
   weapon?: CharacterWeapon;
@@ -20,13 +21,14 @@ export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
 
   const addAttack = () => {
     const id = crypto.randomUUID();
+    const defaultRange: WeaponRange = category === 'Melee' || category === 'Thrown' ? 'Close' : 'Short';
     const newAttack: WeaponAttack = {
       id,
       aspect: 'Form',
       type: 'Impact',
       magnitude: 3,
       penetration: 0,
-      range: category === 'Melee' || category === 'Thrown' ? 'Melee' : 'Short',
+      range: defaultRange,
     };
     setAttacks([...attacks, newAttack]);
   };
@@ -141,8 +143,8 @@ export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
         )}
 
         {attacks.map((attack) => (
-          <div key={attack.id} className="bg-slate-700/50 rounded p-3 mb-2 space-y-2">
-            <div className="flex justify-between items-center">
+          <div key={attack.id} className="bg-slate-700/50 rounded p-3 mb-2">
+            <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium text-white">
                 {ASPECTS.find(a => a.id === attack.aspect)?.emoji} {attack.aspect} Attack
               </span>
@@ -154,9 +156,9 @@ export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-wrap gap-x-3 gap-y-2 items-end">
               {/* Aspect */}
-              <div>
+              <div className="min-w-[130px] flex-1">
                 <label className="block text-xs text-slate-400 mb-1">Aspect</label>
                 <select
                   value={attack.aspect}
@@ -176,7 +178,7 @@ export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
               </div>
 
               {/* Attack Type */}
-              <div>
+              <div className="min-w-[130px] flex-1">
                 <label className="block text-xs text-slate-400 mb-1">Type</label>
                 <select
                   value={attack.type}
@@ -190,7 +192,7 @@ export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
               </div>
 
               {/* Magnitude */}
-              <div>
+              <div className="min-w-[150px] flex-1">
                 <label className="block text-xs text-slate-400 mb-1">Magnitude</label>
                 <select
                   value={attack.magnitude}
@@ -199,57 +201,62 @@ export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
                 >
                   {DAMAGE_MAGNITUDE_TABLE.map((m: DamageMagnitudeEntry) => (
                     <option key={m.magnitude} value={m.magnitude}>
-                      {m.magnitude} - {m.label} ({m.pool.notation})
+                      {m.magnitude} — {m.label} ({m.pool.notation})
                     </option>
                   ))}
                 </select>
               </div>
 
               {/* Penetration */}
-              <div>
+              <div className="min-w-[120px]">
                 <label className="block text-xs text-slate-400 mb-1">Penetration</label>
-                <input
-                  type="number"
+                <StepperInput
                   value={typeof attack.penetration === 'number' ? attack.penetration : attack.penetration[0]}
-                  onChange={(e) => updateAttack(attack.id, { penetration: Math.max(0, parseInt(e.target.value) || 0) })}
-                  min="0"
-                  className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm"
+                  onValueChange={(val) => updateAttack(attack.id, { penetration: val })}
+                  min={0}
+                  max={100}
+                  className="text-sm"
+                  buttonClassName="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
                 />
               </div>
 
               {/* Range */}
-              <div className="col-span-2">
+              <div className="min-w-[150px] flex-1">
                 <label className="block text-xs text-slate-400 mb-1">Range</label>
+                <select
+                  value={attack.range}
+                  onChange={(e) => updateAttack(attack.id, { range: e.target.value as WeaponRange })}
+                  className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm"
+                >
+                  {WEAPON_RANGES.map(r => (
+                    <option key={r.value} value={r.value}>
+                      {r.label} — {r.description}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Conditional */}
+            <div className="mt-2">
+              <label className="flex items-center gap-2 text-xs text-slate-400">
+                <input
+                  type="checkbox"
+                  checked={attack.isConditional || false}
+                  onChange={(e) => updateAttack(attack.id, { isConditional: e.target.checked })}
+                  className="rounded"
+                />
+                Conditional attack
+              </label>
+              {attack.isConditional && (
                 <input
                   type="text"
-                  value={attack.range}
-                  onChange={(e) => updateAttack(attack.id, { range: e.target.value })}
-                  className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm"
-                  placeholder="e.g., Melee, Short, Long"
+                  value={attack.condition || ''}
+                  onChange={(e) => updateAttack(attack.id, { condition: e.target.value })}
+                  className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm mt-1"
+                  placeholder="Condition description"
                 />
-              </div>
-
-              {/* Conditional */}
-              <div className="col-span-2">
-                <label className="flex items-center gap-2 text-xs text-slate-400">
-                  <input
-                    type="checkbox"
-                    checked={attack.isConditional || false}
-                    onChange={(e) => updateAttack(attack.id, { isConditional: e.target.checked })}
-                    className="rounded"
-                  />
-                  Conditional attack
-                </label>
-                {attack.isConditional && (
-                  <input
-                    type="text"
-                    value={attack.condition || ''}
-                    onChange={(e) => updateAttack(attack.id, { condition: e.target.value })}
-                    className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm mt-1"
-                    placeholder="Condition description"
-                  />
-                )}
-              </div>
+              )}
             </div>
           </div>
         ))}

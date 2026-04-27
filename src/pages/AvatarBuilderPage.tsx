@@ -12,6 +12,7 @@ import { ICONS, DEFAULT_ICON, type IconEntry } from '../data/icons';
 import { WeaponEditor } from '../components/WeaponEditor';
 import { ArmorEditor } from '../components/ArmorEditor';
 import type { CharacterWeapon } from '../types/character';
+import StepperInput from '../components/StepperInput';
 
 export function AvatarBuilderPage() {
   const character = useCharacter();
@@ -240,7 +241,6 @@ export function AvatarBuilderPage() {
   return (
     <>
       {/* Header */}
-      {/* Header */}
       <header className="bg-slate-800 border-b border-slate-700">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-2">
@@ -254,7 +254,7 @@ export function AvatarBuilderPage() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowIconPicker(true)}
-                  className="bg-slate-700 border border-slate-600 rounded px-3 py-2 text-xl hover:bg-slate-600 transition-colors"
+                  className="h-8 bg-slate-700 border border-slate-600 rounded px-3 text-xl hover:bg-slate-600 transition-colors"
                   title="Choose icon"
                 >
                   {renderIcon(ICONS.find(i => i.code === character.avatarIcon) || DEFAULT_ICON)}
@@ -263,7 +263,7 @@ export function AvatarBuilderPage() {
                   type="text"
                   value={character.name}
                   onChange={(e) => character.setName(e.target.value)}
-                  className="flex-1 bg-slate-700 border border-slate-600 rounded px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="h-8 flex-1 bg-slate-700 border border-slate-600 rounded px-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
                   placeholder="Enter name..."
                 />
               </div>
@@ -273,7 +273,7 @@ export function AvatarBuilderPage() {
               <select
                 value={character.size}
                 onChange={(e) => character.setSize(parseInt(e.target.value))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="h-8 w-full bg-slate-700 border border-slate-600 rounded px-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
               >
                 {SIZE_OPTIONS.map(opt => (
                   <option key={opt.value} value={opt.value}>
@@ -282,24 +282,25 @@ export function AvatarBuilderPage() {
                 ))}
               </select>
             </div>
-            <div className="w-32">
-              <label className="block text-sm text-slate-400 mb-1">Point Limit</label>
-              <input
-                type="number"
+            <div className="w-48">
+              <label className="block text-sm text-slate-400 mb-1">Campaign Point Limit</label>
+              <StepperInput
                 value={character.campaignLimit}
-                onChange={(e) => character.setCampaignLimit(parseInt(e.target.value) || 0)}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                onValueChange={character.setCampaignLimit}
+                min={0}
+                step={10}
+                className="text-slate-100"
               />
             </div>
             <button
               onClick={handleLoad}
-              className="bg-slate-600 hover:bg-slate-500 text-slate-100 px-4 py-2 rounded font-medium transition-colors"
+              className="h-8 bg-slate-600 hover:bg-slate-500 text-slate-100 px-4 rounded font-medium transition-colors"
             >
               📂 Load
             </button>
             <button
               onClick={handleSave}
-              className="bg-slate-600 hover:bg-slate-500 text-slate-100 px-4 py-2 rounded font-medium transition-colors"
+              className="h-8 bg-slate-600 hover:bg-slate-500 text-slate-100 px-4 rounded font-medium transition-colors"
             >
               💾 Save
             </button>
@@ -761,12 +762,11 @@ export function AvatarBuilderPage() {
                             <option value={5}>Minor (5)</option>
                           </select>
                         ) : (
-                          <input
-                            type="number"
+                          <StepperInput
                             value={powerEntry.points}
-                            onChange={(e) => updatePowerPoints(powerEntry.id, parseInt(e.target.value) || 0)}
-                            min="0"
-                            className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            onValueChange={(val) => updatePowerPoints(powerEntry.id, val)}
+                            min={0}
+                            className="text-slate-100"
                           />
                         )}
                       </div>
@@ -922,12 +922,14 @@ export function AvatarBuilderPage() {
                       className="flex-1 bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                       placeholder="Artifact name"
                     />
-                    <input
-                      type="number"
-                      value={artifact.cost}
-                      onChange={(e) => updateArtifact(artifact.id, { cost: parseInt(e.target.value) || 0 })}
-                      className="w-16 bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    />
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-slate-400">Cost:</span>
+                      <StepperInput
+                        value={artifact.cost}
+                        onValueChange={(val) => updateArtifact(artifact.id, { cost: val })}
+                        className="text-slate-100"
+                      />
+                    </div>
                     <button
                       onClick={() => removeArtifact(artifact.id)}
                       className="text-slate-500 hover:text-red-400"
@@ -937,12 +939,11 @@ export function AvatarBuilderPage() {
                   </div>
                   <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
                     <span>Qty:</span>
-                    <input
-                      type="number"
+                    <StepperInput
                       value={artifact.quantity}
-                      onChange={(e) => updateArtifact(artifact.id, { quantity: parseInt(e.target.value) || 1 })}
-                      min="1"
-                      className="w-12 bg-slate-600 border border-slate-500 rounded px-2 py-0.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      onValueChange={(val) => updateArtifact(artifact.id, { quantity: val })}
+                      min={1}
+                      className="text-slate-100"
                     />
                     <span>= {artifact.cost * artifact.quantity} pts</span>
                   </div>
@@ -1054,7 +1055,7 @@ export function AvatarBuilderPage() {
               </button>
             </div>
             <div className="space-y-2">
-              {character.personalShadows.map(shadow => (
+            {character.personalShadows.map(shadow => (
                 <div key={shadow.id} className="bg-slate-700/50 rounded p-2">
                   <div className="flex gap-2 mb-2">
                     <input
@@ -1064,12 +1065,14 @@ export function AvatarBuilderPage() {
                       className="flex-1 bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                       placeholder="Shadow name"
                     />
-                    <input
-                      type="number"
-                      value={shadow.cost}
-                      onChange={(e) => updateShadow(shadow.id, { cost: parseInt(e.target.value) || 0 })}
-                      className="w-16 bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    />
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-slate-400">Cost:</span>
+                      <StepperInput
+                        value={shadow.cost}
+                        onValueChange={(val) => updateShadow(shadow.id, { cost: val })}
+                        className="text-slate-100"
+                      />
+                    </div>
                     <button
                       onClick={() => removeShadow(shadow.id)}
                       className="text-slate-500 hover:text-red-400"

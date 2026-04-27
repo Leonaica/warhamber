@@ -9,7 +9,8 @@ interface StepperToggleProps {
 
 interface StepperInputProps {
   value: number;
-  onChange: (delta: number) => void;
+  onChange?: (delta: number) => void;
+  onValueChange?: (value: number) => void;
   min?: number;
   max?: number;
   step?: number;
@@ -17,11 +18,13 @@ interface StepperInputProps {
   displayFn?: (value: number) => string;
   buttonClassName?: string;
   toggle?: StepperToggleProps;
+  showButtons?: boolean;
 }
 
 export default function StepperInput({
   value,
   onChange,
+  onValueChange,
   min = -Infinity,
   max = Infinity,
   step = 1,
@@ -29,6 +32,7 @@ export default function StepperInput({
   displayFn,
   buttonClassName = 'bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded',
   toggle,
+  showButtons = true,
 }: StepperInputProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(String(value));
@@ -52,40 +56,73 @@ export default function StepperInput({
   };
 
   const handleEditConfirm = () => {
-    const parsed = parseInt(editValue, 10);
-    if (!isNaN(parsed)) {
-      const clamped = Math.min(Math.max(parsed, min), max);
-      const delta = clamped - value;
-      if (delta !== 0) {
-        onChange(delta);
+    if (editValue === '' || editValue === '-') {
+      // Empty or just minus — reset to min or 0
+      const defaultVal = min !== -Infinity && min > 0 ? min : 0;
+      if (onValueChange) {
+        onValueChange(defaultVal);
+      } else if (onChange) {
+        const delta = defaultVal - value;
+        if (delta !== 0) onChange(delta);
+      }
+    } else {
+      const parsed = parseInt(editValue, 10);
+      if (!isNaN(parsed)) {
+        const clamped = Math.min(Math.max(parsed, min), max);
+        if (onValueChange) {
+          onValueChange(clamped);
+        } else if (onChange) {
+          const delta = clamped - value;
+          if (delta !== 0) onChange(delta);
+        }
       }
     }
     setIsEditing(false);
   };
 
+  const handleStep = (delta: number) => {
+    const newValue = Math.min(Math.max(value + delta, min), max);
+    if (onValueChange) {
+      onValueChange(newValue);
+    } else if (onChange) {
+      onChange(delta);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleEditConfirm();
-    else if (e.key === 'Escape') setIsEditing(false);
+    else if (e.key === 'Escape') {
+      setEditValue(String(value));
+      setIsEditing(false);
+    }
   };
 
   const displayText = displayFn ? displayFn(value) : String(value);
 
   return (
     <div className="flex items-center gap-2">
-      <button
-        onClick={() => onChange(-step)}
-        disabled={value <= min}
-        className={`${buttonClassName} disabled:opacity-50 disabled:cursor-not-allowed`}
-      >
-        −
-      </button>
+      {showButtons && (
+        <button
+          onClick={() => handleStep(-step)}
+          disabled={value <= min}
+          className={`${buttonClassName} disabled:opacity-50 disabled:cursor-not-allowed`}
+        >
+          −
+        </button>
+      )}
 
       {isEditing ? (
         <input
           ref={inputRef}
           type="text"
+          inputMode="numeric"
           value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === '' || v === '-' || /^-?\d*$/.test(v)) {
+              setEditValue(v);
+            }
+          }}
           onBlur={handleEditConfirm}
           onKeyDown={handleKeyDown}
           className="w-12 text-center font-bold bg-slate-800 border border-slate-600 rounded px-1 py-1 outline-none focus:border-slate-400"
@@ -100,13 +137,15 @@ export default function StepperInput({
         </span>
       )}
 
-      <button
-        onClick={() => onChange(step)}
-        disabled={value >= max}
-        className={`${buttonClassName} disabled:opacity-50 disabled:cursor-not-allowed`}
-      >
-        +
-      </button>
+      {showButtons && (
+        <button
+          onClick={() => handleStep(step)}
+          disabled={value >= max}
+          className={`${buttonClassName} disabled:opacity-50 disabled:cursor-not-allowed`}
+        >
+          +
+        </button>
+      )}
 
       {toggle && (
         <button

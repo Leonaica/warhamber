@@ -296,13 +296,28 @@ export type WeaponCategory = 'Melee' | 'Pistol' | 'Gun' | 'Heavy' | 'Mounted' | 
 
 export type WeaponHandedness = 'One-handed' | 'Two-handed';
 
+export type WeaponRange = 'Touch' | 'Close' | 'Reach' | 'Short' | 'Medium' | 'Long' | 'Far' | 'Extreme' | 'Strategic' | 'LOS';
+
+export const WEAPON_RANGES: { value: WeaponRange; label: string; description: string }[] = [
+  { value: 'Touch', label: 'Touch', description: 'Within arm\'s reach' },
+  { value: 'Close', label: 'Close', description: 'Just outside arm\'s reach; most hand weapons' },
+  { value: 'Reach', label: 'Reach', description: '~5 meters; talking range, polearm range' },
+  { value: 'Short', label: 'Short', description: '~50 meters; normal throwing range' },
+  { value: 'Medium', label: 'Medium', description: '~100 meters; most pistols or bows' },
+  { value: 'Long', label: 'Long', description: 'Several hundred meters; most rifles' },
+  { value: 'Far', label: 'Far', description: '~1 kilometer; cannon or specialized rifles' },
+  { value: 'Extreme', label: 'Extreme', description: 'Several kilometers; light artillery' },
+  { value: 'Strategic', label: 'Strategic', description: 'Heavier artillery range' },
+  { value: 'LOS', label: 'Line of Sight', description: 'If you can see it, you can hit it; some magic and powerful lasers' },
+];
+
 export interface WeaponAttack {
   id: string;
   aspect: AspectName;
   type: AttackType;
   magnitude: number;
   penetration: number | [number, number];
-  range: string;
+  range: WeaponRange;
   isConditional?: boolean;
   condition?: string;
 }
