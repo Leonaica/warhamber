@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCharacter } from '../context/CharacterContext';
 import { useGameState, WOUND_LABELS, WOUND_PENALTIES, type WoundLevel } from '../context/GameStateContext';
-import { ASPECTS, FUNCTIONS, ATTRIBUTES, type AspectName, type AttributeName, type ArmorAttributeName } from '../types/character';
+import { ASPECTS, FUNCTIONS, ATTRIBUTES, SIZE_OPTIONS, type AspectName, type AttributeName, type ArmorAttributeName } from '../types/character';
 import { ICONS, DEFAULT_ICON, type IconEntry } from '../data/icons';
 import { DIE_POOL_TABLE } from '../data/diePoolTable';
 import type { DiePoolEntry } from '../data/diePoolTable';
@@ -12,6 +12,8 @@ import { POWERS } from '../data/powers';
 import { SKILLS } from '../data/skills';
 import { getPowerDisplay } from '../utils/powerDisplay';
 import { DAMAGE_MAGNITUDE_TABLE } from '../data/damageTable';
+import { generateHomebreweryMarkdown } from '../utils/homebreweryExport';
+import { type ReactionPoolKey } from '../context/GameStateContext';
 
 const DEFENSE_ATTRIBUTES: Record<AspectName, AttributeName> = {
   Form: 'Toughness',
@@ -58,10 +60,6 @@ export function PlaysheetPage() {
   const [healSkillBonus, setHealSkillBonus] = useState(0);
   const [healModifier, setHealModifier] = useState(0);
   const [healResult, setHealResult] = useState<{ aspect: AspectName; successes: number; roll: number } | null>(null);
-
-  // Opponent name editing
-  const [editingOpponentName, setEditingOpponentName] = useState(false);
-  const [opponentNameInput, setOpponentNameInput] = useState(gameState.opponentName);
 
   const renderIcon = (icon: IconEntry) => {
     return icon.library === 'fontawesome' ? (
@@ -143,6 +141,22 @@ export function PlaysheetPage() {
     setActiveHealAspect(null);
   };
 
+  const getPoolKeys = (aspectId: string): { dodge: ReactionPoolKey | null; parry: ReactionPoolKey } => {
+    switch (aspectId) {
+      case 'Form': return { dodge: 'formDodge', parry: 'formParry' };
+      case 'Flesh': return { dodge: null, parry: 'fleshParry' };
+      case 'Mind': return { dodge: 'mindDodge', parry: 'mindParry' };
+      case 'Spirit': return { dodge: 'spiritDodge', parry: 'spiritParry' };
+      default: return { dodge: null, parry: 'formParry' };
+    }
+  };
+
+  const handlePoolClick = (key: ReactionPoolKey, position: number) => {
+    const currentUsage = gameState.reactionPools[key];
+    const newUsage = currentUsage === position ? position - 1 : position;
+    gameState.setReactionPool(key, newUsage);
+  };
+
   const goToResolver = () => {
     if (!selectedAttribute) return;
     
@@ -187,6 +201,43 @@ export function PlaysheetPage() {
     });
   };
 
+  // Export handler
+  const handleExportMarkdown = () => {
+    const markdown = generateHomebreweryMarkdown(
+      character.name,
+      character.avatarIcon,
+      character.campaignLimit,
+      character.aspects,
+      character.functions,
+      character.aspectExplanations,
+      character.functionExplanations,
+      character.skills,
+      character.powers,
+      character.artifacts,
+      character.allies,
+      character.personalShadows,
+      character.computedCharacter.stuff,
+      character.computedCharacter.surge
+    );
+    // Copy to clipboard
+    navigator.clipboard.writeText(markdown).then(() => {
+      alert('Markdown copied to clipboard!');
+    }).catch(() => {
+      // Fallback: download as file
+      const blob = new Blob([markdown], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${character.name || 'avatar'}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  };
+  
+  const handlePrint = () => {
+    window.print();
+  };
+
   if (!character.hasCharacter) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12 text-center">
@@ -210,21 +261,37 @@ export function PlaysheetPage() {
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
       {/* Character Header */}
       <div className="bg-slate-800 rounded-lg p-4">
-        <div className="flex items-center gap-4">
-          <div className="text-4xl">
-            {renderIcon(ICONS.find(i => i.code === character.avatarIcon) || DEFAULT_ICON)}
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-amber-400">{character.name || 'Unnamed Avatar'}</h1>
-            <div className="text-sm text-slate-400">
-              {character.computedCharacter.totalPointsSpent} / {character.campaignLimit} points
-              {character.computedCharacter.stuff !== 0 && (
-                <span className="ml-4">
-                  {character.computedCharacter.stuff > 0 ? '🌕' : '🌑'}{' '}
-                  {Math.abs(character.computedCharacter.stuff)} {character.computedCharacter.stuff > 0 ? 'Good' : 'Bad'} Stuff
-                </span>
-              )}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="text-4xl">
+              {renderIcon(ICONS.find(i => i.code === character.avatarIcon) || DEFAULT_ICON)}
             </div>
+            <div>
+              <h1 className="text-2xl font-bold text-amber-400">{character.name || 'Unnamed Avatar'}</h1>
+              <div className="text-sm text-slate-400">
+                {character.computedCharacter.totalPointsSpent} / {character.campaignLimit} points
+                {character.computedCharacter.stuff !== 0 && (
+                  <span className="ml-4">
+                    {character.computedCharacter.stuff > 0 ? '🌕' : '🌑'}{' '}
+                    {Math.abs(character.computedCharacter.stuff)} {character.computedCharacter.stuff > 0 ? 'Good' : 'Bad'} Stuff
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleExportMarkdown}
+              className="bg-amber-500 hover:bg-amber-400 text-slate-900 px-4 py-2 rounded font-medium text-sm transition-colors"
+            >
+              📜 Export for Homebrewery
+            </button>
+            <button
+              onClick={handlePrint}
+              className="bg-amber-500 hover:bg-amber-400 text-slate-900 px-4 py-2 rounded font-medium text-sm transition-colors"
+            >
+              🖨️ Print PDF
+            </button>
           </div>
         </div>
       </div>
@@ -512,6 +579,97 @@ export function PlaysheetPage() {
               </div>
             )}
           </div>
+          {/* Reaction Pools */}
+          <div className="bg-slate-800 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-bold text-amber-400">⚔️ Reaction Pools</h2>
+                <button
+                  onClick={gameState.resetReactionPools}
+                  className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1 rounded text-sm transition-colors"
+                >
+                  🔄 New Round
+                </button>
+              </div>
+              <p className="text-xs text-slate-500 mb-3">
+                Dodge and Parry uses per round, based on Adapt dice for each Aspect.
+              </p>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {ASPECTS.map(aspect => {
+                  const adaptAttr = ATTRIBUTES.find(a => a.aspect === aspect.id && a.func === 'Adapt');
+                  if (!adaptAttr) return null;
+
+                  const diceCount = character.attributeDiePools[adaptAttr.id].pool.dice.length;
+                  const notation = character.attributeDiePools[adaptAttr.id].pool.notation;
+                  const poolKeys = getPoolKeys(aspect.id);
+                  const dodgeUsed = poolKeys.dodge ? gameState.reactionPools[poolKeys.dodge] : 0;
+                  const parryUsed = poolKeys.parry ? gameState.reactionPools[poolKeys.parry] : 0;
+
+                  return (
+                    <div key={aspect.id} className="bg-slate-700/50 rounded p-3">
+                      <div className="text-center mb-2">
+                        <div className="text-lg">{aspect.emoji}</div>
+                        <div className="text-sm font-medium text-white">{aspect.name}</div>
+                        <div className="text-xs text-slate-400">{adaptAttr.id}: {notation}</div>
+                      </div>
+
+                      {/* Dodge or Surprise Save */}
+                      {aspect.id === 'Flesh' ? (
+                        <div className="mb-2 text-center py-1">
+                          <div className="text-xs text-slate-400 mb-0.5">⚡ Surprise Save</div>
+                          <div className="text-sm text-amber-400 font-bold">{notation}</div>
+                        </div>
+                      ) : poolKeys.dodge && (
+                        <div className="mb-2">
+                          <div className="text-xs text-slate-400 text-center mb-1">Dodge</div>
+                          <div className="flex justify-center gap-1">
+                            {Array.from({ length: diceCount }, (_, i) => (
+                              <button
+                                key={i}
+                                onClick={() => handlePoolClick(poolKeys.dodge!, i + 1)}
+                                className={`w-5 h-5 rounded-full border-2 transition-colors ${
+                                  i < dodgeUsed
+                                    ? 'bg-red-500 border-red-400'
+                                    : 'bg-slate-700 border-slate-500 hover:bg-amber-500 hover:border-amber-400'
+                                }`}
+                                title={i < dodgeUsed ? 'Click to unspend' : 'Click to spend'}
+                              />
+                            ))}
+                          </div>
+                          <div className="text-xs text-slate-500 text-center mt-1">
+                            {diceCount - dodgeUsed}/{diceCount}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Parry */}
+                      {poolKeys.parry && (
+                        <div>
+                          <div className="text-xs text-slate-400 text-center mb-1">Parry</div>
+                          <div className="flex justify-center gap-1">
+                            {Array.from({ length: diceCount }, (_, i) => (
+                              <button
+                                key={i}
+                                onClick={() => handlePoolClick(poolKeys.parry!, i + 1)}
+                                className={`w-5 h-5 rounded-full border-2 transition-colors ${
+                                  i < parryUsed
+                                    ? 'bg-red-500 border-red-400'
+                                    : 'bg-slate-700 border-slate-500 hover:bg-amber-500 hover:border-amber-400'
+                                }`}
+                                title={i < parryUsed ? 'Click to unspend' : 'Click to spend'}
+                              />
+                            ))}
+                          </div>
+                          <div className="text-xs text-slate-500 text-center mt-1">
+                            {diceCount - parryUsed}/{diceCount}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
         </div>
 
         {/* Right Column: Play State */}
@@ -714,138 +872,76 @@ export function PlaysheetPage() {
             </div>
           </div>
 
-          {/* Armor */}
+          {/* Defense */}
           <div className="bg-slate-800 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-amber-400">🛡️ Armor</h2>
-              <button
-                onClick={() => goToCombatAsDefender()}
-                className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
-              >
-                🛡️ Defend
-              </button>
-            </div>
-            <div className="space-y-2">
-              {(['Toughness', 'Endurance', 'Willpower', 'Resilience'] as const).map(defense => {
-                const aspect = ASPECTS.find(a => DEFENSE_ATTRIBUTES[a.id] === defense);
-                const armorValue = character.armor[defense];
-                return (
-                  <button
-                    key={defense}
-                    onClick={() => goToCombatAsDefender(aspect?.id)}
-                    className="w-full flex items-center justify-between bg-slate-700/50 hover:bg-blue-900/30 border border-slate-600 hover:border-blue-500/50 rounded px-3 py-2 text-sm transition-all group"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{aspect?.emoji}</span>
-                      <div className="text-left">
-                        <div className="text-slate-200 group-hover:text-white">{defense}</div>
-                        <div className="text-xs text-slate-400">vs {aspect?.name} attacks</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`font-bold ${armorValue > 0 ? 'text-cyan-400' : 'text-slate-500'}`}>
-                        {armorValue}
-                      </span>
-                      <span className="text-slate-500 group-hover:text-blue-400">→</span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="text-xs text-slate-500 mt-2 text-center">
-              Click an armor type to enter defense mode
-            </div>
-          </div>
+            <h2 className="text-lg font-bold text-amber-400 mb-4">🛡️ Defense</h2>
 
-          {/* Opponent Tracking */}
-          <div className="bg-slate-800 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-amber-400">👾 Opponent</h2>
-              <button
-                onClick={gameState.resetOpponent}
-                className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1 rounded text-sm transition-colors"
-              >
-                🔄 New Opponent
-              </button>
-            </div>
-
-            {/* Opponent Name */}
-            {editingOpponentName ? (
-              <div className="flex gap-2 mb-3">
-                <input
-                  type="text"
-                  value={opponentNameInput}
-                  onChange={(e) => setOpponentNameInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      gameState.setOpponentName(opponentNameInput);
-                      setEditingOpponentName(false);
-                    }
-                  }}
-                  className="flex-1 bg-slate-700 border border-slate-600 rounded px-3 py-1 text-sm text-white"
-                  placeholder="Opponent name..."
-                  autoFocus
-                />
-                <button
-                  onClick={() => {
-                    gameState.setOpponentName(opponentNameInput);
-                    setEditingOpponentName(false);
-                  }}
-                  className="bg-amber-500 hover:bg-amber-400 text-slate-900 px-3 py-1 rounded text-sm font-medium"
-                >
-                  ✓
-                </button>
+            {/* Size Summary */}
+            <div className="mb-4 grid grid-cols-2 gap-3">
+              <div className="bg-slate-700/50 rounded p-3">
+                <div className="text-xs text-slate-400 mb-1">Material Size</div>
+                <div className="text-lg font-bold text-amber-400">
+                  {SIZE_OPTIONS.find(s => s.value === character.size)?.label ?? 'Average'}
+                </div>
+                <div className="text-xs text-slate-500">
+                  {SIZE_OPTIONS.find(s => s.value === character.size)?.description ?? 'to 200kg'}
+                </div>
               </div>
-            ) : (
-              <button
-                onClick={() => {
-                  setOpponentNameInput(gameState.opponentName);
-                  setEditingOpponentName(true);
-                }}
-                className="w-full text-left bg-slate-700/50 hover:bg-slate-700 rounded px-3 py-2 mb-3 text-sm transition-colors"
-              >
-                {gameState.opponentName ? (
-                  <span className="text-white">{gameState.opponentName}</span>
-                ) : (
-                  <span className="text-slate-500 italic">Click to name opponent...</span>
-                )}
-              </button>
-            )}
+              <div className="bg-slate-700/50 rounded p-3">
+                <div className="text-xs text-slate-400 mb-1">Immaterial Size</div>
+                <div className="text-lg font-bold text-amber-400">
+                  {SIZE_OPTIONS.find(s => s.value === character.immaterialSize)?.label ?? 'Average'}
+                </div>
+                <div className="text-xs text-slate-500">
+                  {SIZE_OPTIONS.find(s => s.value === character.immaterialSize)?.description ?? 'to 200kg'}
+                </div>
+              </div>
+            </div>
 
-            {/* Opponent Wounds */}
-            <div className="space-y-2">
+            {/* Aspect Defense Sections */}
+            <div className="space-y-3">
               {ASPECTS.map(aspect => {
-                const woundLevel = gameState.opponentWounds[aspect.id];
-                const woundInfo = WOUND_LABELS[woundLevel];
+                const defenseAttr = DEFENSE_ATTRIBUTES[aspect.id];
+                const diePool = character.attributeDiePools[defenseAttr];
+                const armor = character.armor[defenseAttr as ArmorAttributeName];
+                const isPhysical = aspect.id === 'Form' || aspect.id === 'Flesh';
+                const sizeValue = isPhysical ? character.size : character.immaterialSize;
+                const sizeLabel = SIZE_OPTIONS.find(s => s.value === sizeValue)?.label ?? 'Average';
+
                 return (
-                  <div key={aspect.id} className="flex items-center justify-between bg-slate-700/30 rounded px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <span>{aspect.emoji}</span>
-                      <span className="text-sm text-slate-300">{aspect.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {woundInfo.emoji && <span className="text-sm">{woundInfo.emoji}</span>}
-                      <select
-                        value={woundLevel}
-                        onChange={(e) => gameState.setOpponentWound(aspect.id, parseInt(e.target.value) as WoundLevel)}
-                        className="bg-slate-600 border border-slate-500 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  <div key={aspect.id} className="bg-slate-700/50 rounded p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{aspect.emoji}</span>
+                        <span className="font-medium text-white">{aspect.name}</span>
+                      </div>
+                      <button
+                        onClick={() => goToCombatAsDefender(aspect.id)}
+                        className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
                       >
-                        {Array.from({ length: 9 }, (_, i) => (
-                          <option key={i} value={i}>
-                            {i === 0 ? 'None' : `L${i} ${WOUND_LABELS[i as WoundLevel].label}`}
-                          </option>
-                        ))}
-                      </select>
+                        🛡️ Defend
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                      <div>
+                        <div className="text-xs text-slate-400">{defenseAttr}</div>
+                        <div className="text-cyan-400 font-bold">{diePool.pool.notation}</div>
+                        <div className="text-xs text-slate-500">Rank {diePool.rank}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-400">Armor</div>
+                        <div className={`font-bold ${armor > 0 ? 'text-green-400' : 'text-slate-500'}`}>{armor}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-400">{isPhysical ? 'Mat. Size' : 'Imm. Size'}</div>
+                        <div className="text-amber-400 font-bold">{sizeLabel}</div>
+                        <div className="text-xs text-slate-500">{sizeValue >= 0 ? '+' : ''}{sizeValue}</div>
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
-            {gameState.opponentWoundPenalty < 0 && (
-              <div className="mt-2 p-2 bg-red-900/20 border border-red-500/30 rounded text-xs text-red-400">
-                Opponent Penalty: {gameState.opponentWoundPenalty}/die
-              </div>
-            )}
           </div>
 
           {/* Reset */}

@@ -1,5 +1,4 @@
 import type { AspectName, ArmorAttributeName } from '../types/character';
-import { DIE_POOL_TABLE } from '../data/diePoolTable';
 import { DAMAGE_MAGNITUDE_TABLE } from '../data/damageTable';
 import { getWoundLevelInfo, type WoundLevel } from '../data/wounds';
 
@@ -55,17 +54,6 @@ export function getResistanceAttribute(aspect: AspectName): ArmorAttributeName {
 // Map aspect to armor attribute
 export function getArmorAttribute(aspect: AspectName): ArmorAttributeName {
   return getResistanceAttribute(aspect);
-}
-
-// Calculate Immaterial Size from Charisma and Presence ranks
-export function calculateImmaterialSize(charismaRank: number, presenceRank: number): number {
-  const charismaEntry = DIE_POOL_TABLE.find(e => e.rank === charismaRank);
-  const presenceEntry = DIE_POOL_TABLE.find(e => e.rank === presenceRank);
-  
-  const charismaDice = charismaEntry ? charismaEntry.pool.dice.length : 0;
-  const presenceDice = presenceEntry ? presenceEntry.pool.dice.length : 0;
-  
-  return (charismaDice + presenceDice) - 2;
 }
 
 // Roll a single die with explosion

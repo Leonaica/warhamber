@@ -265,17 +265,17 @@ export interface PersonalShadow {
 
 export type SizeValue = -3 | -2 | -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
-export const SIZE_OPTIONS: { value: SizeValue; label: string }[] = [
-  { value: -3, label: 'Minuscule' },
-  { value: -2, label: 'Puny' },
-  { value: -1, label: 'Small' },
-  { value: 0, label: 'Average' },
-  { value: 1, label: 'Hulking' },
-  { value: 2, label: 'Enormous' },
-  { value: 3, label: 'Massive' },
-  { value: 4, label: 'Immense' },
-  { value: 5, label: 'Monumental' },
-  { value: 6, label: 'Titanic' },
+export const SIZE_OPTIONS: { value: SizeValue; label: string; description: string }[] = [
+  { value: -3, label: 'Minuscule', description: 'to 500g' },
+  { value: -2, label: 'Puny', description: 'to 4kg' },
+  { value: -1, label: 'Weedy', description: 'to 30kg' },
+  { value: 0, label: 'Average', description: 'to 200kg' },
+  { value: 1, label: 'Hulking', description: 'to 2 tons' },
+  { value: 2, label: 'Enormous', description: 'to 16 tons' },
+  { value: 3, label: 'Massive', description: 'to 125 tons' },
+  { value: 4, label: 'Immense', description: 'to 1000 tons' },
+  { value: 5, label: 'Monumental', description: 'to 10k tons' },
+  { value: 6, label: 'Titanic', description: 'to 100k tons' },
 ];
 
 export type FormAttackType = 'Impact' | 'Slashing' | 'Piercing' | 'Energy' | 'Corrosive' | 'Freeze' | 'Explosive';

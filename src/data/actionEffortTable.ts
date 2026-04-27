@@ -59,15 +59,33 @@ export const SCALE_TABLE: Record<number, number> = {
 };
 
 export function resultToScale(result: number): number | null {
-  // Find the closest threshold at or below the result
+  // Below minimum threshold
+  if (result < 4) return null;
+
   const thresholds = Object.keys(SCALE_TABLE).map(Number).sort((a, b) => a - b);
-  
-  for (let i = thresholds.length - 1; i >= 0; i--) {
-    if (result >= thresholds[i]) {
-      return SCALE_TABLE[thresholds[i]];
+
+  // Exact match — return defined value
+  if (SCALE_TABLE[result] !== undefined) {
+    return SCALE_TABLE[result];
+  }
+
+  // Find bracket for interpolation
+  for (let i = 0; i < thresholds.length - 1; i++) {
+    if (result < thresholds[i + 1]) {
+      const lower = thresholds[i];
+      const upper = thresholds[i + 1];
+      const lowerScale = SCALE_TABLE[lower];
+      const upperScale = SCALE_TABLE[upper];
+      const fraction = (result - lower) / (upper - lower);
+      return lowerScale * Math.pow(upperScale / lowerScale, fraction);
     }
   }
-  return null; // Below 4
+
+  // Above maximum — extrapolate using doubling every 4 points
+  const maxThreshold = thresholds[thresholds.length - 1];
+  const maxScale = SCALE_TABLE[maxThreshold];
+  const extraFours = (result - maxThreshold) / 4;
+  return maxScale * Math.pow(2, extraFours);
 }
 
 export function scaleToResult(scale: number): number | null {

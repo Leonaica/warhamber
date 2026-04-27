@@ -14,8 +14,7 @@ import type {
 } from '../types/character';
 import { ATTRIBUTES } from '../types/character';
 import { getDiePoolEntry } from '../data/diePoolTable';
-import { calculateImmaterialSize } from '../utils/damage';
-import { computeCharacter } from '../utils/calculations';
+import { calculateImmaterialSize, computeCharacter } from '../utils/calculations';
 import { DEFAULT_ICON } from '../data/icons';
 export { WOUND_DAMAGE_RANGES, getWoundLevel, calculateStacking } from '../data/wounds';
 export type { WoundLevel as DamageWoundLevel } from '../data/wounds';
@@ -173,8 +172,21 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const computedCharacter = useMemo(() => {
-    return computeCharacter(nameState, campaignLimitState, aspectsState, functionsState, skillsState, powersState, artifactsState, alliesState, personalShadowsState);
-  }, [nameState, campaignLimitState, aspectsState, functionsState, skillsState, powersState, artifactsState, alliesState, personalShadowsState]);
+    return computeCharacter(
+      nameState,
+      campaignLimitState,
+      aspectsState,
+      functionsState,
+      skillsState,
+      powersState,
+      artifactsState,
+      alliesState,
+      personalShadowsState,
+      weapons,
+      armorState,
+      sizeState,
+    );
+  }, [nameState, campaignLimitState, aspectsState, functionsState, skillsState, powersState, artifactsState, alliesState, personalShadowsState, weapons, armorState, sizeState]);
 
   const attributeValues = useMemo(() => {
     const values: Record<AttributeName, number> = {} as Record<AttributeName, number>;

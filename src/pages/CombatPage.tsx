@@ -7,6 +7,7 @@ import { DAMAGE_MAGNITUDE_TABLE, type DamageMagnitudeEntry } from '../data/damag
 import { calculateDamage, getResistanceAttribute, calculateStacking } from '../utils/damage';
 import type { DamageResult, WoundLevel } from '../utils/damage';
 import { calculateWoundProbabilities, type WoundProbabilities } from '../utils/probability';
+import StepperInput from '../components/StepperInput';
 
 interface CombatPageState {
   mode?: 'attacker' | 'defender';
@@ -369,7 +370,6 @@ export function CombatPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {ASPECTS.map(aspect => {
             const woundLevel = gameState.opponentWounds[aspect.id];
-            const woundInfo = WOUND_LABELS[woundLevel];
             return (
               <div key={aspect.id} className={`rounded p-2 text-center ${
                 woundLevel === 0 ? 'bg-slate-700/30' :
@@ -524,23 +524,14 @@ export function CombatPage() {
           {/* Damage Modifier */}
           <div>
             <label className="block text-sm text-slate-400 mb-1">Damage Modifier</label>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setDamageModifier(Math.max(-20, damageModifier - 1))}
-                className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
-              >
-                -
-              </button>
-              <span className={`w-12 text-center font-bold ${damageModifier >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {damageModifier >= 0 ? '+' : ''}{damageModifier}
-              </span>
-              <button
-                onClick={() => setDamageModifier(Math.min(20, damageModifier + 1))}
-                className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
-              >
-                +
-              </button>
-            </div>
+            <StepperInput
+              value={damageModifier}
+              onChange={(delta) => setDamageModifier(prev => Math.min(Math.max(prev + delta, -20), 20))}
+              min={-20}
+              max={20}
+              className={damageModifier >= 0 ? 'text-green-400' : 'text-red-400'}
+              displayFn={(v) => v >= 0 ? `+${v}` : String(v)}
+            />
             <div className="text-xs text-slate-500 mt-1">For situational bonuses/penalties</div>
           </div>
         </div>
@@ -583,35 +574,24 @@ export function CombatPage() {
             <div className="border-t border-slate-600 pt-2 space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-slate-400">Base Rank</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      const current = customResistanceRank ?? character.attributeValues[resistanceInfo.attribute];
-                      setCustomResistanceRank(Math.max(0, current - 1));
-                    }}
-                    className="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
-                  >
-                    -
-                  </button>
-                  <span className="text-white font-bold w-8 text-center">{resistanceInfo.rank}</span>
-                  <button
-                    onClick={() => {
-                      const current = customResistanceRank ?? character.attributeValues[resistanceInfo.attribute];
-                      setCustomResistanceRank(Math.min(20, current + 1));
-                    }}
-                    className="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
-                  >
-                    +
-                  </button>
-                  <button
-                    onClick={() => setCustomResistanceRank(customResistanceRank === null ? resistanceInfo.rank : null)}
-                    className={`text-xs px-2 py-1 rounded transition-colors ${
-                      customResistanceRank !== null ? 'bg-amber-500 text-slate-900' : 'bg-slate-600 text-slate-400'
-                    }`}
-                  >
-                    {customResistanceRank !== null ? 'Custom' : 'Sheet'}
-                  </button>
-                </div>
+                <StepperInput
+                  value={resistanceInfo.rank}
+                  onChange={(delta) => {
+                    const baseRank = character.attributeDiePools[resistanceInfo.attribute].rank;
+                    const current = customResistanceRank ?? baseRank;
+                    setCustomResistanceRank(Math.min(Math.max(current + delta, 0), 20));
+                  }}
+                  min={0}
+                  max={20}
+                  className="text-white"
+                  buttonClassName="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
+                  toggle={{
+                    isCustom: customResistanceRank !== null,
+                    onToggle: () => setCustomResistanceRank(customResistanceRank === null ? resistanceInfo.rank : null),
+                    customLabel: 'Custom',
+                    defaultLabel: 'Sheet',
+                  }}
+                />
               </div>
 
               <div className="flex justify-between items-center">
@@ -649,39 +629,26 @@ export function CombatPage() {
                 <div className="text-sm text-white">Material Size</div>
                 <div className="text-xs text-slate-500">Physical body — used for 🧱 Form & 🧬 Flesh</div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    const current = customMaterialSize ?? character.size;
-                    setCustomMaterialSize(Math.max(-3, current - 1));
-                  }}
-                  className="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
-                >
-                  -
-                </button>
-                <span className={`w-8 text-center font-bold ${materialSize > 0 ? 'text-green-400' : materialSize < 0 ? 'text-red-400' : 'text-white'}`}>
-                  {materialSize > 0 ? '+' : ''}{materialSize}
-                </span>
-                <button
-                  onClick={() => {
-                    const current = customMaterialSize ?? character.size;
-                    setCustomMaterialSize(Math.min(6, current + 1));
-                  }}
-                  className="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
-                >
-                  +
-                </button>
-                <button
-                  onClick={() => setCustomMaterialSize(customMaterialSize === null ? character.size : null)}
-                  className={`text-xs px-2 py-1 rounded transition-colors ${
-                    customMaterialSize !== null ? 'bg-amber-500 text-slate-900' : 'bg-slate-600 text-slate-400'
-                  }`}
-                >
-                  {customMaterialSize !== null ? 'Custom' : 'Sheet'}
-                </button>
-              </div>
+              <StepperInput
+                value={materialSize}
+                onChange={(delta) => {
+                  const current = customMaterialSize ?? character.size;
+                  setCustomMaterialSize(Math.min(Math.max(current + delta, -3), 6));
+                }}
+                min={-3}
+                max={6}
+                className={materialSize > 0 ? 'text-green-400' : materialSize < 0 ? 'text-red-400' : 'text-white'}
+                displayFn={(v) => v > 0 ? `+${v}` : String(v)}
+                buttonClassName="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
+                toggle={{
+                  isCustom: customMaterialSize !== null,
+                  onToggle: () => setCustomMaterialSize(customMaterialSize === null ? character.size : null),
+                  customLabel: 'Custom',
+                  defaultLabel: 'Sheet',
+                }}
+              />
             </div>
-            <div className="text-xs text-slate-500 ml-0">
+            <div className="text-xs text-slate-500">
               {getSizeLabel(materialSize)} {materialSize !== character.size && <span className="text-amber-400">(modified)</span>}
             </div>
 
@@ -691,37 +658,24 @@ export function CombatPage() {
                 <div className="text-sm text-white">Immaterial Size</div>
                 <div className="text-xs text-slate-500">Soul presence — used for 🧠 Mind & 🔥 Spirit</div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    const current = customImmaterialSize ?? character.immaterialSize;
-                    setCustomImmaterialSize(Math.max(-3, current - 1));
-                  }}
-                  className="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
-                >
-                  -
-                </button>
-                <span className={`w-8 text-center font-bold ${immaterialSize > 0 ? 'text-green-400' : immaterialSize < 0 ? 'text-red-400' : 'text-white'}`}>
-                  {immaterialSize > 0 ? '+' : ''}{immaterialSize}
-                </span>
-                <button
-                  onClick={() => {
-                    const current = customImmaterialSize ?? character.immaterialSize;
-                    setCustomImmaterialSize(Math.min(6, current + 1));
-                  }}
-                  className="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
-                >
-                  +
-                </button>
-                <button
-                  onClick={() => setCustomImmaterialSize(customImmaterialSize === null ? character.immaterialSize : null)}
-                  className={`text-xs px-2 py-1 rounded transition-colors ${
-                    customImmaterialSize !== null ? 'bg-amber-500 text-slate-900' : 'bg-slate-600 text-slate-400'
-                  }`}
-                >
-                  {customImmaterialSize !== null ? 'Custom' : 'Calc'}
-                </button>
-              </div>
+              <StepperInput
+                value={immaterialSize}
+                onChange={(delta) => {
+                  const current = customImmaterialSize ?? character.immaterialSize;
+                  setCustomImmaterialSize(Math.min(Math.max(current + delta, -3), 6));
+                }}
+                min={-3}
+                max={6}
+                className={immaterialSize > 0 ? 'text-green-400' : immaterialSize < 0 ? 'text-red-400' : 'text-white'}
+                displayFn={(v) => v > 0 ? `+${v}` : String(v)}
+                buttonClassName="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
+                toggle={{
+                  isCustom: customImmaterialSize !== null,
+                  onToggle: () => setCustomImmaterialSize(customImmaterialSize === null ? character.immaterialSize : null),
+                  customLabel: 'Custom',
+                  defaultLabel: 'Calc',
+                }}
+              />
             </div>
             <div className="text-xs text-slate-500">
               {getSizeLabel(immaterialSize)} {immaterialSize !== character.immaterialSize && <span className="text-amber-400">(modified)</span>}
@@ -749,38 +703,24 @@ export function CombatPage() {
 
           {/* Armor */}
           <div className="bg-slate-700/50 rounded p-3">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-slate-400">Armor vs {attackedAspect}</span>
-              <button
-                onClick={() => setCustomArmor(customArmor === null ? armorValue : null)}
-                className={`text-xs px-2 py-1 rounded transition-colors ${
-                  customArmor !== null ? 'bg-amber-500 text-slate-900' : 'bg-slate-600 text-slate-400'
-                }`}
-              >
-                {customArmor !== null ? 'Custom' : 'Sheet'}
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  if (customArmor === null) setCustomArmor(armorValue);
-                  setCustomArmor(Math.max(0, (customArmor ?? armorValue) - 1));
-                }}
-                className="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
-              >
-                -
-              </button>
-              <span className="text-white font-bold w-8 text-center">{customArmor !== null ? customArmor : armorValue}</span>
-              <button
-                onClick={() => {
-                  if (customArmor === null) setCustomArmor(armorValue);
-                  setCustomArmor(Math.min(20, (customArmor ?? armorValue) + 1));
-                }}
-                className="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
-              >
-                +
-              </button>
-            </div>
+            <div className="text-sm text-slate-400 mb-2">Armor vs {attackedAspect}</div>
+            <StepperInput
+              value={customArmor !== null ? customArmor : armorValue}
+              onChange={(delta) => {
+                const current = customArmor ?? armorValue;
+                setCustomArmor(Math.min(Math.max(current + delta, 0), 20));
+              }}
+              min={0}
+              max={20}
+              className="text-white"
+              buttonClassName="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
+              toggle={{
+                isCustom: customArmor !== null,
+                onToggle: () => setCustomArmor(customArmor === null ? armorValue : null),
+                customLabel: 'Custom',
+                defaultLabel: 'Sheet',
+              }}
+            />
             <div className="flex justify-between text-sm mt-2">
               <span className="text-slate-400">Penetration</span>
               <span className="text-red-400">-{attackPenetration}</span>
@@ -801,23 +741,14 @@ export function CombatPage() {
           {/* Resistance Modifier */}
           <div>
             <label className="block text-sm text-slate-400 mb-1">Resistance Modifier</label>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setResistanceModifier(Math.max(-20, resistanceModifier - 1))}
-                className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
-              >
-                -
-              </button>
-              <span className={`w-12 text-center font-bold ${resistanceModifier >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {resistanceModifier >= 0 ? '+' : ''}{resistanceModifier}
-              </span>
-              <button
-                onClick={() => setResistanceModifier(Math.min(20, resistanceModifier + 1))}
-                className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
-              >
-                +
-              </button>
-            </div>
+            <StepperInput
+              value={resistanceModifier}
+              onChange={(delta) => setResistanceModifier(prev => Math.min(Math.max(prev + delta, -20), 20))}
+              min={-20}
+              max={20}
+              className={resistanceModifier >= 0 ? 'text-green-400' : 'text-red-400'}
+              displayFn={(v) => v >= 0 ? `+${v}` : String(v)}
+            />
             <div className="text-xs text-slate-500 mt-1">For situational bonuses/penalties to resistance</div>
           </div>
         </div>

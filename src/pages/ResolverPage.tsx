@@ -11,6 +11,7 @@ import {
 } from '../utils/resolution';
 import { isBandAvailable, resultToScale } from '../data/actionEffortTable';
 import type { EffortBand, ActionResult, ContestResult } from '../types/resolution';
+import StepperInput from '../components/StepperInput';
 
 // Interface for navigation state from playsheet
 interface PlaysheetState {
@@ -138,16 +139,34 @@ export function ResolverPage() {
       setHasPlaysheetData(false);
     };
   
-    // When user manually changes skill bonus, clear playsheet indicator
     const handleSkillBonusChange = (delta: number) => {
-      setActorSkillBonus(prev => Math.max(-1, Math.min(4, prev + delta)));
+      setActorSkillBonus(prev => prev + delta);
       setHasPlaysheetData(false);
     };
-  
-    // When user manually changes wound penalty, clear playsheet indicator
+    
     const handleWoundPenaltyChange = (delta: number) => {
-      setActorWoundPenalty(prev => Math.max(-4, Math.min(0, prev + delta)));
+      setActorWoundPenalty(prev => prev + delta);
       setHasPlaysheetData(false);
+    };
+    
+    const handleActorModifierChange = (delta: number) => {
+      setActorModifier(prev => prev + delta);
+    };
+    
+    const handleOpponentSkillBonusChange = (delta: number) => {
+      setOpponentSkillBonus(prev => prev + delta);
+    };
+    
+    const handleOpponentWoundPenaltyChange = (delta: number) => {
+      setOpponentWoundPenalty(prev => prev + delta);
+    };
+    
+    const handleOpponentModifierChange = (delta: number) => {
+      setOpponentModifier(prev => prev + delta);
+    };
+
+    const handleTargetNumberChange = (delta: number) => {
+      setTargetNumber(prev => Math.max(1, Math.min(224, prev + delta)));
     };
 
   // Handle resolution
@@ -371,6 +390,13 @@ export function ResolverPage() {
     });
   };
 
+  const formatScale = (scale: number | null): string => {
+    if (scale === null) return 'Below 0.5';
+    if (scale < 10) return scale.toFixed(1);
+    if (scale < 1000) return Math.round(scale).toString();
+    return Math.round(scale).toLocaleString();
+  };
+
   // Render result display
   const renderActionResult = (ar: ActionResult, label: string) => (
     <div className={`rounded-lg p-4 ${
@@ -398,7 +424,7 @@ export function ResolverPage() {
             <div>
               <span className="text-3xl font-bold text-white">{ar.result}</span>
               {ar.capped && <span className="ml-2 text-xs text-amber-400">(capped)</span>}
-              <div className="text-xs text-slate-500">Scale: {resultToScale(ar.result) ?? 'Below 0.5'}</div>
+              <div className="text-xs text-slate-500">Scale: {formatScale(resultToScale(ar.result))}</div>
             </div>
             <div className="text-right">
               <div className={`text-lg font-bold ${
@@ -583,71 +609,44 @@ export function ResolverPage() {
           {/* Skill Bonus */}
           <div>
             <label className="block text-sm text-slate-400 mb-1">Skill Bonus (per die)</label>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleSkillBonusChange(-1)}
-                className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
-              >
-                -
-              </button>
-              <span className={`w-12 text-center font-bold ${actorSkillBonus >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {actorSkillBonus >= 0 ? '+' : ''}{actorSkillBonus}
-              </span>
-              <button
-                onClick={() => handleSkillBonusChange(1)}
-                className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
-              >
-                +
-              </button>
+            <div className="flex items-center">
+              <StepperInput
+                value={actorSkillBonus}
+                onChange={handleSkillBonusChange}
+                min={-1}
+                max={4}
+                className={actorSkillBonus >= 0 ? 'text-green-400' : 'text-red-400'}
+                displayFn={(v) => `${v >= 0 ? '+' : ''}${v}`}
+              />
               <span className="text-xs text-slate-500 ml-2">
                 ({actorSkillBonus === -1 ? 'Poor' : actorSkillBonus === 0 ? 'Average' : ['Good', 'Great', 'Exceptional', 'Extraordinary'][actorSkillBonus - 1]})
               </span>
             </div>
           </div>
 
-          {/* Wound Penalty */}
+          {/* Wound Penalty & Situational Modifier */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm text-slate-400 mb-1">Wound Penalty (per die)</label>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleWoundPenaltyChange(-1)}
-                  className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
-                >
-                  -
-                </button>
-                <span className={`w-12 text-center font-bold ${actorWoundPenalty < 0 ? 'text-red-400' : 'text-slate-300'}`}>
-                  {actorWoundPenalty}
-                </span>
-                <button
-                  onClick={() => handleWoundPenaltyChange(1)}
-                  className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
-                >
-                  +
-                </button>
-              </div>
+              <StepperInput
+                value={actorWoundPenalty}
+                onChange={handleWoundPenaltyChange}
+                min={-5}
+                max={0}
+                className={actorWoundPenalty < 0 ? 'text-red-400' : 'text-slate-300'}
+              />
             </div>
 
-            {/* Situational Modifier - always manual */}
             <div>
               <label className="block text-sm text-slate-400 mb-1">Situational Modifier</label>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setActorModifier(Math.max(-4, actorModifier - 1))}
-                  className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
-                >
-                  -
-                </button>
-                <span className={`w-12 text-center font-bold ${actorModifier >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {actorModifier >= 0 ? '+' : ''}{actorModifier}
-                </span>
-                <button
-                  onClick={() => setActorModifier(Math.min(4, actorModifier + 1))}
-                  className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
-                >
-                  +
-                </button>
-              </div>
+              <StepperInput
+                value={actorModifier}
+                onChange={handleActorModifierChange}
+                min={-50}
+                max={50}
+                className={actorModifier >= 0 ? 'text-green-400' : 'text-red-400'}
+                displayFn={(v) => `${v >= 0 ? '+' : ''}${v}`}
+              />
             </div>
           </div>
 
@@ -670,33 +669,19 @@ export function ResolverPage() {
           
           {/* Target Number (Challenge only) */}
           {testType === 'challenge' && (
-          <div>
+            <div>
               <label className="block text-sm text-slate-400 mb-1">Target Number</label>
-              <div className="flex items-center gap-2">
-              <button
-                  onClick={() => setTargetNumber(Math.max(4, targetNumber - 4))}
-                  className="bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded"
-              >
-                -4
-              </button>
-              <input
-                  type="number"
-                  value={targetNumber}
-                  onChange={(e) => setTargetNumber(Math.max(1, parseInt(e.target.value) || 4))}
-                  step={4}
-                  className="w-20 bg-slate-700 border border-slate-600 rounded px-3 py-2 text-center"
+              <StepperInput
+                value={targetNumber}
+                onChange={handleTargetNumberChange}
+                min={1}
+                step={4}
+                max={224}
               />
-              <button
-                  onClick={() => setTargetNumber(targetNumber + 4)}
-                  className="bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded"
-              >
-                +4
-              </button>
-              </div>
               <div className="text-xs text-slate-500 mt-1">
-              Scale: {resultToScale(targetNumber) ?? 'Below 0.5'}
+                Scale: {formatScale(resultToScale(targetNumber))}
               </div>
-          </div>
+            </div>
           )}
 
           {/* Opponent (Contest only) */}
@@ -735,22 +720,15 @@ export function ResolverPage() {
               {/* Opponent Skill Bonus */}
               <div>
                 <label className="block text-sm text-slate-400 mb-1">Skill Bonus (per die)</label>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setOpponentSkillBonus(Math.max(-1, opponentSkillBonus - 1))}
-                    className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
-                  >
-                    -
-                  </button>
-                  <span className={`w-12 text-center font-bold ${opponentSkillBonus >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {opponentSkillBonus >= 0 ? '+' : ''}{opponentSkillBonus}
-                  </span>
-                  <button
-                    onClick={() => setOpponentSkillBonus(Math.min(4, opponentSkillBonus + 1))}
-                    className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
-                  >
-                    +
-                  </button>
+                <div className="flex items-center">
+                  <StepperInput
+                    value={opponentSkillBonus}
+                    onChange={handleOpponentSkillBonusChange}
+                    min={-1}
+                    max={4}
+                    className={opponentSkillBonus >= 0 ? 'text-green-400' : 'text-red-400'}
+                    displayFn={(v) => `${v >= 0 ? '+' : ''}${v}`}
+                  />
                   <span className="text-xs text-slate-500 ml-2">
                     ({opponentSkillBonus === -1 ? 'Poor' : opponentSkillBonus === 0 ? 'Average' : ['Good', 'Great', 'Exceptional', 'Extraordinary'][opponentSkillBonus - 1]})
                   </span>
@@ -761,43 +739,24 @@ export function ResolverPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm text-slate-400 mb-1">Wound Penalty (per die)</label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setOpponentWoundPenalty(Math.max(-4, opponentWoundPenalty - 1))}
-                      className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
-                    >
-                      -
-                    </button>
-                    <span className={`w-12 text-center font-bold ${opponentWoundPenalty < 0 ? 'text-red-400' : 'text-slate-300'}`}>
-                      {opponentWoundPenalty}
-                    </span>
-                    <button
-                      onClick={() => setOpponentWoundPenalty(Math.min(0, opponentWoundPenalty + 1))}
-                      className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
-                    >
-                      +
-                    </button>
-                  </div>
+                  <StepperInput
+                    value={opponentWoundPenalty}
+                    onChange={handleOpponentWoundPenaltyChange}
+                    min={-4}
+                    max={0}
+                    className={opponentWoundPenalty < 0 ? 'text-red-400' : 'text-slate-300'}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm text-slate-400 mb-1">Situational Modifier</label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setOpponentModifier(Math.max(-4, opponentModifier - 1))}
-                      className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
-                    >
-                      -
-                    </button>
-                    <span className={`w-12 text-center font-bold ${opponentModifier >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {opponentModifier >= 0 ? '+' : ''}{opponentModifier}
-                    </span>
-                    <button
-                      onClick={() => setOpponentModifier(Math.min(4, opponentModifier + 1))}
-                      className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
-                    >
-                      +
-                    </button>
-                  </div>
+                  <StepperInput
+                    value={opponentModifier}
+                    onChange={handleOpponentModifierChange}
+                    min={-4}
+                    max={4}
+                    className={opponentModifier >= 0 ? 'text-green-400' : 'text-red-400'}
+                    displayFn={(v) => `${v >= 0 ? '+' : ''}${v}`}
+                  />
                 </div>
               </div>            
               {/* Total Modifier Display */}
@@ -984,7 +943,7 @@ export function ResolverPage() {
                           <span className="text-white font-medium">{winnerSuccesses}</span> {winnerSuccesses === 1 ? 'success' : 'successes'}
                           {relativeScale !== null && (
                             <span className="ml-2">
-                              (Scale <span className="text-white font-medium">{relativeScale}x</span>)
+                              (Scale <span className="text-white font-medium">{formatScale(relativeScale)}x</span>)
                             </span>
                           )}
                         </>

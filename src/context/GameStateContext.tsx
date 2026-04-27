@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react';
 import type { AspectName } from '../types/character';
-import { WOUND_PENALTIES, WOUND_LABELS, type WoundLevel } from '../data/wounds';
+import { WOUND_PENALTIES, type WoundLevel } from '../data/wounds';
 
 // Re-export wound utilities for convenience
 export type { WoundLevel } from '../data/wounds';
@@ -26,6 +26,18 @@ export interface TemporaryModifier {
   value: number;
 }
 
+export type ReactionPoolKey = 'formDodge' | 'formParry' | 'fleshParry' | 'mindDodge' | 'mindParry' | 'spiritDodge' | 'spiritParry';
+
+export interface ReactionPools {
+  formDodge: number;
+  formParry: number;
+  fleshParry: number;
+  mindDodge: number;
+  mindParry: number;
+  spiritDodge: number;
+  spiritParry: number;
+}
+
 interface GameStateContextValue {
   // Character wounds
   wounds: WoundState;
@@ -47,6 +59,12 @@ interface GameStateContextValue {
   addModifier: (description: string, value: number) => void;
   removeModifier: (id: string) => void;
   totalModifier: number;
+
+  // Dodges and Parries tracking
+  reactionPools: ReactionPools; 
+  setReactionPool: (key: ReactionPoolKey, value: number) => void;
+  useReactionPool: (key: ReactionPoolKey, max: number) => void;
+  resetReactionPools: () => void;
   
   // Opponent tracking
   opponentName: string;
@@ -99,6 +117,39 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     );
   }, [wounds]);
 
+  const [reactionPools, setReactionPools] = useState<ReactionPools>({
+    formDodge: 0,
+    formParry: 0,
+    fleshParry: 0,
+    mindDodge: 0,
+    mindParry: 0,
+    spiritDodge: 0,
+    spiritParry: 0,
+  });
+
+  const setReactionPool = useCallback((key: ReactionPoolKey, value: number) => {
+    setReactionPools(prev => ({ ...prev, [key]: value }));
+  }, []);
+
+  const useReactionPool = useCallback((key: ReactionPoolKey, max: number) => {
+    setReactionPools(prev => ({
+      ...prev,
+      [key]: Math.min(prev[key] + 1, max),
+    }));
+  }, []);
+
+  const resetReactionPools = useCallback(() => {
+    setReactionPools({
+      formDodge: 0,
+      formParry: 0,
+      fleshParry: 0,
+      mindDodge: 0,
+      mindParry: 0,
+      spiritDodge: 0,
+      spiritParry: 0,
+    });
+  }, []);
+
   const addRestorationPoints = useCallback((aspect: AspectName, points: number) => {
     setRestorationPoints(prev => ({
       ...prev,
@@ -149,9 +200,10 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   }, [opponentWounds]);
 
   const resetOpponent = useCallback(() => {
+    setOpponentWounds({ Form: 0, Flesh: 0, Mind: 0, Spirit: 0 });
     setOpponentName('');
-    setOpponentWounds(defaultWounds);
-  }, []);
+    resetReactionPools();
+  }, [resetReactionPools]);
 
   const resetAll = useCallback(() => {
     setWounds(defaultWounds);
@@ -176,6 +228,10 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     addModifier,
     removeModifier,
     totalModifier,
+    reactionPools,
+    setReactionPool,
+    useReactionPool,
+    resetReactionPools,
     opponentName,
     setOpponentName,
     opponentWounds,

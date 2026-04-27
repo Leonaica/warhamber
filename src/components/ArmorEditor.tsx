@@ -1,5 +1,4 @@
 import type { ArmorAttributeName, ArmorValues } from '../types/character';
-import { ASPECTS } from '../types/character';
 
 interface ArmorEditorProps {
   armor: ArmorValues;

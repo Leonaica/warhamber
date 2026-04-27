@@ -161,6 +161,16 @@ export function calculateSurge(
   return Math.max(0, baseSurge + stuffModifier);
 }
 
+export function calculateImmaterialSize(charismaRank: number, presenceRank: number): number {
+  const charismaEntry = DIE_POOL_TABLE.find(e => e.rank === charismaRank);
+  const presenceEntry = DIE_POOL_TABLE.find(e => e.rank === presenceRank);
+  
+  const charismaDice = charismaEntry ? charismaEntry.pool.dice.length : 0;
+  const presenceDice = presenceEntry ? presenceEntry.pool.dice.length : 0;
+  
+  return (charismaDice + presenceDice) - 2;
+}
+
 // Calculate stuff (good or bad)
 export function calculateStuff(campaignLimit: number, pointsSpent: number): number {
   return campaignLimit - pointsSpent;
@@ -176,7 +186,10 @@ export function computeCharacter(
   powers: Character['powers'],
   artifacts: Character['artifacts'],
   allies: Character['allies'],
-  personalShadows: Character['personalShadows']
+  personalShadows: Character['personalShadows'],
+  weapons: Character['weapons'],
+  armor: Character['armor'],
+  size: Character['size'],
 ): Character {
   // Calculate all attributes
   const attributes: Record<AttributeName, number> = {} as Record<AttributeName, number>;
@@ -238,6 +251,9 @@ export function computeCharacter(
     artifacts,
     allies,
     personalShadows,
+    weapons,
+    armor,
+    size,
     attributes,
     diePools,
     skillCap,

@@ -1,12 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useCharacter } from '../context/CharacterContext';
 import type { RatingValue, CharacterSkill, Artifact, Ally, PersonalShadow } from '../types/character';
-import { ASPECTS, FUNCTIONS, ATTRIBUTES, RATING_SCALE, RATING_LABELS, SKILL_RATINGS } from '../types/character';
+import { ASPECTS, FUNCTIONS, ATTRIBUTES, RATING_SCALE, RATING_LABELS, SKILL_RATINGS, SIZE_OPTIONS } from '../types/character';
 import { SKILLS } from '../data/skills';
 import { POWERS } from '../data/powers';
 import { getDiePoolEntry } from '../data/diePoolTable';
 import { calculateSkillCosts, calculateTotalSkillBonuses, checkPowerPrerequisites, getAttributeTierColor } from '../utils/calculations';
-import { generateHomebreweryMarkdown } from '../utils/homebreweryExport';
 import { CharacterSheet } from '../components/CharacterSheet';
 import { IconPicker } from '../components/IconPicker';
 import { ICONS, DEFAULT_ICON, type IconEntry } from '../data/icons';
@@ -17,6 +16,12 @@ import type { CharacterWeapon } from '../types/character';
 export function AvatarBuilderPage() {
   const character = useCharacter();
   
+  useEffect(() => {
+    document.title = character.name 
+      ? `${character.name} — Amberesque` 
+      : 'Amberesque';
+  }, [character.name]);
+
   // Keep only local UI state:
   const [showIconPicker, setShowIconPicker] = useState(false);
   
@@ -179,39 +184,6 @@ export function AvatarBuilderPage() {
     character.setAvatarIcon(icon.code);
   };
 
-  // Export handler
-  const handleExportMarkdown = () => {
-    const markdown = generateHomebreweryMarkdown(
-      character.name,
-      character.avatarIcon,
-      character.campaignLimit,
-      character.aspects,
-      character.functions,
-      character.aspectExplanations,
-      character.functionExplanations,
-      character.skills,
-      character.powers,
-      character.artifacts,
-      character.allies,
-      character.personalShadows,
-      character.computedCharacter.stuff,
-      character.computedCharacter.surge
-    );
-    // Copy to clipboard
-    navigator.clipboard.writeText(markdown).then(() => {
-      alert('Markdown copied to clipboard!');
-    }).catch(() => {
-      // Fallback: download as file
-      const blob = new Blob([markdown], { type: 'text/markdown' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${character.name || 'avatar'}.md`;
-      a.click();
-      URL.revokeObjectURL(url);
-    });
-  };
-
   // JSON Save/Load handlers
   const handleSave = () => {
     const json = character.saveCharacter();
@@ -244,10 +216,6 @@ export function AvatarBuilderPage() {
     input.click();
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   const updateShadow = (id: string, updates: Partial<PersonalShadow>) => {
     character.setPersonalShadows(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
   };
@@ -271,6 +239,7 @@ export function AvatarBuilderPage() {
 
   return (
     <>
+      {/* Header */}
       {/* Header */}
       <header className="bg-slate-800 border-b border-slate-700">
         <div className="max-w-7xl mx-auto px-4 py-4">
@@ -299,6 +268,20 @@ export function AvatarBuilderPage() {
                 />
               </div>
             </div>
+            <div className="w-48">
+              <label className="block text-sm text-slate-400 mb-1">Material Size</label>
+              <select
+                value={character.size}
+                onChange={(e) => character.setSize(parseInt(e.target.value))}
+                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              >
+                {SIZE_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.value >= 0 ? '+' : ''}{opt.value} — {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="w-32">
               <label className="block text-sm text-slate-400 mb-1">Point Limit</label>
               <input
@@ -319,18 +302,6 @@ export function AvatarBuilderPage() {
               className="bg-slate-600 hover:bg-slate-500 text-slate-100 px-4 py-2 rounded font-medium transition-colors"
             >
               💾 Save
-            </button>
-            <button
-              onClick={handleExportMarkdown}
-              className="bg-amber-500 hover:bg-amber-400 text-slate-900 px-4 py-2 rounded font-medium transition-colors"
-            >
-              📜 Export for Homebrewery
-            </button>
-            <button
-              onClick={handlePrint}
-              className="bg-amber-500 hover:bg-slate-500 text-slate-900 px-4 py-2 rounded font-medium transition-colors"
-            >
-              🖨️ Print PDF
             </button>
           </div>
         </div>
@@ -360,6 +331,15 @@ export function AvatarBuilderPage() {
               <div>
                 <span className="text-slate-400">Skill Max: </span>
                 <span className="font-bold text-purple-400">{character.computedCharacter.skillMaximum}</span>
+              </div>
+              <div>
+                <span className="text-slate-400">Size: </span>
+                <span className="font-bold text-amber-400">
+                  {SIZE_OPTIONS.find(s => s.value === character.size)?.label ?? 'Average'}
+                  <span className="text-slate-500 font-normal ml-1">
+                    ({SIZE_OPTIONS.find(s => s.value === character.size)?.description ?? 'to 200kg'})
+                  </span>
+                </span>
               </div>
             </div>
           </div>
