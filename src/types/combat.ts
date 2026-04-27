@@ -1,4 +1,4 @@
-import type { AspectName, DiePool, ArmorAttributeName, AttackType, WeaponAttack } from './character';
+import type { DiePool, WeaponAttack } from './character';
 
 // Weapon categories
 export type WeaponCategory = 'Pistol' | 'Gun' | 'Heavy' | 'Mounted' | 'Melee' | 'Thrown';
