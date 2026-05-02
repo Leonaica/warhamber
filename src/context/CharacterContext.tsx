@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useMemo, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useMemo, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import type {
   CharacterSkill,
   CharacterPower,
@@ -11,6 +11,7 @@ import type {
   CharacterWeapon,
   ArmorValues,
   ArmorAttributeName,
+  RatingValue,
 } from '../types/character';
 import { ATTRIBUTES } from '../types/character';
 import { getDiePoolEntry } from '../data/diePoolTable';
@@ -18,6 +19,14 @@ import { calculateImmaterialSize, computeCharacter } from '../utils/calculations
 import { DEFAULT_ICON } from '../data/icons';
 export { WOUND_DAMAGE_RANGES, getWoundLevel, calculateStacking } from '../data/wounds';
 export type { WoundLevel as DamageWoundLevel } from '../data/wounds';
+
+// Helper function to get default rating based on campaign limit
+function getDefaultRating(campaignLimit: number): RatingValue {
+  if (campaignLimit > -1) return 0 as RatingValue;
+  if (campaignLimit > -41) return -5 as RatingValue;
+  if (campaignLimit > -81) return -10 as RatingValue;
+  return -15 as RatingValue; // campaignLimit >= -81
+}
 
 export interface PaceValues {
   walking: { mph: number; kph: number; ms: number };
@@ -119,6 +128,43 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
   const [sizeState, setSizeState] = useState(0);
   const [paceMultiplierState, setPaceMultiplierState] = useState(1);
 
+  // Track which aspects/functions have been explicitly modified by the user
+  const modifiedAspectsRef = useRef(new Set<keyof CharacterAspectRatings>());
+  const modifiedFunctionsRef = useRef(new Set<keyof CharacterFunctionRatings>());
+
+  // Auto-update aspects/functions when campaign limit changes
+  useEffect(() => {
+    const newDefault = getDefaultRating(campaignLimitState);
+    
+    setAspectsState(prev => {
+      const newAspects = { ...prev };
+      let changed = false;
+      for (const key of Object.keys(defaultAspects) as Array<keyof CharacterAspectRatings>) {
+        if (!modifiedAspectsRef.current.has(key)) {
+          if (newAspects[key] !== newDefault) {
+            newAspects[key] = newDefault;
+            changed = true;
+          }
+        }
+      }
+      return changed ? newAspects : prev;
+    });
+    
+    setFunctionsState(prev => {
+      const newFunctions = { ...prev };
+      let changed = false;
+      for (const key of Object.keys(defaultFunctions) as Array<keyof CharacterFunctionRatings>) {
+        if (!modifiedFunctionsRef.current.has(key)) {
+          if (newFunctions[key] !== newDefault) {
+            newFunctions[key] = newDefault;
+            changed = true;
+          }
+        }
+      }
+      return changed ? newFunctions : prev;
+    });
+  }, [campaignLimitState]);
+
   // Wrapper setters that support both direct values and callback functions
   const setName = useCallback((value: string | ((prev: string) => string)) => {
     setNameState(prev => typeof value === 'function' ? value(prev) : value);
@@ -133,11 +179,29 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setAspects = useCallback((value: CharacterAspectRatings | ((prev: CharacterAspectRatings) => CharacterAspectRatings)) => {
-    setAspectsState(prev => typeof value === 'function' ? value(prev) : value);
+    setAspectsState(prev => {
+      const newAspects = typeof value === 'function' ? value(prev) : value;
+      // Track which fields were changed by the user
+      for (const key of Object.keys(defaultAspects) as Array<keyof CharacterAspectRatings>) {
+        if (prev[key] !== newAspects[key]) {
+          modifiedAspectsRef.current.add(key);
+        }
+      }
+      return newAspects;
+    });
   }, []);
 
   const setFunctions = useCallback((value: CharacterFunctionRatings | ((prev: CharacterFunctionRatings) => CharacterFunctionRatings)) => {
-    setFunctionsState(prev => typeof value === 'function' ? value(prev) : value);
+    setFunctionsState(prev => {
+      const newFunctions = typeof value === 'function' ? value(prev) : value;
+      // Track which fields were changed by the user
+      for (const key of Object.keys(defaultFunctions) as Array<keyof CharacterFunctionRatings>) {
+        if (prev[key] !== newFunctions[key]) {
+          modifiedFunctionsRef.current.add(key);
+        }
+      }
+      return newFunctions;
+    });
   }, []);
 
   const setSkills = useCallback((value: CharacterSkill[] | ((prev: CharacterSkill[]) => CharacterSkill[])) => {
@@ -262,8 +326,16 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
     if (data.name !== undefined) setNameState(data.name);
     if (data.campaignLimit !== undefined) setCampaignLimitState(data.campaignLimit);
     if (data.avatarIcon !== undefined) setAvatarIconState(data.avatarIcon);
-    if (data.aspects) setAspectsState(data.aspects);
-    if (data.functions) setFunctionsState(data.functions);
+    if (data.aspects) {
+      setAspectsState(data.aspects);
+      // Mark all aspects as modified so we don't override saved values
+      modifiedAspectsRef.current = new Set(Object.keys(data.aspects) as Array<keyof CharacterAspectRatings>);
+    }
+    if (data.functions) {
+      setFunctionsState(data.functions);
+      // Mark all functions as modified so we don't override saved values
+      modifiedFunctionsRef.current = new Set(Object.keys(data.functions) as Array<keyof CharacterFunctionRatings>);
+    }
     if (data.aspectExplanations) setAspectExplanationsState(data.aspectExplanations);
     if (data.functionExplanations) setFunctionExplanationsState(data.functionExplanations);
     if (data.skills) setSkillsState(data.skills);

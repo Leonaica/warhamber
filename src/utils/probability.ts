@@ -58,7 +58,6 @@ export function damageDistribution(magnitude: number): Map<number, number> {
 }
 
 export interface WoundProbabilities {
-  none: number;
   grazed: number;
   scrape: number;
   wound: number;
@@ -86,7 +85,6 @@ export function calculateWoundProbabilities(params: {
   const totalReduction = resistance + effectiveArmor;
   
   const probs: WoundProbabilities = {
-    none: 0,
     grazed: 0,
     scrape: 0,
     wound: 0,
@@ -111,9 +109,7 @@ export function calculateWoundProbabilities(params: {
     if (finalDamage < probs.minDamage) probs.minDamage = finalDamage;
     if (finalDamage > probs.maxDamage) probs.maxDamage = finalDamage;
     
-    if (finalDamage === 0 && totalDamage - totalReduction < 0) {
-      probs.none += probability;
-    } else if (finalDamage <= 3) {
+    if (finalDamage <= 3) {
       probs.grazed += probability;
     } else if (finalDamage <= 7) {
       probs.scrape += probability;

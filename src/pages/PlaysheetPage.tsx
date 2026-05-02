@@ -150,6 +150,20 @@ export function PlaysheetPage() {
     }
   };
 
+  function formatMultiplier(value: number): string {
+    // Format a number, dropping trailing .0
+    const fmt = (n: number): string => n % 1 === 0 ? n.toFixed(0) : n.toFixed(1);
+    
+    if (value < 10) return fmt(value);
+    if (value < 1000) return Math.round(value).toString();
+    if (value < 10000) return fmt(value / 1000) + 'K';
+    if (value < 1000000) return Math.round(value / 1000) + 'K';
+    if (value < 10000000) return fmt(value / 1000000) + 'M';
+    if (value < 1000000000) return Math.round(value / 1000000) + 'M';
+    if (value < 10000000000) return fmt(value / 1000000000) + 'B';
+    return Math.round(value / 1000000000) + 'B';
+  }
+
   const handlePoolClick = (key: ReactionPoolKey, position: number) => {
     const currentUsage = gameState.reactionPools[key];
     const newUsage = currentUsage === position ? position - 1 : position;
@@ -512,13 +526,13 @@ export function PlaysheetPage() {
                                   {attr.name}
                                 </div>
                                 <div className="text-xs text-slate-400">
-                                  {gscale !== null && gscale !== undefined ? `${gscale}` : `R${entry.rank}`}
-                                  / 
-                                  {yscale !== null && yscale !== undefined ? `${yscale}` : `R${entry.rank}`}
-                                  / 
-                                  {scale !== null && scale !== undefined ? `${scale}` : `R${entry.rank}`}
-                                  /
-                                  {rscale !== null && rscale !== undefined ? `${rscale}x` : `R${entry.rank}`}
+                                  {gscale !== null && gscale !== undefined ? `×${formatMultiplier(gscale)}` : `R${entry.rank}`}
+                                  {'/'}
+                                  {yscale !== null && yscale !== undefined ? `${formatMultiplier(yscale)}` : `R${entry.rank}`}
+                                  {'/'}
+                                  {scale !== null && scale !== undefined ? `${formatMultiplier(scale)}` : `R${entry.rank}`}
+                                  {'/'}
+                                  {rscale !== null && rscale !== undefined ? `${formatMultiplier(rscale)}` : `R${entry.rank}`}
                                 </div>
                                 <div className={`text-sm font-bold ${isSelected ? 'text-amber-300' : 'text-cyan-400'}`}>
                                   {entry.pool.notation}

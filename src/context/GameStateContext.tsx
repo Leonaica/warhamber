@@ -39,7 +39,6 @@ export interface ReactionPools {
 }
 
 export interface OpponentCombatData {
-  name: string;
   // Attacker info (when opponent is attacking)
   attackAspect: AspectName;
   attackMagnitude: number;
@@ -64,7 +63,6 @@ export interface OpponentCombatData {
 }
 
 const defaultOpponentCombatData: OpponentCombatData = {
-  name: '',
   attackAspect: 'Form',
   attackMagnitude: 3,
   attackPenetration: 0,
@@ -115,8 +113,6 @@ interface GameStateContextValue {
   resetReactionPools: () => void;
   
   // Opponent tracking
-  opponentName: string;
-  setOpponentName: (name: string) => void;
   opponentWounds: WoundState;
   setOpponentWound: (aspect: AspectName, level: WoundLevel) => void;
   opponentWoundPenalty: number;
@@ -151,7 +147,6 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   const [modifiers, setModifiers] = useState<TemporaryModifier[]>([]);
   
   // Opponent tracking
-  const [opponentName, setOpponentName] = useState('');
   const [opponentWounds, setOpponentWounds] = useState<WoundState>(defaultWounds);
   const [opponentCombatData, setOpponentCombatData] = useState<OpponentCombatData>(defaultOpponentCombatData);
 
@@ -256,7 +251,6 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
 
   const resetOpponent = useCallback(() => {
     setOpponentWounds({ Form: 0, Flesh: 0, Mind: 0, Spirit: 0 });
-    setOpponentName('');
     setOpponentCombatData(defaultOpponentCombatData);
     resetReactionPools();
   }, [resetReactionPools]);
@@ -266,7 +260,6 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     setRestorationPoints(defaultRestoration);
     setSurgeSpent(0);
     setModifiers([]);
-    setOpponentName('');
     setOpponentWounds(defaultWounds);
     setOpponentCombatData(defaultOpponentCombatData);
   }, []);
@@ -289,8 +282,6 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     setReactionPool,
     useReactionPool,
     resetReactionPools,
-    opponentName,
-    setOpponentName,
     opponentWounds,
     setOpponentWound,
     opponentWoundPenalty,

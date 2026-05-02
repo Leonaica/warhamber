@@ -18,13 +18,12 @@ interface CombatPageState {
 
 function DamageSpread({ probabilities }: { probabilities: WoundProbabilities }) {
   const woundLevels = [
-    { key: 'none' as const, label: 'None', emoji: '○', prob: probabilities.none, bgClass: 'bg-slate-600/50' },
     { key: 'grazed' as const, label: 'Grazed', emoji: '⚠️', prob: probabilities.grazed, bgClass: 'bg-amber-900/40' },
     { key: 'scrape' as const, label: 'Scrape', emoji: '🟢', prob: probabilities.scrape, bgClass: 'bg-green-900/40' },
     { key: 'wound' as const, label: 'Wound', emoji: '🟡', prob: probabilities.wound, bgClass: 'bg-yellow-900/40' },
-    { key: 'bleedingWound' as const, label: 'Bleeding', emoji: '🟠', prob: probabilities.bleedingWound, bgClass: 'bg-orange-900/40' },
-    { key: 'lifeThreatening' as const, label: 'Critical', emoji: '🔴', prob: probabilities.lifeThreatening, bgClass: 'bg-red-900/40' },
-    { key: 'maimed' as const, label: 'Maimed', emoji: '🦿', prob: probabilities.maimed, bgClass: 'bg-red-800/40' },
+    { key: 'bleedingWound' as const, label: 'Bleed', emoji: '🟠', prob: probabilities.bleedingWound, bgClass: 'bg-orange-900/40' },
+    { key: 'lifeThreatening' as const, label: 'Crit', emoji: '🔴', prob: probabilities.lifeThreatening, bgClass: 'bg-red-900/40' },
+    { key: 'maimed' as const, label: 'Maim', emoji: '🦿', prob: probabilities.maimed, bgClass: 'bg-red-800/40' },
     { key: 'mortalWound' as const, label: 'Mortal', emoji: '☠️', prob: probabilities.mortalWound, bgClass: 'bg-red-900/60' },
     { key: 'deathBlow' as const, label: 'Death', emoji: '⚰️', prob: probabilities.deathBlow, bgClass: 'bg-red-950/60' },
   ];
@@ -37,14 +36,14 @@ function DamageSpread({ probabilities }: { probabilities: WoundProbabilities }) 
   }
 
   return (
-    <div className="bg-slate-800 rounded-lg p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-medium text-slate-400">Outcome Probabilities</h3>
-        <div className="text-xs text-slate-500">
-          Avg {probabilities.averageDamage.toFixed(1)} dmg • Range {probabilities.minDamage}–{probabilities.maxDamage}
+    <div className="bg-slate-800 rounded p-2">
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="text-xs font-medium text-slate-400">Outcome Probabilities</h3>
+        <div className="text-[10px] text-slate-500">
+          Avg {probabilities.averageDamage.toFixed(1)} dmg • {probabilities.minDamage}–{probabilities.maxDamage}
         </div>
       </div>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex gap-0.5">
         {woundLevels.map(w => {
           const isMax = w.prob === maxProb && w.prob > 0.001;
           const hasProb = w.prob > 0.001;
@@ -53,18 +52,18 @@ function DamageSpread({ probabilities }: { probabilities: WoundProbabilities }) 
           return (
             <div
               key={w.key}
-              className={`flex-1 min-w-[70px] rounded p-1.5 text-center transition-all ${
-                isMax ? `ring-2 ring-amber-400 ${w.bgClass} scale-105` :
+              className={`flex-1 rounded px-0.5 py-0.5 text-center ${
+                isMax ? `ring-1 ring-amber-400 ${w.bgClass}` :
                 hasProb ? w.bgClass :
-                'bg-slate-800/30 opacity-25'
+                'opacity-20'
               }`}
             >
-              <div className="text-base leading-none">{w.emoji}</div>
-              <div className={`text-[10px] mt-0.5 leading-tight ${hasProb ? 'text-slate-300' : 'text-slate-600'}`}>
+              <div className="text-xs leading-none">{w.emoji}</div>
+              <div className={`text-[8px] mt-0.5 leading-tight ${hasProb ? 'text-slate-300' : 'text-slate-700'}`}>
                 {w.label}
               </div>
-              <div className={`text-xs font-bold mt-0.5 ${hasProb ? 'text-white' : 'text-slate-700'}`}>
-                {hasProb ? (pct < 0.5 ? '<1%' : pct < 5 ? `${pct.toFixed(1)}%` : `${Math.round(pct)}%`) : '—'}
+              <div className={`text-[10px] font-bold ${hasProb ? 'text-white' : 'text-slate-700'}`}>
+                {hasProb ? (pct < 0.5 ? '<1' : pct < 5 ? pct.toFixed(0) : Math.round(pct)) : '—'}%
               </div>
             </div>
           );
@@ -81,21 +80,21 @@ export function CombatPage() {
   const location = useLocation();
   const state = location.state as CombatPageState | null;
 
-  // Combat mode (initial value from navigation state, but switchable)
+  // Combat mode
   const [combatMode, setCombatMode] = useState<'attacker' | 'defender'>(state?.mode || 'attacker');
   
-  // Weapon selection (only used when player is attacker)
+  // Weapon selection
   const [selectedWeaponId, setSelectedWeaponId] = useState<string>(state?.weaponId || '');
   const [selectedAttackIndex, setSelectedAttackIndex] = useState(state?.attackIndex || 0);
   
-  // Compute initial attack values from weapon when navigating as attacker
+  // Compute initial attack values from weapon
   const initialWeapon = state?.weaponId 
     ? character.weapons.find(w => w.id === state.weaponId) 
     : null;
   const initialAttackIndex = state?.attackIndex ?? 0;
   const initialAttack = initialWeapon?.attacks[initialAttackIndex];
 
-  // Attack values - local state that syncs with opponent data when in defender mode
+  // Attack values
   const [attackAspect, setAttackAspect] = useState<AspectName>(
     initialAttack?.aspect || state?.defenderAspect || gameState.opponentCombatData.attackAspect
   );
@@ -111,7 +110,7 @@ export function CombatPage() {
     gameState.opponentCombatData.damageModifier
   );
   
-  // Defender values - local state that syncs with opponent data when in attacker mode
+  // Defender values
   const [customResistanceRank, setCustomResistanceRank] = useState<number | null>(null);
   const [customArmor, setCustomArmor] = useState<number | null>(null);
   const [customMaterialSize, setCustomMaterialSize] = useState<number | null>(null);
@@ -120,43 +119,36 @@ export function CombatPage() {
     gameState.opponentCombatData.resistanceModifier
   );
   
-  // Target selection: derived from mode
+  // Target selection
   const applyToOpponent = combatMode === 'attacker';
   
   // Results
   const [damageResult, setDamageResult] = useState<DamageResult | null>(null);
 
-  // The aspect being attacked is determined by the attack's aspect
   const attackedAspect = attackAspect;
 
-  // Get selected weapon (only relevant when player is attacker)
+  // Get selected weapon
   const selectedWeapon = useMemo(() => {
     if (!selectedWeaponId) return null;
     return character.weapons.find(w => w.id === selectedWeaponId) || null;
   }, [selectedWeaponId, character.weapons]);
 
-  // Get current attack from weapon (only relevant when player is attacker)
+  // Get current attack
   const weaponAttack = useMemo((): WeaponAttack | null => {
     if (!selectedWeapon || selectedWeapon.attacks.length === 0) return null;
     return selectedWeapon.attacks[selectedAttackIndex] || selectedWeapon.attacks[0];
   }, [selectedWeapon, selectedAttackIndex]);
 
-  // Determine which values to use based on combat mode
-  // When player is attacker: defender side uses opponent data
-  // When player is defender: defender side uses character data
-  
   const isPlayerDefender = combatMode === 'defender';
-  
-  // Resistance attribute for the attacked aspect
   const resistanceAttr = getResistanceAttribute(attackedAspect);
   
-  // Resistance rank: from opponent (if player is attacker) or character (if player is defender)
+  // Resistance rank
   const baseResistanceRank = isPlayerDefender
     ? character.attributeDiePools[resistanceAttr].rank
     : gameState.opponentCombatData.resistanceRanks[resistanceAttr as keyof typeof gameState.opponentCombatData.resistanceRanks];
   const resistanceRank = customResistanceRank !== null ? customResistanceRank : baseResistanceRank;
   
-  // Size values: from opponent (if player is attacker) or character (if player is defender)
+  // Size values
   const materialSize = customMaterialSize !== null 
     ? customMaterialSize 
     : isPlayerDefender 
@@ -168,11 +160,10 @@ export function CombatPage() {
       ? character.immaterialSize 
       : gameState.opponentCombatData.immaterialSize;
 
-  // Determine which size applies based on aspect
   const isPhysicalAspect = attackedAspect === 'Form' || attackedAspect === 'Flesh';
   const effectiveSize = isPhysicalAspect ? materialSize : immaterialSize;
 
-  // Armor: from opponent (if player is attacker) or character (if player is defender)
+  // Armor
   const baseArmorValue = isPlayerDefender
     ? character.armor[resistanceAttr as ArmorAttributeName]
     : gameState.opponentCombatData.armor[resistanceAttr as keyof typeof gameState.opponentCombatData.armor];
@@ -181,20 +172,31 @@ export function CombatPage() {
   // Total resistance
   const totalResistance = resistanceRank + effectiveSize + resistanceModifier;
 
-  // Handle aspect change - reset defender customizations since they're aspect-dependent
+  // Effective armor
+  const effectiveArmor = Math.max(0, armorValue - attackPenetration);
+
+  // Calculate wound probabilities
+  const woundProbabilities = useMemo(() => {
+    return calculateWoundProbabilities({
+      weaponMagnitude: attackMagnitude,
+      damageModifier,
+      resistance: resistanceRank + effectiveSize + resistanceModifier,
+      armor: armorValue,
+      penetration: attackPenetration,
+    });
+  }, [attackMagnitude, damageModifier, resistanceRank, effectiveSize, resistanceModifier, armorValue, attackPenetration]);
+
+  // Handlers
   const handleAspectChange = (aspect: AspectName) => {
     setAttackAspect(aspect);
     setCustomResistanceRank(null);
     setCustomArmor(null);
-    // Save to opponent data
     gameState.updateOpponentCombatData({ attackAspect: aspect });
   };
 
-  // Handle weapon selection - pre-fill attack values (only when player is attacker)
   const handleWeaponSelect = (weaponId: string) => {
     setSelectedWeaponId(weaponId);
     setSelectedAttackIndex(0);
-    
     if (weaponId) {
       const weapon = character.weapons.find(w => w.id === weaponId);
       if (weapon && weapon.attacks.length > 0) {
@@ -209,7 +211,6 @@ export function CombatPage() {
     }
   };
 
-  // Handle attack mode selection (only when player is attacker)
   const handleAttackModeSelect = (idx: number) => {
     setSelectedAttackIndex(idx);
     if (selectedWeapon && selectedWeapon.attacks[idx]) {
@@ -223,26 +224,6 @@ export function CombatPage() {
     }
   };
 
-  // Resistance info for display
-  const resistanceInfo = useMemo(() => {
-    return { attribute: resistanceAttr, rank: resistanceRank, sizeBonus: effectiveSize, totalResistance };
-  }, [resistanceAttr, resistanceRank, effectiveSize, totalResistance]);
-
-  // Effective armor after penetration (minimum 0)
-  const effectiveArmor = Math.max(0, armorValue - attackPenetration);
-
-  // Calculate wound probabilities
-  const woundProbabilities = useMemo(() => {
-    return calculateWoundProbabilities({
-      weaponMagnitude: attackMagnitude,
-      damageModifier,
-      resistance: resistanceRank + effectiveSize + resistanceModifier,
-      armor: armorValue,
-      penetration: attackPenetration,
-    });
-  }, [attackMagnitude, damageModifier, resistanceRank, effectiveSize, resistanceModifier, armorValue, attackPenetration]);
-
-  // Calculate damage
   const handleCalculate = () => {
     const result = calculateDamage({
       weaponMagnitude: attackMagnitude,
@@ -254,14 +235,11 @@ export function CombatPage() {
       damageModifier,
       resistanceModifier,
     });
-    
     setDamageResult(result);
   };
 
-  // Apply damage to character or opponent
   const handleApplyDamage = () => {
     if (!damageResult) return;
-    
     const currentLevel = applyToOpponent 
       ? gameState.opponentWounds[attackedAspect] as WoundLevel
       : gameState.wounds[attackedAspect] as WoundLevel;
@@ -276,7 +254,6 @@ export function CombatPage() {
     setDamageResult(null);
   };
 
-  // Reset attack fields to weapon defaults (only when player is attacker)
   const handleResetToDefaults = () => {
     if (weaponAttack) {
       setAttackAspect(weaponAttack.aspect);
@@ -288,10 +265,8 @@ export function CombatPage() {
     }
   };
 
-  // Save opponent data when leaving the page or switching modes
   const saveOpponentData = () => {
     if (isPlayerDefender) {
-      // Player is defender, so opponent is attacker - save attack values
       gameState.updateOpponentCombatData({
         attackAspect,
         attackMagnitude,
@@ -299,7 +274,6 @@ export function CombatPage() {
         damageModifier,
       });
     } else {
-      // Player is attacker, so opponent is defender - save defense values
       gameState.updateOpponentCombatData({
         resistanceRanks: {
           ...gameState.opponentCombatData.resistanceRanks,
@@ -316,29 +290,25 @@ export function CombatPage() {
     }
   };
 
-  // Handle mode switch - save current opponent data before switching
   const handleModeSwitch = (newMode: 'attacker' | 'defender') => {
     saveOpponentData();
     setCombatMode(newMode);
     setDamageResult(null);
-    // Reset custom values when switching modes
     setCustomResistanceRank(null);
     setCustomArmor(null);
     setCustomMaterialSize(null);
     setCustomImmaterialSize(null);
   };
 
-  // Handle navigation back to playsheet - save opponent data
   const handleNavigateBack = () => {
     saveOpponentData();
     navigate('/playsheet');
   };
 
-  // Render wound badge
   const renderWoundBadge = (level: number) => {
     const wl = WOUND_LABELS[level as WoundLevel] || WOUND_LABELS[0];
     return (
-      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-sm font-medium ${
+      <span className={`inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-xs font-medium ${
         level === 0 ? 'bg-slate-700 text-slate-400' :
         level <= 2 ? 'bg-green-900/50 text-green-400' :
         level === 3 ? 'bg-yellow-900/50 text-yellow-400' :
@@ -353,19 +323,11 @@ export function CombatPage() {
     );
   };
 
-  // Size category labels
   const getSizeLabel = (size: number): string => {
     const labels: Record<number, string> = {
-      '-3': 'Minuscule',
-      '-2': 'Puny',
-      '-1': 'Weedy',
-      '0': 'Average',
-      '1': 'Hulking',
-      '2': 'Enormous',
-      '3': 'Massive',
-      '4': 'Immense',
-      '5': 'Monumental',
-      '6': 'Titanic',
+      '-3': 'Minuscule', '-2': 'Puny', '-1': 'Weedy', '0': 'Average',
+      '1': 'Hulking', '2': 'Enormous', '3': 'Massive', '4': 'Immense',
+      '5': 'Monumental', '6': 'Titanic',
     };
     return labels[size] || '';
   };
@@ -385,126 +347,70 @@ export function CombatPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-      {/* Header */}
-      <div className="bg-slate-800 rounded-lg p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-amber-400">⚔️ Combat Resolution</h1>
-            <p className="text-slate-400 text-sm mt-1">Calculate damage from attacks and apply wounds.</p>
-          </div>
-          <button
-            onClick={handleNavigateBack}
-            className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-4 py-2 rounded text-sm transition-colors"
-          >
-            ← Back to Playsheet
-          </button>
-        </div>
-      </div>
-
-      {/* Mode Indicator & Target Selection */}
-      <div className={`rounded-lg p-4 ${
-        combatMode === 'attacker' ? 'bg-red-900/20 border border-red-500/30' : 'bg-blue-900/20 border border-blue-500/30'
-      }`}>
-        {/* Mode Selection */}
-        <div className="bg-slate-800 rounded-lg p-4">
-          <div className="flex items-center justify-center gap-3">
-            <button
-              onClick={() => handleModeSwitch('attacker')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                combatMode === 'attacker'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-              }`}
-            >
-              <span className="text-xl">🗡️</span>
-              <div className="text-left">
-                <div>Attacker</div>
-                <div className="text-xs font-normal opacity-75">Damage to opponent</div>
-              </div>
-            </button>
-            <button
-              onClick={() => handleModeSwitch('defender')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                combatMode === 'defender'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-              }`}
-            >
-              <span className="text-xl">🛡️</span>
-              <div className="text-left">
-                <div>Defender</div>
-                <div className="text-xs font-normal opacity-75">Damage to self</div>
-              </div>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Opponent Tracking */}
-      <div className="bg-slate-800 rounded-lg p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-bold text-amber-400">👾 Opponent</h2>
+    <div className="max-w-6xl mx-auto px-2 py-2 space-y-2">
+      {/* Compact Header */}
+      <div className="bg-slate-800 rounded p-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={gameState.opponentName}
-              onChange={(e) => gameState.setOpponentName(e.target.value)}
-              placeholder="Opponent name..."
-              className="bg-slate-700 border border-slate-600 rounded px-3 py-1 text-sm text-white placeholder-slate-500 w-40"
-            />
+            <h1 className="text-base font-bold text-amber-400">⚔️ Combat</h1>
+            <div className="flex gap-1">
+              <button
+                onClick={() => handleModeSwitch('attacker')}
+                className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                  combatMode === 'attacker'
+                    ? 'bg-red-600 text-white'
+                    : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                }`}
+              >
+                🗡️ Attack
+              </button>
+              <button
+                onClick={() => handleModeSwitch('defender')}
+                className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                  combatMode === 'defender'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                }`}
+              >
+                🛡️ Defend
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500">👾 Reset Opponent:</span>
             <button
               onClick={gameState.resetOpponent}
-              className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1 rounded text-sm transition-colors"
+              className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-1.5 py-0.5 rounded text-xs transition-colors"
+              title="New Opponent"
             >
-              🔄 New Opponent
+              🔄
+            </button>
+            <button
+              onClick={handleNavigateBack}
+              className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-0.5 rounded text-xs transition-colors"
+            >
+              ← Back
             </button>
           </div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {ASPECTS.map(aspect => {
-            const woundLevel = gameState.opponentWounds[aspect.id];
-            return (
-              <div key={aspect.id} className={`rounded p-2 text-center ${
-                woundLevel === 0 ? 'bg-slate-700/30' :
-                woundLevel <= 2 ? 'bg-green-900/20' :
-                woundLevel <= 4 ? 'bg-orange-900/20' :
-                'bg-red-900/20'
-              }`}>
-                <div className="text-lg">{aspect.emoji}</div>
-                <div className="text-xs text-slate-400">{aspect.name}</div>
-                <div className="mt-1">
-                  {renderWoundBadge(woundLevel)}
-                </div>
-                {WOUND_PENALTIES[woundLevel] < 0 && (
-                  <div className="text-xs text-red-400 mt-1">{WOUND_PENALTIES[woundLevel]}/die</div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        {gameState.opponentWoundPenalty < 0 && (
-          <div className="mt-2 p-2 bg-red-900/20 border border-red-500/30 rounded text-sm text-red-400 text-center">
-            Total Opponent Penalty: {gameState.opponentWoundPenalty}/die
-          </div>
-        )}
       </div>
 
-      {/* Two-Frame Layout */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* LEFT: Attacker */}
-        <div className="bg-slate-800 rounded-lg p-4 space-y-4">
+      {/* Main Layout: Attacker left, Defender+Results right */}
+      <div className="grid lg:grid-cols-5 gap-2">
+        
+        {/* LEFT: Attacker Config */}
+        <div className="lg:col-span-2 bg-slate-800 rounded p-2 space-y-2">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-red-400">🗡️ Attacker</h2>
+            <h2 className="text-sm font-bold text-red-400">🗡️ Attacker</h2>
             {isPlayerDefender ? (
-              <span className="text-xs text-blue-400">Opponent's attack</span>
+              <span className="text-[10px] text-blue-400">Opponent's attack</span>
             ) : (
               selectedWeaponId && weaponAttack && (
                 <button
                   onClick={handleResetToDefaults}
-                  className="text-xs text-amber-400 hover:text-amber-300 underline"
+                  className="text-[10px] text-amber-400 hover:text-amber-300 underline"
                 >
-                  Reset to weapon defaults
+                  Reset
                 </button>
               )
             )}
@@ -514,29 +420,28 @@ export function CombatPage() {
           {!isPlayerDefender && (
             <>
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Weapon</label>
+                <label className="block text-xs text-slate-400 mb-0.5">Weapon</label>
                 <select
                   value={selectedWeaponId}
                   onChange={(e) => handleWeaponSelect(e.target.value)}
-                  className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white"
+                  className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs"
                 >
-                  <option value="">— Select a weapon —</option>
+                  <option value="">— Select —</option>
                   {character.weapons.map(w => (
                     <option key={w.id} value={w.id}>{w.name}</option>
                   ))}
                 </select>
               </div>
 
-              {/* Attack Mode Selection (for multi-attack weapons) */}
               {selectedWeapon && selectedWeapon.attacks.length > 1 && (
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">Attack Mode</label>
-                  <div className="flex flex-wrap gap-2">
+                  <label className="block text-xs text-slate-400 mb-0.5">Attack Mode</label>
+                  <div className="flex flex-wrap gap-1">
                     {selectedWeapon.attacks.map((attack: WeaponAttack, idx: number) => (
                       <button
                         key={attack.id}
                         onClick={() => handleAttackModeSelect(idx)}
-                        className={`px-3 py-1 rounded text-sm transition-colors ${
+                        className={`px-2 py-0.5 rounded text-xs transition-colors ${
                           selectedAttackIndex === idx
                             ? 'bg-amber-500 text-slate-900 font-medium'
                             : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
@@ -552,23 +457,23 @@ export function CombatPage() {
             </>
           )}
 
-          {/* Editable Attack Fields */}
-          <div className="bg-slate-700/50 rounded p-3 space-y-3">
-            <div className="text-xs text-slate-500 italic mb-2">
+          {/* Attack Fields */}
+          <div className="bg-slate-700/50 rounded p-2 space-y-2">
+            <div className="text-[10px] text-slate-500 italic">
               {isPlayerDefender 
-                ? "Enter the opponent's attack values."
-                : "Values pre-filled from weapon sheet. Edit as needed for special circumstances."
+                ? "Enter opponent's attack values."
+                : "Edit for special circumstances."
               }
             </div>
 
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Aspect</label>
-              <div className="grid grid-cols-2 gap-2">
+              <label className="block text-xs text-slate-400 mb-0.5">Aspect</label>
+              <div className="grid grid-cols-2 gap-1">
                 {ASPECTS.map(aspect => (
                   <button
                     key={aspect.id}
                     onClick={() => handleAspectChange(aspect.id)}
-                    className={`px-3 py-2 rounded text-sm transition-colors ${
+                    className={`px-2 py-1 rounded text-xs transition-colors ${
                       attackAspect === aspect.id
                         ? 'bg-amber-500 text-slate-900 font-medium'
                         : 'bg-slate-600 text-slate-300 hover:bg-slate-500'
@@ -581,7 +486,7 @@ export function CombatPage() {
             </div>
 
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Magnitude</label>
+              <label className="block text-xs text-slate-400 mb-0.5">Magnitude</label>
               <select
                 value={attackMagnitude}
                 onChange={(e) => {
@@ -589,7 +494,7 @@ export function CombatPage() {
                   setAttackMagnitude(val);
                   if (isPlayerDefender) gameState.updateOpponentCombatData({ attackMagnitude: val });
                 }}
-                className="w-full bg-slate-600 border border-slate-500 rounded px-3 py-2 text-sm"
+                className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-xs"
               >
                 {DAMAGE_MAGNITUDE_TABLE.map((m: DamageMagnitudeEntry) => (
                   <option key={m.magnitude} value={m.magnitude}>
@@ -599,8 +504,8 @@ export function CombatPage() {
               </select>
             </div>
 
-            <div className="inline-flex items-center gap-2">
-              <label className="block text-sm text-slate-400 mb-1">Penetration</label>
+            <div>
+              <label className="block text-xs text-slate-400 mb-0.5">Penetration</label>
               <StepperInput
                 value={attackPenetration}
                 onChange={(delta) => {
@@ -610,99 +515,244 @@ export function CombatPage() {
                 }}
                 min={0}
                 max={100}
-                className="w-12 bg-slate-600 border border-slate-500 rounded px-3 py-2 text-sm"
+                className="text-white"
               />
-              <div className="text-xs text-slate-500 mt-1">Reduces target's armor by this amount</div>
+            </div>
+
+            <div>
+              <label className="block text-xs text-slate-400 mb-0.5">Damage Modifier</label>
+              <StepperInput
+                value={damageModifier}
+                onChange={(delta) => {
+                  const newVal = Math.min(Math.max(damageModifier + delta, -20), 20);
+                  setDamageModifier(newVal);
+                  if (isPlayerDefender) gameState.updateOpponentCombatData({ damageModifier: newVal });
+                }}
+                min={-20}
+                max={20}
+                className={damageModifier >= 0 ? 'text-green-400' : 'text-red-400'}
+                displayFn={(v) => v >= 0 ? `+${v}` : String(v)}
+              />
             </div>
           </div>
 
-          {/* Weapon Notes - only when player is attacker */}
+          {/* Weapon Notes */}
           {!isPlayerDefender && selectedWeapon?.notes && selectedWeapon.notes.length > 0 && (
-            <div className="bg-amber-900/20 border border-amber-500/30 rounded p-2">
-              <div className="text-xs text-amber-400 font-medium mb-1">Weapon Notes:</div>
+            <div className="bg-amber-900/20 border border-amber-500/30 rounded p-1.5">
+              <div className="text-[10px] text-amber-400 font-medium mb-0.5">Notes:</div>
               {selectedWeapon.notes.map((note: string, idx: number) => (
-                <div key={idx} className="text-xs text-slate-300">• {note}</div>
+                <div key={idx} className="text-[10px] text-slate-300">• {note}</div>
               ))}
             </div>
           )}
 
-          {/* Conditional Attack Warning - only when player is attacker */}
           {!isPlayerDefender && weaponAttack?.isConditional && (
-            <div className="bg-amber-900/20 border border-amber-500/30 rounded p-2">
-              <div className="text-xs text-amber-400 font-medium">⚠️ Conditional Attack</div>
-              <div className="text-xs text-slate-300">{weaponAttack.condition || 'This attack mode has conditional requirements.'}</div>
+            <div className="bg-amber-900/20 border border-amber-500/30 rounded p-1.5">
+              <div className="text-[10px] text-amber-400 font-medium">⚠️ Conditional Attack</div>
+              <div className="text-[10px] text-slate-300">{weaponAttack.condition || 'Has conditional requirements.'}</div>
             </div>
           )}
-
-          {/* Damage Modifier */}
-          <div>
-            <label className="block text-sm text-slate-400 mb-1">Damage Modifier</label>
-            <StepperInput
-              value={damageModifier}
-              onChange={(delta) => {
-                const newVal = Math.min(Math.max(damageModifier + delta, -20), 20);
-                setDamageModifier(newVal);
-                if (isPlayerDefender) gameState.updateOpponentCombatData({ damageModifier: newVal });
-              }}
-              min={-20}
-              max={20}
-              className={damageModifier >= 0 ? 'text-green-400' : 'text-red-400'}
-              displayFn={(v) => v >= 0 ? `+${v}` : String(v)}
-            />
-            <div className="text-xs text-slate-500 mt-1">For situational bonuses/penalties</div>
-          </div>
         </div>
 
-        {/* RIGHT: Defender */}
-        <div className="bg-slate-800 rounded-lg p-4 space-y-4">
-          <h2 className="text-lg font-bold text-blue-400">
-            🛡️ Defender
-            {!isPlayerDefender && <span className="text-xs text-slate-500 ml-2">(Opponent)</span>}
-          </h2>
+        {/* RIGHT: Defender + Probability + Results */}
+        <div className="lg:col-span-3 space-y-2">
+          {/* Defender Config */}
+          <div className="bg-slate-800 rounded p-2 space-y-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-bold text-blue-400">
+                🛡️ Defender
+                {!isPlayerDefender && <span className="text-[10px] text-slate-500 ml-1">(Opponent)</span>}
+              </h2>
+              <div className="text-xs text-slate-400">
+                {ASPECTS.find(a => a.id === attackedAspect)?.emoji} {attackedAspect} → {resistanceAttr}
+              </div>
+            </div>
 
-          {/* Aspect Being Attacked - display only, determined by attacker's aspect */}
-          <div className="bg-slate-700/50 rounded p-3">
-            <div className="text-sm text-slate-400 mb-1">Aspect Being Attacked</div>
-            <div className="text-lg font-medium text-white">
-              {ASPECTS.find(a => a.id === attackedAspect)?.emoji} {attackedAspect}
-            </div>
-            <div className="text-xs text-slate-500 mt-1">Determines which Resistance attribute and Size type apply</div>
-          </div>
+            {/* Wound Status */}
+            {applyToOpponent ? (
+              /* Opponent is defender: show all 4 opponent aspects */
+              <div className="bg-slate-700/50 rounded p-2">
+                <div className="text-xs text-slate-400 mb-1">
+                  Opponent's Wounds
+                </div>
+                <div className="grid grid-cols-4 gap-1">
+                  {ASPECTS.map(aspect => {
+                    const woundLevel = gameState.opponentWounds[aspect.id];
+                    const isAttacked = aspect.id === attackedAspect;
+                    const hasPenalty = WOUND_PENALTIES[woundLevel] < 0;
+                    return (
+                      <div
+                        key={aspect.id}
+                        className={`rounded px-1 py-1 text-center ${
+                          isAttacked 
+                            ? 'ring-2 ring-amber-400 bg-slate-600/50' 
+                            : woundLevel === 0 
+                              ? 'bg-slate-700/30' 
+                              : woundLevel <= 2 
+                                ? 'bg-green-900/20' 
+                                : woundLevel <= 4 
+                                  ? 'bg-orange-900/20' 
+                                  : 'bg-red-900/20'
+                        }`}
+                      >
+                        <div className="text-xs">{aspect.emoji}</div>
+                        <div className="text-[10px] text-slate-400">{aspect.name}</div>
+                        <div className="mt-0.5">{renderWoundBadge(woundLevel)}</div>
+                        {hasPenalty && (
+                          <div className="text-[9px] text-red-400">{WOUND_PENALTIES[woundLevel]}/die</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {gameState.opponentWoundPenalty < 0 && (
+                  <div className="text-[10px] text-red-400 text-center mt-1">
+                    Total Penalty: {gameState.opponentWoundPenalty}/die
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Player is defender: show own wound on attacked aspect */
+              <div className="bg-slate-700/50 rounded px-2 py-1 flex items-center justify-between">
+                <span className="text-xs text-slate-400">Your Wound:</span>
+                <div className="flex items-center gap-1">
+                  {renderWoundBadge(gameState.wounds[attackedAspect])}
+                  {WOUND_PENALTIES[gameState.wounds[attackedAspect] as WoundLevel] < 0 && (
+                    <span className="text-[10px] text-red-400">
+                      ({WOUND_PENALTIES[gameState.wounds[attackedAspect] as WoundLevel]}/die)
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
 
-          {/* Current Wound Status - show target's wounds */}
-          <div className="bg-slate-700/50 rounded p-3">
-            <div className="text-sm text-slate-400 mb-1">
-              {applyToOpponent ? "Opponent's" : "Your"} Current Wound
-            </div>
-            <div className="flex items-center gap-2">
-              {renderWoundBadge(applyToOpponent ? gameState.opponentWounds[attackedAspect] : gameState.wounds[attackedAspect])}
-              {WOUND_PENALTIES[(applyToOpponent ? gameState.opponentWounds[attackedAspect] : gameState.wounds[attackedAspect]) as WoundLevel] < 0 && (
-                <span className="text-xs text-red-400">
-                  ({WOUND_PENALTIES[(applyToOpponent ? gameState.opponentWounds[attackedAspect] : gameState.wounds[attackedAspect]) as WoundLevel]}/die)
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Resistance */}
-          <div className="bg-slate-700/50 rounded p-3 space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-slate-400">Resistance Attribute</span>
-              <span className="text-white font-medium">{resistanceInfo.attribute}</span>
-            </div>
-            
-            <div className="border-t border-slate-600 pt-2 space-y-2">
+            {/* Resistance */}
+            <div className="bg-slate-700/50 rounded p-2 space-y-1.5">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-slate-400">Base Rank</span>
+                <span className="text-xs text-slate-400">Resistance</span>
+                <span className="text-cyan-400 font-bold text-sm">{totalResistance}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-x-3 gap-y-1 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Rank</span>
+                  <StepperInput
+                    value={resistanceRank}
+                    onChange={(delta) => {
+                      const newVal = Math.min(Math.max(resistanceRank + delta, 0), 20);
+                      setCustomResistanceRank(newVal);
+                      if (!isPlayerDefender) {
+                        gameState.updateOpponentCombatData({
+                          resistanceRanks: {
+                            ...gameState.opponentCombatData.resistanceRanks,
+                            [resistanceAttr]: newVal,
+                          },
+                        });
+                      }
+                    }}
+                    min={0}
+                    max={20}
+                    className="text-white"
+                    toggle={
+                      isPlayerDefender
+                        ? {
+                            isCustom: customResistanceRank !== null,
+                            onToggle: () => setCustomResistanceRank(customResistanceRank === null ? baseResistanceRank : null),
+                            customLabel: 'C',
+                            defaultLabel: 'S',
+                          }
+                        : undefined
+                    }
+                  />
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">
+                    {isPhysicalAspect ? 'Mat' : 'Imm'} Size
+                  </span>
+                  <span className={`font-medium ${effectiveSize > 0 ? 'text-green-400' : effectiveSize < 0 ? 'text-red-400' : 'text-white'}`}>
+                    {effectiveSize > 0 ? '+' : ''}{effectiveSize}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Mod</span>
+                  <StepperInput
+                    value={resistanceModifier}
+                    onChange={(delta) => {
+                      const newVal = Math.min(Math.max(resistanceModifier + delta, -20), 20);
+                      setResistanceModifier(newVal);
+                      if (!isPlayerDefender) {
+                        gameState.updateOpponentCombatData({ resistanceModifier: newVal });
+                      }
+                    }}
+                    min={-20}
+                    max={20}
+                    className={resistanceModifier >= 0 ? 'text-green-400' : 'text-red-400'}
+                    displayFn={(v) => v >= 0 ? `+${v}` : String(v)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Size & Armor */}
+            <div className="grid grid-cols-2 gap-2">
+              {/* Size */}
+              <div className="bg-slate-700/50 rounded p-2 space-y-1">
+                <div className="text-[10px] text-slate-400 font-medium">
+                  {isPhysicalAspect ? '🧱 Material' : '🧠 Immaterial'} Size
+                </div>
+                <div className="flex items-center justify-between">
+                  <StepperInput
+                    value={isPhysicalAspect ? materialSize : immaterialSize}
+                    onChange={(delta) => {
+                      if (isPhysicalAspect) {
+                        const newVal = Math.min(Math.max(materialSize + delta, -3), 6);
+                        setCustomMaterialSize(newVal);
+                        if (!isPlayerDefender) gameState.updateOpponentCombatData({ materialSize: newVal });
+                      } else {
+                        const newVal = Math.min(Math.max(immaterialSize + delta, -3), 6);
+                        setCustomImmaterialSize(newVal);
+                        if (!isPlayerDefender) gameState.updateOpponentCombatData({ immaterialSize: newVal });
+                      }
+                    }}
+                    min={-3}
+                    max={6}
+                    className={effectiveSize > 0 ? 'text-green-400' : effectiveSize < 0 ? 'text-red-400' : 'text-white'}
+                    displayFn={(v) => v > 0 ? `+${v}` : String(v)}
+                    toggle={
+                      isPlayerDefender
+                        ? {
+                            isCustom: isPhysicalAspect ? customMaterialSize !== null : customImmaterialSize !== null,
+                            onToggle: () => {
+                              if (isPhysicalAspect) {
+                                setCustomMaterialSize(customMaterialSize === null ? character.size : null);
+                              } else {
+                                setCustomImmaterialSize(customImmaterialSize === null ? character.immaterialSize : null);
+                              }
+                            },
+                            customLabel: 'C',
+                            defaultLabel: 'S',
+                          }
+                        : undefined
+                    }
+                  />
+                  <span className="text-[10px] text-slate-500">{getSizeLabel(isPhysicalAspect ? materialSize : immaterialSize)}</span>
+                </div>
+                {!isPhysicalAspect && (
+                  <div className="text-[9px] text-slate-600">Charisma + Presence − 2</div>
+                )}
+              </div>
+
+              {/* Armor */}
+              <div className="bg-slate-700/50 rounded p-2 space-y-1">
+                <div className="text-[10px] text-slate-400 font-medium">Armor vs {attackedAspect}</div>
                 <StepperInput
-                  value={resistanceRank}
+                  value={armorValue}
                   onChange={(delta) => {
-                    const newVal = Math.min(Math.max(resistanceRank + delta, 0), 20);
-                    setCustomResistanceRank(newVal);
+                    const newVal = Math.min(Math.max(armorValue + delta, 0), 20);
+                    setCustomArmor(newVal);
                     if (!isPlayerDefender) {
                       gameState.updateOpponentCombatData({
-                        resistanceRanks: {
-                          ...gameState.opponentCombatData.resistanceRanks,
+                        armor: {
+                          ...gameState.opponentCombatData.armor,
                           [resistanceAttr]: newVal,
                         },
                       });
@@ -711,353 +761,163 @@ export function CombatPage() {
                   min={0}
                   max={20}
                   className="text-white"
-                  buttonClassName="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
                   toggle={
                     isPlayerDefender
                       ? {
-                          isCustom: customResistanceRank !== null,
-                          onToggle: () => setCustomResistanceRank(customResistanceRank === null ? baseResistanceRank : null),
-                          customLabel: 'Custom',
-                          defaultLabel: 'Sheet',
+                          isCustom: customArmor !== null,
+                          onToggle: () => setCustomArmor(customArmor === null ? baseArmorValue : null),
+                          customLabel: 'C',
+                          defaultLabel: 'S',
                         }
                       : undefined
                   }
                 />
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-slate-400">
-                  {isPhysicalAspect ? 'Material Size' : 'Immaterial Size'}
-                </span>
-                <span className={`font-bold ${effectiveSize > 0 ? 'text-green-400' : effectiveSize < 0 ? 'text-red-400' : 'text-white'}`}>
-                  {effectiveSize > 0 ? '+' : ''}{effectiveSize}
-                </span>
-              </div>
-
-              {resistanceModifier !== 0 && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-400">Modifier</span>
-                  <span className={`font-bold ${resistanceModifier > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {resistanceModifier > 0 ? '+' : ''}{resistanceModifier}
+                <div className="flex justify-between text-[10px]">
+                  <span className="text-slate-500">Pen −{attackPenetration}</span>
+                  <span className={`font-medium ${effectiveArmor === 0 ? 'text-slate-500' : 'text-green-400'}`}>
+                    = {effectiveArmor}
                   </span>
                 </div>
-              )}
-
-              <div className="flex justify-between items-center border-t border-slate-600 pt-2">
-                <span className="text-sm text-slate-300 font-medium">Total Resistance</span>
-                <span className="text-cyan-400 font-bold text-lg">{totalResistance}</span>
               </div>
             </div>
           </div>
 
-          {/* Size Details */}
-          <div className="bg-slate-700/50 rounded p-3 space-y-3">
-            <div className="text-sm text-slate-400 font-medium">Size</div>
-            
-            {/* Material Size */}
-            <div className="flex justify-between items-center">
-              <div>
-                <div className="text-sm text-white">Material Size</div>
-                <div className="text-xs text-slate-500">Physical body — used for 🧱 Form & 🧬 Flesh</div>
-              </div>
-              <StepperInput
-                value={materialSize}
-                onChange={(delta) => {
-                  const newVal = Math.min(Math.max(materialSize + delta, -3), 6);
-                  setCustomMaterialSize(newVal);
-                  if (!isPlayerDefender) {
-                    gameState.updateOpponentCombatData({ materialSize: newVal });
-                  }
-                }}
-                min={-3}
-                max={6}
-                className={materialSize > 0 ? 'text-green-400' : materialSize < 0 ? 'text-red-400' : 'text-white'}
-                displayFn={(v) => v > 0 ? `+${v}` : String(v)}
-                buttonClassName="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
-                toggle={
-                  isPlayerDefender
-                    ? {
-                        isCustom: customMaterialSize !== null,
-                        onToggle: () => setCustomMaterialSize(customMaterialSize === null ? character.size : null),
-                        customLabel: 'Custom',
-                        defaultLabel: 'Sheet',
-                      }
-                    : undefined
-                }
-              />
-            </div>
-            <div className="text-xs text-slate-500">
-              {getSizeLabel(materialSize)} {isPlayerDefender && materialSize !== character.size && <span className="text-amber-400">(modified)</span>}
-            </div>
+          {/* Probability Spread */}
+          <DamageSpread probabilities={woundProbabilities} />
 
-            {/* Immaterial Size */}
-            <div className="flex justify-between items-center pt-2 border-t border-slate-600">
-              <div>
-                <div className="text-sm text-white">Immaterial Size</div>
-                <div className="text-xs text-slate-500">Soul presence — used for 🧠 Mind & 🔥 Spirit</div>
-              </div>
-              <StepperInput
-                value={immaterialSize}
-                onChange={(delta) => {
-                  const newVal = Math.min(Math.max(immaterialSize + delta, -3), 6);
-                  setCustomImmaterialSize(newVal);
-                  if (!isPlayerDefender) {
-                    gameState.updateOpponentCombatData({ immaterialSize: newVal });
-                  }
-                }}
-                min={-3}
-                max={6}
-                className={immaterialSize > 0 ? 'text-green-400' : immaterialSize < 0 ? 'text-red-400' : 'text-white'}
-                displayFn={(v) => v > 0 ? `+${v}` : String(v)}
-                buttonClassName="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
-                toggle={
-                  isPlayerDefender
-                    ? {
-                        isCustom: customImmaterialSize !== null,
-                        onToggle: () => setCustomImmaterialSize(customImmaterialSize === null ? character.immaterialSize : null),
-                        customLabel: 'Custom',
-                        defaultLabel: 'Calc',
-                      }
-                    : undefined
-                }
-              />
-            </div>
-            <div className="text-xs text-slate-500">
-              {getSizeLabel(immaterialSize)} {isPlayerDefender && immaterialSize !== character.immaterialSize && <span className="text-amber-400">(modified)</span>}
-              {isPlayerDefender && customImmaterialSize === null && (
-                <span className="text-slate-600 ml-1">(Charisma + Presence dice − 2)</span>
-              )}
-            </div>
+          {/* Calculate Button */}
+          <button
+            onClick={handleCalculate}
+            className="w-full bg-red-600 hover:bg-red-500 text-white py-2 rounded text-sm font-bold transition-colors"
+          >
+            🎲 Calculate Damage
+          </button>
 
-            {/* Active Size Indicator */}
-            <div className={`rounded p-2 mt-2 ${
-              isPhysicalAspect ? 'bg-blue-900/30 border border-blue-500/30' : 'bg-purple-900/30 border border-purple-500/30'
-            }`}>
-              <div className="text-xs text-slate-400">
-                Active for this attack: <span className="font-bold text-white">
-                  {isPhysicalAspect ? 'Material Size' : 'Immaterial Size'}
-                </span>
+          {/* Results */}
+          {damageResult && (
+            <div className="bg-slate-800 rounded p-2 space-y-2">
+              <h2 className="text-sm font-bold text-amber-400">Result</h2>
+
+              {/* Damage Breakdown */}
+              <div className="bg-slate-700/50 rounded p-2 space-y-1 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Roll:</span>
+                  <span className="text-white">
+                    [{damageResult.weaponRollDetails.dice.join(', ')}]
+                    {damageResult.weaponRollDetails.explosions.length > 0 && (
+                      <span className="text-amber-400 ml-1">
+                        💥 {damageResult.weaponRollDetails.explosions.map(e => e.rolls.join('+')).join(', ')}
+                      </span>
+                    )} = {damageResult.weaponRollRaw}
+                  </span>
+                </div>
+
+                {damageResult.damageModifier !== 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Dmg Mod:</span>
+                    <span className={damageResult.damageModifier > 0 ? 'text-green-400' : 'text-red-400'}>
+                      {damageResult.damageModifier > 0 ? '+' : ''}{damageResult.damageModifier}
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Weapon Dmg:</span>
+                  <span className="text-white font-medium">{damageResult.weaponDamage}</span>
+                </div>
+
+                <div className="border-t border-slate-600 pt-1" />
+
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Resistance:</span>
+                  <span className="text-red-400">
+                    −{damageResult.resistanceReduction}
+                    <span className="text-slate-500 ml-1 text-[10px]">
+                      (R{damageResult.resistanceBreakdown.rank}
+                      {damageResult.resistanceBreakdown.size !== 0 && (
+                        <> {damageResult.resistanceBreakdown.size > 0 ? '+' : ''}{damageResult.resistanceBreakdown.size}</> 
+                      )}
+                      {damageResult.resistanceBreakdown.modifier !== 0 && (
+                        <> {damageResult.resistanceBreakdown.modifier > 0 ? '+' : ''}{damageResult.resistanceBreakdown.modifier}</>
+                      )})
+                    </span>
+                  </span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Armor:</span>
+                  <span className="text-red-400">
+                    −{damageResult.armorReduction}
+                    {damageResult.penetration > 0 && (
+                      <span className="text-slate-500 ml-1 text-[10px]">
+                        ({damageResult.armorValue} − {damageResult.penetration} pen)
+                      </span>
+                    )}
+                  </span>
+                </div>
+
+                <div className="border-t border-slate-600 pt-1 flex justify-between font-bold">
+                  <span className="text-slate-300">Final Damage:</span>
+                  <span className="text-white text-base">{damageResult.finalDamage}</span>
+                </div>
               </div>
-              <div className={`text-lg font-bold ${
-                effectiveSize > 0 ? 'text-green-400' : effectiveSize < 0 ? 'text-red-400' : 'text-white'
+
+              {/* Wound Level */}
+              <div className={`rounded p-2 text-center ${
+                damageResult.woundLevel <= 1 ? 'bg-slate-700/50 border border-slate-600' :
+                damageResult.woundLevel === 2 ? 'bg-green-900/30 border border-green-500/50' :
+                damageResult.woundLevel === 3 ? 'bg-yellow-900/30 border border-yellow-500/50' :
+                damageResult.woundLevel === 4 ? 'bg-orange-900/30 border border-orange-500/50' :
+                damageResult.woundLevel === 5 ? 'bg-red-900/30 border border-red-500/50' :
+                'bg-red-950/50 border border-red-500/50'
               }`}>
-                {effectiveSize > 0 ? '+' : ''}{effectiveSize} {getSizeLabel(effectiveSize)}
-              </div>
-            </div>
-          </div>
-
-          {/* Armor */}
-          <div className="bg-slate-700/50 rounded p-3">
-            <div className="text-sm text-slate-400 mb-2">Armor vs {attackedAspect}</div>
-            <StepperInput
-              value={armorValue}
-              onChange={(delta) => {
-                const newVal = Math.min(Math.max(armorValue + delta, 0), 20);
-                setCustomArmor(newVal);
-                if (!isPlayerDefender) {
-                  gameState.updateOpponentCombatData({
-                    armor: {
-                      ...gameState.opponentCombatData.armor,
-                      [resistanceAttr]: newVal,
-                    },
-                  });
-                }
-              }}
-              min={0}
-              max={20}
-              className="text-white"
-              buttonClassName="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
-              toggle={
-                isPlayerDefender
-                  ? {
-                      isCustom: customArmor !== null,
-                      onToggle: () => setCustomArmor(customArmor === null ? baseArmorValue : null),
-                      customLabel: 'Custom',
-                      defaultLabel: 'Sheet',
-                    }
-                  : undefined
-              }
-            />
-            <div className="flex justify-between text-sm mt-2">
-              <span className="text-slate-400">Penetration</span>
-              <span className="text-red-400">-{attackPenetration}</span>
-            </div>
-            <div className="flex justify-between text-sm mt-1">
-              <span className="text-slate-400">Effective Armor</span>
-              <span className={`font-bold ${effectiveArmor === 0 ? 'text-slate-500' : 'text-green-400'}`}>
-                {effectiveArmor}
-              </span>
-            </div>
-            {!isPlayerDefender && customArmor !== null && (
-              <div className="text-xs text-amber-400 mt-1">
-                Custom armor value — adjust for cover, special qualities, etc.
-              </div>
-            )}
-          </div>
-
-          {/* Resistance Modifier */}
-          <div>
-            <label className="block text-sm text-slate-400 mb-1">Resistance Modifier</label>
-            <StepperInput
-              value={resistanceModifier}
-              onChange={(delta) => {
-                const newVal = Math.min(Math.max(resistanceModifier + delta, -20), 20);
-                setResistanceModifier(newVal);
-                if (!isPlayerDefender) {
-                  gameState.updateOpponentCombatData({ resistanceModifier: newVal });
-                }
-              }}
-              min={-20}
-              max={20}
-              className={resistanceModifier >= 0 ? 'text-green-400' : 'text-red-400'}
-              displayFn={(v) => v >= 0 ? `+${v}` : String(v)}
-            />
-            <div className="text-xs text-slate-500 mt-1">For situational bonuses/penalties to resistance</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Damage Probability Spread */}
-      <DamageSpread probabilities={woundProbabilities} />
-
-      {/* Calculate Button */}
-      <div className="bg-slate-800 rounded-lg p-4">
-        <button
-          onClick={handleCalculate}
-          className="w-full bg-red-600 hover:bg-red-500 text-white py-3 rounded font-bold text-lg transition-colors"
-        >
-          🎲 Calculate Damage
-        </button>
-      </div>
-
-      {/* Results */}
-      {damageResult && (
-        <div className="bg-slate-800 rounded-lg p-4 space-y-4">
-          <h2 className="text-lg font-bold text-amber-400">Damage Result</h2>
-
-          {/* Damage Breakdown */}
-          <div className="bg-slate-700/50 rounded p-3 space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-slate-400">Weapon Roll:</span>
-              <span className="text-white">
-                [{damageResult.weaponRollDetails.dice.join(', ')}]
-                {damageResult.weaponRollDetails.explosions.length > 0 && (
-                  <span className="text-amber-400 ml-1">
-                    💥 {damageResult.weaponRollDetails.explosions.map(e => e.rolls.join('+')).join(', ')}
-                  </span>
-                )} = {damageResult.weaponRollRaw}
-              </span>
-            </div>
-
-            {damageResult.damageModifier !== 0 && (
-              <div className="flex justify-between">
-                <span className="text-slate-400">Damage Modifier:</span>
-                <span className={damageResult.damageModifier > 0 ? 'text-green-400' : 'text-red-400'}>
-                  {damageResult.damageModifier > 0 ? '+' : ''}{damageResult.damageModifier}
-                </span>
-              </div>
-            )}
-
-            <div className="flex justify-between">
-              <span className="text-slate-400">Total Weapon Damage:</span>
-              <span className="text-white font-medium">{damageResult.weaponDamage}</span>
-            </div>
-
-            <div className="border-t border-slate-600 pt-2" />
-
-            <div className="flex justify-between">
-              <span className="text-slate-400">Resistance:</span>
-              <span className="text-red-400">
-                -{damageResult.resistanceReduction}
-                <span className="text-slate-500 ml-1">
-                  (Rank {damageResult.resistanceBreakdown.rank}
-                  {damageResult.resistanceBreakdown.size !== 0 && (
-                    <> + {isPhysicalAspect ? 'Material' : 'Immaterial'} {damageResult.resistanceBreakdown.size > 0 ? '+' : ''}{damageResult.resistanceBreakdown.size}</>
-                  )}
-                  {damageResult.resistanceBreakdown.modifier !== 0 && (
-                    <> + {damageResult.resistanceBreakdown.modifier > 0 ? '+' : ''}{damageResult.resistanceBreakdown.modifier} mod</>
-                  )})
-                </span>
-              </span>
-            </div>
-
-            <div className="flex justify-between">
-              <span className="text-slate-400">Armor:</span>
-              <span className="text-red-400">
-                -{damageResult.armorReduction}
-                {damageResult.penetration > 0 && (
-                  <span className="text-slate-500 ml-1">
-                    ({damageResult.armorValue} armor - {damageResult.penetration} pen = {damageResult.effectiveArmor})
-                  </span>
-                )}
-              </span>
-            </div>
-
-            <div className="border-t border-slate-600 pt-2 flex justify-between font-bold">
-              <span className="text-slate-300">Final Damage:</span>
-              <span className="text-white text-lg">{damageResult.finalDamage}</span>
-            </div>
-          </div>
-
-          {/* Wound Level */}
-          <div className={`rounded-lg p-4 text-center ${
-            damageResult.woundLevel <= 1 ? 'bg-slate-700/50 border border-slate-600' :
-            damageResult.woundLevel === 2 ? 'bg-green-900/30 border border-green-500/50' :
-            damageResult.woundLevel === 3 ? 'bg-yellow-900/30 border border-yellow-500/50' :
-            damageResult.woundLevel === 4 ? 'bg-orange-900/30 border border-orange-500/50' :
-            damageResult.woundLevel === 5 ? 'bg-red-900/30 border border-red-500/50' :
-            'bg-red-950/50 border border-red-500/50'
-          }`}>
-            <div className="text-4xl mb-2">{damageResult.woundEmoji}</div>
-            <div className="text-xl font-bold text-white">{damageResult.woundLabel}</div>
-            {damageResult.woundPenalty < 0 && (
-              <div className="text-sm text-slate-400 mt-1">{damageResult.woundPenalty}/die penalty</div>
-            )}
-          </div>
-
-          {/* Stacking Preview */}
-          {(() => {
-            const currentLevel = (applyToOpponent 
-              ? gameState.opponentWounds[attackedAspect] 
-              : gameState.wounds[attackedAspect]) as WoundLevel;
-            const newLevel = damageResult.woundLevel;
-            const { resultingLevel, description } = calculateStacking(currentLevel, newLevel);
-            const isWorse = resultingLevel > currentLevel;
-
-            return (
-              <div className={`rounded p-3 ${isWorse ? 'bg-amber-900/30 border border-amber-500/50' : 'bg-slate-700/50 border border-slate-600'}`}>
-                <div className="text-sm font-medium text-amber-400 mb-2">
-                  Stacking Preview ({applyToOpponent ? 'Opponent' : 'Self'})
-                </div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-slate-400 text-sm">Current:</span>
-                  {renderWoundBadge(currentLevel)}
-                  <span className="text-slate-500">→</span>
-                  <span className="text-slate-400 text-sm">Result:</span>
-                  {renderWoundBadge(resultingLevel)}
-                </div>
-                <div className="text-xs text-slate-400">{description}</div>
-
-                {isWorse && (
-                  <button
-                    onClick={handleApplyDamage}
-                    className={`w-full mt-3 py-2 rounded font-medium transition-colors ${
-                      applyToOpponent
-                        ? 'bg-red-600 hover:bg-red-500 text-white'
-                        : 'bg-blue-600 hover:bg-blue-500 text-white'
-                    }`}
-                  >
-                    {applyToOpponent 
-                      ? `Apply Damage to Opponent's ${ASPECTS.find(a => a.id === attackedAspect)?.emoji} ${attackedAspect}`
-                      : `Apply Damage to Your ${ASPECTS.find(a => a.id === attackedAspect)?.emoji} ${attackedAspect}`
-                    }
-                  </button>
+                <div className="text-2xl">{damageResult.woundEmoji}</div>
+                <div className="text-base font-bold text-white">{damageResult.woundLabel}</div>
+                {damageResult.woundPenalty < 0 && (
+                  <div className="text-xs text-slate-400">{damageResult.woundPenalty}/die penalty</div>
                 )}
               </div>
-            );
-          })()}
+
+              {/* Stacking Preview */}
+              {(() => {
+                const currentLevel = (applyToOpponent 
+                  ? gameState.opponentWounds[attackedAspect] 
+                  : gameState.wounds[attackedAspect]) as WoundLevel;
+                const newLevel = damageResult.woundLevel;
+                const { resultingLevel, description } = calculateStacking(currentLevel, newLevel);
+                const isWorse = resultingLevel > currentLevel;
+
+                return (
+                  <div className={`rounded p-2 ${isWorse ? 'bg-amber-900/30 border border-amber-500/50' : 'bg-slate-700/50 border border-slate-600'}`}>
+                    <div className="text-xs font-medium text-amber-400 mb-1">
+                      Stacking ({applyToOpponent ? 'Opponent' : 'Self'})
+                    </div>
+                    <div className="flex items-center gap-1 mb-1">
+                      {renderWoundBadge(currentLevel)}
+                      <span className="text-slate-500 text-xs">→</span>
+                      {renderWoundBadge(resultingLevel)}
+                    </div>
+                    <div className="text-[10px] text-slate-400">{description}</div>
+
+                    {isWorse && (
+                      <button
+                        onClick={handleApplyDamage}
+                        className={`w-full mt-1.5 py-1.5 rounded text-xs font-medium transition-colors ${
+                          applyToOpponent
+                            ? 'bg-red-600 hover:bg-red-500 text-white'
+                            : 'bg-blue-600 hover:bg-blue-500 text-white'
+                        }`}
+                      >
+                        Apply to {applyToOpponent ? 'Opponent' : 'Self'} {ASPECTS.find(a => a.id === attackedAspect)?.emoji} {attackedAspect}
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

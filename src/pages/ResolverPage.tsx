@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useGameState } from '../context/GameStateContext';
+import { useCharacter } from '../context/CharacterContext';
 import { DIE_POOL_TABLE } from '../data/diePoolTable';
 import type { DiePoolEntry } from '../data/diePoolTable';
 import { 
@@ -12,8 +14,6 @@ import {
 import { isBandAvailable, resultToScale } from '../data/actionEffortTable';
 import type { EffortBand, ActionResult, ContestResult } from '../types/resolution';
 import StepperInput from '../components/StepperInput';
-import { useGameState } from '../context/GameStateContext';
-import { useCharacter } from '../context/CharacterContext';
 
 // Interface for navigation state from playsheet
 interface PlaysheetState {
@@ -27,6 +27,14 @@ interface PlaysheetState {
 export function ResolverPage() {
   const location = useLocation();
   const playsheetState = location.state as PlaysheetState | undefined;
+  const gameState = useGameState();
+  const character = useCharacter();
+  
+  // Only enforce surge limits when a character is loaded
+  const hasCharacter = character.hasCharacter;
+  const currentSurge = hasCharacter 
+    ? character.computedCharacter.surge - gameState.surgeSpent 
+    : Infinity;
   
   // Actor configuration - initialize from playsheet state if available
   const [actorPoolRank, setActorPoolRank] = useState(playsheetState?.poolRank ?? 8);
@@ -53,15 +61,6 @@ export function ResolverPage() {
       setHasPlaysheetData(true);
     }
   }, [playsheetState]);
-
-  const gameState = useGameState();
-  const character = useCharacter();
-
-  // Only enforce surge limits when a character is loaded
-  const hasCharacter = character.hasCharacter;
-  const currentSurge = hasCharacter 
-    ? character.computedCharacter.surge - gameState.surgeSpent 
-    : Infinity;
 
   // Test type
   const [testType, setTestType] = useState<'challenge' | 'contest'>('challenge');
@@ -142,7 +141,7 @@ export function ResolverPage() {
   const foregoneCheck = useMemo(() => {
     if (testType !== 'contest') return null;
     return isForegoneConclusion(actorPoolEntry.rank, opponentPoolEntry.rank);
-  }, [testType, actorPoolEntry.rank, opponentPoolEntry.rank]);
+  }, [testType, actorPoolEntry.rank, opponentPoolRank]);
 
     // When user manually changes pool rank, clear playsheet indicator
     const handlePoolRankChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -262,7 +261,7 @@ export function ResolverPage() {
   const handleSurge = (band: EffortBand) => {
     const surgeCost = getSurgeCost(band);
     if (hasCharacter && currentSurge < surgeCost) return;
-  
+
     if (testType === 'challenge') {
       const res = resolveTest({
         attributePool: actorPoolEntry.pool,
@@ -309,7 +308,7 @@ export function ResolverPage() {
     setLastApproach(`Surge (${band})`);
   };
 
-  // Add to state declarations at the top of the component
+  // Probability calculation
   const [probability, setProbability] = useState<{
     loading: boolean;
     result?: {
@@ -321,12 +320,10 @@ export function ResolverPage() {
     };
   }>({ loading: false });
   
-  // Add this function before the return statement
   const calculateProbability = () => {
     const ITERATIONS = 10000;
     setProbability({ loading: true });
   
-    // Use requestAnimationFrame to allow UI to update
     requestAnimationFrame(() => {
       setTimeout(() => {
         if (testType === 'challenge') {
@@ -352,7 +349,6 @@ export function ResolverPage() {
             },
           });
         } else {
-          // Check for foregone conclusion first
           const foregone = isForegoneConclusion(actorPoolEntry.rank, opponentPoolEntry.rank);
           if (foregone.isForegone) {
             setProbability({
@@ -419,22 +415,22 @@ export function ResolverPage() {
 
   // Render result display
   const renderActionResult = (ar: ActionResult, label: string) => (
-    <div className={`rounded-lg p-4 ${
+    <div className={`rounded p-2 ${
       ar.criticalFailure 
         ? 'bg-red-900/50 border border-red-500' 
         : ar.successes > 0 
           ? 'bg-green-900/30 border border-green-500/50' 
           : 'bg-slate-700/50 border border-slate-500'
     }`}>
-      <div className="text-sm text-slate-400 mb-2">{label}</div>
+      <div className="text-xs text-slate-400 mb-1">{label}</div>
       {ar.criticalFailure ? (
-        <div className="text-center">
-          <div className="text-3xl mb-2">💀</div>
-          <div className="text-red-400 font-bold">CRITICAL FAILURE</div>
-          <div className="text-xs text-slate-400 mt-1">All 1s rolled!</div>
+        <div className="text-center py-1">
+          <div className="text-2xl">💀</div>
+          <div className="text-red-400 font-bold text-sm">CRITICAL FAILURE</div>
+          <div className="text-xs text-slate-400">All 1s rolled!</div>
           {ar.rollDetails?.criticalFailureCheck && (
-            <div className="text-xs text-slate-400 mt-1">
-              Confirmation roll: 🎲 {ar.rollDetails.criticalFailureCheck.confirmationRoll}
+            <div className="text-xs text-slate-400">
+              Confirmation: 🎲 {ar.rollDetails.criticalFailureCheck.confirmationRoll}
             </div>
           )}
         </div>
@@ -442,12 +438,12 @@ export function ResolverPage() {
         <>
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-3xl font-bold text-white">{ar.result}</span>
-              {ar.capped && <span className="ml-2 text-xs text-amber-400">(capped)</span>}
+              <span className="text-2xl font-bold text-white">{ar.result}</span>
+              {ar.capped && <span className="ml-1 text-xs text-amber-400">(capped)</span>}
               <div className="text-xs text-slate-500">Scale: {formatScale(resultToScale(ar.result))}</div>
             </div>
             <div className="text-right">
-              <div className={`text-lg font-bold ${
+              <div className={`text-sm font-bold ${
                 ar.band === 'green' ? 'text-green-400' :
                 ar.band === 'yellow' ? 'text-yellow-400' :
                 ar.band === 'orange' ? 'text-orange-400' :
@@ -455,41 +451,36 @@ export function ResolverPage() {
               }`}>
                 {ar.band?.toUpperCase() ?? 'NONE'}
               </div>
-              <div className="text-sm text-slate-400">
+              <div className="text-xs text-slate-400">
                 {ar.successes} {ar.successes === 1 ? 'success' : 'successes'}
               </div>
             </div>
           </div>
           
-          {/* "Saved!" message for near-critical failures */}
           {ar.rollDetails?.criticalFailureCheck?.allMinimum && (
-            <div className="mt-2 p-2 bg-amber-900/30 rounded text-center">
+            <div className="mt-1 p-1 bg-amber-900/30 rounded text-center">
               <div className="text-xs text-amber-400">
                 ⚠️ All dice rolled 1{ar.calculationBreakdown?.skillBonusPerDie && ar.calculationBreakdown.skillBonusPerDie < 0 ? ' or 2' : ''}!
-                Confirmation roll: 🎲 {ar.rollDetails.criticalFailureCheck.confirmationRoll} — Saved!
+                Confirmation: 🎲 {ar.rollDetails.criticalFailureCheck.confirmationRoll} — Saved!
               </div>
             </div>
           )}
           
           {ar.calculationBreakdown && (
-            <div className="mt-3 pt-3 border-t border-slate-600 text-sm text-slate-400">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+            <div className="mt-1 pt-1 border-t border-slate-600 text-xs text-slate-400">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
               {ar.rollDetails ? (
                 <>
                   {ar.rollDetails.advantageDice && ar.rollDetails.advantageDice > 0 ? (
                     <>
-                      <span>Roll (with {ar.rollDetails.advantageDice} adv):</span>
+                      <span>Roll (adv {ar.rollDetails.advantageDice}):</span>
                       <span className="text-white">
                         [{ar.rollDetails.keptRolls?.map(formatRollEntry).join(', ')}]
                         {ar.rollDetails.otherRolls && ar.rollDetails.otherRolls.length > 0 && (
-                          <span className="text-blue-300 ml-1">
-                            + [{ar.rollDetails.otherRolls.map(formatRollEntry).join(', ')}]
-                          </span>
+                          <span className="text-blue-300 ml-1">+ [{ar.rollDetails.otherRolls.map(formatRollEntry).join(', ')}]</span>
                         )}
                         {ar.rollDetails.discardedRolls && ar.rollDetails.discardedRolls.length > 0 && (
-                          <span className="text-slate-500 ml-1">
-                            dropped [{ar.rollDetails.discardedRolls.map(formatRollEntry).join(', ')}]
-                          </span>
+                          <span className="text-slate-500 ml-1">drop [{ar.rollDetails.discardedRolls.map(formatRollEntry).join(', ')}]</span>
                         )} = {ar.calculationBreakdown?.rollTotal}
                       </span>
                     </>
@@ -517,7 +508,7 @@ export function ResolverPage() {
                   </>
                   ) : (
                   <>
-                    <span>Skill ({ar.calculationBreakdown.diceCount} × {ar.calculationBreakdown.skillBonusPerDie >= 0 ? '+' : ''}{ar.calculationBreakdown.skillBonusPerDie}):</span>
+                    <span>Skill ({ar.calculationBreakdown.diceCount}×{ar.calculationBreakdown.skillBonusPerDie >= 0 ? '+' : ''}{ar.calculationBreakdown.skillBonusPerDie}):</span>
                     <span className={ar.calculationBreakdown.skillBonus >= 0 ? 'text-green-400' : 'text-red-400'}>
                     {ar.calculationBreakdown.skillBonus >= 0 ? '+' : ''}{ar.calculationBreakdown.skillBonus}
                     </span>
@@ -525,10 +516,8 @@ export function ResolverPage() {
                 )}
                 {ar.calculationBreakdown.woundPenaltyPerDie !== 0 && (
                   <>
-                    <span>Wounds ({ar.calculationBreakdown.diceCount} × {ar.calculationBreakdown.woundPenaltyPerDie}):</span>
-                    <span className="text-red-400">
-                      {ar.calculationBreakdown.woundPenalty}
-                    </span>
+                    <span>Wounds ({ar.calculationBreakdown.diceCount}×{ar.calculationBreakdown.woundPenaltyPerDie}):</span>
+                    <span className="text-red-400">{ar.calculationBreakdown.woundPenalty}</span>
                   </>
                 )}
                 {ar.calculationBreakdown.situationalModifier !== 0 && (
@@ -548,117 +537,98 @@ export function ResolverPage() {
       )}
     </div>
   );
+
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-      <div className="bg-slate-800 rounded-lg p-4">
-        <h1 className="text-2xl font-bold text-amber-400 mb-2">Attribute Test Resolver</h1>
-        <p className="text-slate-400 text-sm">Free-form dice resolution for any character or NPC</p>
+    <div className="max-w-6xl mx-auto px-2 py-2 space-y-2">
+      {/* Compact Header */}
+      <div className="bg-slate-800 rounded px-3 py-1.5 flex items-center justify-between">
+        <h1 className="text-base font-bold text-amber-400">🎲 Attribute Test Resolver</h1>
+        {hasPlaysheetData && playsheetState && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-amber-400">📋 {playsheetState.attributeName}{playsheetState.skillName && ` + ${playsheetState.skillName}`}</span>
+            <button onClick={() => setHasPlaysheetData(false)} className="text-slate-500 hover:text-slate-300 text-xs">✕</button>
+          </div>
+        )}
       </div>
 
-      {/* Playsheet data indicator */}
-      {hasPlaysheetData && playsheetState && (
-        <div className="bg-amber-900/30 border border-amber-500/50 rounded-lg p-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-amber-400">📋 Pre-loaded from Playsheet:</span>
-              <span className="text-white font-medium">
-                {playsheetState.attributeName}
-                {playsheetState.skillName && ` + ${playsheetState.skillName}`}
-              </span>
-            </div>
-            <button
-              onClick={() => setHasPlaysheetData(false)}
-              className="text-slate-400 hover:text-slate-300 text-sm"
-            >
-              ✕ Clear
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Challenge vs Contest */}
-      <div className="bg-slate-800 rounded-lg p-4 space-y-4">
-        <h2 className="text-lg font-bold text-amber-400">Test Type</h2>
-        <div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setTestType('challenge')}
-              className={`flex-1 py-2 rounded font-medium transition-colors ${
-                testType === 'challenge' 
-                  ? 'bg-amber-500 text-slate-900' 
-                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-              }`}
-            >
-              Challenge
-            </button>
-            <button
-              onClick={() => setTestType('contest')}
-              className={`flex-1 py-2 rounded font-medium transition-colors ${
-                testType === 'contest' 
-                  ? 'bg-amber-500 text-slate-900' 
-                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-              }`}
-            >
-              Contest
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Actor Configuration */}
-        <div className="bg-slate-800 rounded-lg p-4 space-y-4">
-          <h2 className="text-lg font-bold text-amber-400">Actor</h2>
-          
-          {/* Die Pool */}
-          <div>
-            <label className="block text-sm text-slate-400 mb-1">Die Pool</label>
-            <select
-              value={actorPoolRank}
-              onChange={handlePoolRankChange}
-              className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2"
-            >
-              {DIE_POOL_TABLE.map((entry: DiePoolEntry) => (
-                <option key={entry.rank} value={entry.rank}>
-                  {entry.pool.notation} (Rank {entry.rank}) — {entry.amberRanking}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Skill Bonus */}
-          <div>
-            <label className="block text-sm text-slate-400 mb-1">Skill Bonus (per die)</label>
-            <div className="flex items-center">
-              <StepperInput
-                value={actorSkillBonus}
-                onChange={handleSkillBonusChange}
-                min={-1}
-                max={4}
-                className={actorSkillBonus >= 0 ? 'text-green-400' : 'text-red-400'}
-                displayFn={(v) => `${v >= 0 ? '+' : ''}${v}`}
-              />
-              <span className="text-xs text-slate-500 ml-2">
-                ({actorSkillBonus === -1 ? 'Poor' : actorSkillBonus === 0 ? 'Average' : ['Good', 'Great', 'Exceptional', 'Extraordinary'][actorSkillBonus - 1]})
-              </span>
+      {/* Main Layout: Config left, Resolution right */}
+      <div className="grid lg:grid-cols-5 gap-2">
+        
+        {/* LEFT: Configuration */}
+        <div className="lg:col-span-2 space-y-2">
+          {/* Test Type */}
+          <div className="bg-slate-800 rounded p-2">
+            <div className="flex gap-1">
+              <button
+                onClick={() => setTestType('challenge')}
+                className={`flex-1 py-1.5 rounded text-sm font-medium transition-colors ${
+                  testType === 'challenge' 
+                    ? 'bg-amber-500 text-slate-900' 
+                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}
+              >
+                Challenge
+              </button>
+              <button
+                onClick={() => setTestType('contest')}
+                className={`flex-1 py-1.5 rounded text-sm font-medium transition-colors ${
+                  testType === 'contest' 
+                    ? 'bg-amber-500 text-slate-900' 
+                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}
+              >
+                Contest
+              </button>
             </div>
           </div>
 
-          {/* Wound Penalty & Situational Modifier */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Actor Configuration */}
+          <div className="bg-slate-800 rounded p-2 space-y-2">
+            <h2 className="text-sm font-bold text-amber-400">Actor</h2>
+            
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Wound Penalty (per die)</label>
-              <StepperInput
-                value={actorWoundPenalty}
-                onChange={handleWoundPenaltyChange}
-                min={-5}
-                max={0}
-                className={actorWoundPenalty < 0 ? 'text-red-400' : 'text-slate-300'}
-              />
+              <label className="block text-xs text-slate-400 mb-0.5">Die Pool</label>
+              <select
+                value={actorPoolRank}
+                onChange={handlePoolRankChange}
+                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm"
+              >
+                {DIE_POOL_TABLE.map((entry: DiePoolEntry) => (
+                  <option key={entry.rank} value={entry.rank}>
+                    {entry.pool.notation} ({entry.amberRanking})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs text-slate-400 mb-0.5">Skill/die</label>
+                <div className="flex items-center">
+                  <StepperInput
+                    value={actorSkillBonus}
+                    onChange={handleSkillBonusChange}
+                    min={-1}
+                    max={4}
+                    className={actorSkillBonus >= 0 ? 'text-green-400' : 'text-red-400'}
+                    displayFn={(v) => `${v >= 0 ? '+' : ''}${v}`}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-0.5">Wounds/die</label>
+                <StepperInput
+                  value={actorWoundPenalty}
+                  onChange={handleWoundPenaltyChange}
+                  min={-5}
+                  max={0}
+                  className={actorWoundPenalty < 0 ? 'text-red-400' : 'text-slate-300'}
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Situational Modifier</label>
+              <label className="block text-xs text-slate-400 mb-0.5">Situational Modifier</label>
               <StepperInput
                 value={actorModifier}
                 onChange={handleActorModifierChange}
@@ -668,29 +638,19 @@ export function ResolverPage() {
                 displayFn={(v) => `${v >= 0 ? '+' : ''}${v}`}
               />
             </div>
-          </div>
 
-          {/* Total Modifier Display */}
-          <div className="bg-slate-700/50 rounded p-2 text-sm">
-            <span className="text-slate-400">Total Modifier: </span>
-            <span className={actorTotalModifier >= 0 ? 'text-green-400' : 'text-red-400'}>
-              {actorTotalModifier >= 0 ? '+' : ''}{actorTotalModifier}
-            </span>
-            {actorPoolEntry.pool.dice.length > 1 && (
-              <span className="text-slate-500 text-xs ml-2">
-                ({actorSkillBonus >= 0 ? '+' : ''}{actorSkillBonus}/die skill, {actorWoundPenalty}/die wounds, {actorModifier >= 0 ? '+' : ''}{actorModifier} situational)
+            <div className="bg-slate-700/50 rounded px-2 py-1 text-xs">
+              <span className="text-slate-400">Total: </span>
+              <span className={actorTotalModifier >= 0 ? 'text-green-400' : 'text-red-400'}>
+                {actorTotalModifier >= 0 ? '+' : ''}{actorTotalModifier}
               </span>
-            )}
+            </div>
           </div>
-        </div>
 
-        {/* Test Configuration */}
-        <div className="bg-slate-800 rounded-lg p-4 space-y-4">
-          
-          {/* Target Number (Challenge only) */}
-          {testType === 'challenge' && (
-            <div>
-              <label className="block text-sm text-slate-400 mb-1">Target Number</label>
+          {/* Target Number (Challenge) or Opponent (Contest) */}
+          {testType === 'challenge' ? (
+            <div className="bg-slate-800 rounded p-2">
+              <label className="block text-xs text-slate-400 mb-0.5">Target Number</label>
               <StepperInput
                 value={targetNumber}
                 onChange={handleTargetNumberChange}
@@ -698,49 +658,41 @@ export function ResolverPage() {
                 step={4}
                 max={224}
               />
-              <div className="text-xs text-slate-500 mt-1">
+              <div className="text-xs text-slate-500 mt-0.5">
                 Scale: {formatScale(resultToScale(targetNumber))}
               </div>
             </div>
-          )}
-
-          {/* Opponent (Contest only) */}
-          {testType === 'contest' && (
-            <div className="space-y-4 border-slate-700">
-              <h2 className="text-md font-bold text-slate-300">Opponent</h2>
+          ) : (
+            <div className="bg-slate-800 rounded p-2 space-y-2">
+              <h2 className="text-sm font-bold text-slate-300">Opponent</h2>
               
-              {/* Foregone Conclusion Warning */}
               {foregoneCheck?.isForegone && (
-                <div className="bg-amber-900/30 border border-amber-500/50 rounded p-3 text-sm">
-                  <div className="font-bold text-amber-400">⚠️ Foregone Conclusion</div>
-                  <div className="text-slate-300">
-                    {foregoneCheck.winner === 'actor' 
-                      ? 'Actor wins automatically (4+ advantage dice)' 
-                      : 'Opponent wins automatically (4+ advantage dice)'}
-                  </div>
+                <div className="bg-amber-900/30 border border-amber-500/50 rounded px-2 py-1 text-xs">
+                  <span className="text-amber-400 font-bold">⚠️ Foregone:</span>{' '}
+                  <span className="text-slate-300">
+                    {foregoneCheck.winner === 'actor' ? 'Actor wins' : 'Opponent wins'}
+                  </span>
                 </div>
               )}
 
-              {/* Opponent Die Pool */}
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Die Pool</label>
+                <label className="block text-xs text-slate-400 mb-0.5">Die Pool</label>
                 <select
                   value={opponentPoolRank}
                   onChange={(e) => setOpponentPoolRank(parseInt(e.target.value))}
-                  className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2"
+                  className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm"
                 >
                   {DIE_POOL_TABLE.map((entry: DiePoolEntry) => (
                     <option key={entry.rank} value={entry.rank}>
-                      {entry.pool.notation} (Rank {entry.rank}) — {entry.amberRanking}
+                      {entry.pool.notation} ({entry.amberRanking})
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* Opponent Skill Bonus */}
-              <div>
-                <label className="block text-sm text-slate-400 mb-1">Skill Bonus (per die)</label>
-                <div className="flex items-center">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-0.5">Skill/die</label>
                   <StepperInput
                     value={opponentSkillBonus}
                     onChange={handleOpponentSkillBonusChange}
@@ -749,16 +701,9 @@ export function ResolverPage() {
                     className={opponentSkillBonus >= 0 ? 'text-green-400' : 'text-red-400'}
                     displayFn={(v) => `${v >= 0 ? '+' : ''}${v}`}
                   />
-                  <span className="text-xs text-slate-500 ml-2">
-                    ({opponentSkillBonus === -1 ? 'Poor' : opponentSkillBonus === 0 ? 'Average' : ['Good', 'Great', 'Exceptional', 'Extraordinary'][opponentSkillBonus - 1]})
-                  </span>
                 </div>
-              </div>
-
-              {/* Opponent Modifiers */}
-              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">Wound Penalty (per die)</label>
+                  <label className="block text-xs text-slate-400 mb-0.5">Wounds/die</label>
                   <StepperInput
                     value={opponentWoundPenalty}
                     onChange={handleOpponentWoundPenaltyChange}
@@ -767,240 +712,235 @@ export function ResolverPage() {
                     className={opponentWoundPenalty < 0 ? 'text-red-400' : 'text-slate-300'}
                   />
                 </div>
-                <div>
-                  <label className="block text-sm text-slate-400 mb-1">Situational Modifier</label>
-                  <StepperInput
-                    value={opponentModifier}
-                    onChange={handleOpponentModifierChange}
-                    min={-4}
-                    max={4}
-                    className={opponentModifier >= 0 ? 'text-green-400' : 'text-red-400'}
-                    displayFn={(v) => `${v >= 0 ? '+' : ''}${v}`}
-                  />
-                </div>
-              </div>            
-              {/* Total Modifier Display */}
-              <div className="bg-slate-700/50 rounded p-2 text-sm">
-                <span className="text-slate-400">Total Modifier: </span>
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-400 mb-0.5">Situational Modifier</label>
+                <StepperInput
+                  value={opponentModifier}
+                  onChange={handleOpponentModifierChange}
+                  min={-4}
+                  max={4}
+                  className={opponentModifier >= 0 ? 'text-green-400' : 'text-red-400'}
+                  displayFn={(v) => `${v >= 0 ? '+' : ''}${v}`}
+                />
+              </div>
+
+              <div className="bg-slate-700/50 rounded px-2 py-1 text-xs">
+                <span className="text-slate-400">Total: </span>
                 <span className={opponentTotalModifier >= 0 ? 'text-green-400' : 'text-red-400'}>
                   {opponentTotalModifier >= 0 ? '+' : ''}{opponentTotalModifier}
                 </span>
-                {actorPoolEntry.pool.dice.length > 1 && (
-                  <span className="text-slate-500 text-xs ml-2">
-                    ({opponentSkillBonus >= 0 ? '+' : ''}{opponentSkillBonus}/die skill, {opponentWoundPenalty}/die wounds, {opponentModifier >= 0 ? '+' : ''}{opponentModifier} situational)
-                  </span>
-                )}
               </div>
             </div>
           )}
         </div>
-      </div>
 
-      {/* Band Thresholds Display */}
-      <div className="bg-slate-800 rounded-lg p-4">
-        <h2 className="text-lg font-bold text-amber-400 mb-3">Effort Bands — {actorPoolEntry.pool.notation}</h2>
-        <div className="grid grid-cols-4 gap-2 text-center text-sm">
-          {(['green', 'yellow', 'orange', 'red'] as EffortBand[]).map(band => {
-            const available = isBandAvailable(actorPoolEntry.pool, band);
-            const value = actorThresholds[band];
-            const style = bandStyles[band];
-            return (
-              <div 
-                key={band}
-                className={`rounded p-2 ${
-                  available 
-                    ? `${style.bg} border ${style.border}`
-                    : 'bg-slate-800/50 border border-slate-600 opacity-50'
-                }`}
-              >
-                <div className={`font-bold ${style.text}`}>
-                  {style.emoji} {band.charAt(0).toUpperCase() + band.slice(1)}
-                </div>
-                <div className="text-xl text-slate-200">
-                  {available ? value : '—'}
-                </div>
-                <div className="text-xs text-slate-500">
-                  {!available && 'N/A'}
-                  {available && band === 'green' && 'Baseline'}
-                  {available && band !== 'green' && `${getSurgeCost(band)} Surge`}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-    {/* Resolution Buttons */}
-    <div className="bg-slate-800 rounded-lg p-4">
-    <div className="flex items-start justify-between mb-3">
-        <h2 className="text-lg font-bold text-amber-400">Resolve</h2>
-        <button
-        onClick={calculateProbability}
-        disabled={probability.loading}
-        className="bg-purple-700 hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-1 rounded font-medium transition-colors text-sm"
-        >
-        {probability.loading ? '...' : '📊 Odds'}
-        </button>
-    </div>
-    
-    <div className="grid grid-cols-2 gap-3 mb-4">
-        <button
-        onClick={handleBaseline}
-        disabled={!isBandAvailable(actorPoolEntry.pool, 'green')}
-        className="bg-green-700 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded font-medium transition-colors"
-        >
-        🟩 Take Baseline
-        {isBandAvailable(actorPoolEntry.pool, 'green') && actorThresholds.green !== null && (
-            <div className="text-xs opacity-75">Result: {actorThresholds.green + actorTotalModifier}</div>
-        )}
-        </button>
-        <button
-        onClick={handleRoll}
-        className="bg-slate-600 hover:bg-slate-500 text-white py-3 rounded font-medium transition-colors"
-        >
-        🎲 Roll the Dice
-        <div className="text-xs opacity-75">Trust to chance</div>
-        </button>
-    </div>
-
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-slate-400">Push with Surge:</div>
-        {hasCharacter && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-amber-400">⚡</span>
-            <span className={`text-sm font-bold ${currentSurge <= 0 ? 'text-red-400' : currentSurge <= 2 ? 'text-yellow-400' : 'text-cyan-400'}`}>
-              {currentSurge}/{character.computedCharacter.surge}
-            </span>
-          </div>
-        )}
-      </div>
-      
-      <div className="grid grid-cols-3 gap-2">
-        <button
-          onClick={() => handleSurge('yellow')}
-          disabled={!isBandAvailable(actorPoolEntry.pool, 'yellow') || currentSurge < 1}
-          className="bg-yellow-700 hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded text-sm transition-colors"
-        >
-          🟨 Yellow (1)
-        </button>
-        <button
-          onClick={() => handleSurge('orange')}
-          disabled={!isBandAvailable(actorPoolEntry.pool, 'orange') || currentSurge < 2}
-          className="bg-orange-700 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded text-sm transition-colors"
-        >
-          🟧 Orange (2)
-        </button>
-        <button
-          onClick={() => handleSurge('red')}
-          disabled={!isBandAvailable(actorPoolEntry.pool, 'red') || currentSurge < 3}
-          className="bg-red-700 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded text-sm transition-colors"
-        >
-          🟥 Red (3)
-        </button>
-      </div>
-        
-        {probability.result && (
-        <div className="text-sm text-right">
-            {testType === 'challenge' ? (
-            <span className={probability.result.success && probability.result.success >= 50 ? 'text-green-400' : 'text-red-400'}>
-                {probability.result.success}% success
-            </span>
-            ) : (
-              <div>
-                <div className="flex gap-1 justify-end">
-                <span className="text-green-400">{probability.result.win}%</span>
-                <span className="text-slate-400">/</span>
-                <span className="text-red-400">{probability.result.lose}%</span>
-                {probability.result.tie && probability.result.tie > 0 && (
-                  <>
-                  <span className="text-slate-400">/</span>
-                  <span className="text-slate-300">{probability.result.tie}%</span>
-                  </>
-                )}
-              </div>
-              <div className="text-xs text-slate-500">win / lose / tie</div>
+        {/* RIGHT: Resolution & Results */}
+        <div className="lg:col-span-3 space-y-2">
+          {/* Band Thresholds */}
+          <div className="bg-slate-800 rounded p-2">
+            <h2 className="text-sm font-bold text-amber-400 mb-1.5">
+              Effort Bands — {actorPoolEntry.pool.notation}
+            </h2>
+            <div className="grid grid-cols-4 gap-1.5 text-center text-xs">
+              {(['green', 'yellow', 'orange', 'red'] as EffortBand[]).map(band => {
+                const available = isBandAvailable(actorPoolEntry.pool, band);
+                const value = actorThresholds[band];
+                const style = bandStyles[band];
+                return (
+                  <div 
+                    key={band}
+                    className={`rounded px-1.5 py-1 ${
+                      available 
+                        ? `${style.bg} border ${style.border}`
+                        : 'bg-slate-800/50 border border-slate-600 opacity-50'
+                    }`}
+                  >
+                    <div className={`font-bold ${style.text}`}>
+                      {style.emoji} {band.charAt(0).toUpperCase() + band.slice(1)}
+                    </div>
+                    <div className="text-base text-slate-200">
+                      {available ? value : '—'}
+                    </div>
+                    <div className="text-slate-500">
+                      {!available && 'N/A'}
+                      {available && band === 'green' && 'Baseline'}
+                      {available && band !== 'green' && `${getSurgeCost(band)} Surge`}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-
-      {/* Result Display */}
-      {result && (
-        <div className="bg-slate-800 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold text-amber-400">Result</h2>
-            <div className="text-sm text-slate-400">{lastApproach}</div>
           </div>
 
-          {'winner' in result ? (
-            // Contest result
-            <div className="space-y-4">
-              {renderActionResult(result.actor, 'Actor')}
-              {result.opponent && renderActionResult(result.opponent, 'Opponent')}
-              
-              {/* Foregone enforced notice */}
-              {result.foregoneEnforced && (
-                <div className="bg-amber-900/30 border border-amber-500/50 rounded p-2 text-sm text-center">
-                  <span className="text-amber-400">⚡ Foregone Conclusion Enforced</span>
-                  <span className="text-slate-400 ml-2">— Dice overridden, minimum 1 success awarded</span>
-                </div>
-              )}
-              
-              <div className={`text-center p-4 rounded ${
-                result.winner === 'actor' ? 'bg-green-900/30 border border-green-500/50' :
-                result.winner === 'opponent' ? 'bg-red-900/30 border border-red-500/50' :
-                'bg-slate-700/50 border border-slate-500'
-              }`}>
-                <div className="text-2xl font-bold">
-                  {result.winner === 'actor' ? '🥇 Actor Wins!' :
-                  result.winner === 'opponent' ? '🥈 Opponent Wins!' :
-                  '⚔️ Tie!'}
-                </div>
-                {result.winner !== 'tie' && result.margin !== Infinity && (
-                  <div className="text-sm text-slate-400">
-                    {(() => {
-                      const winnerSuccesses = result.winner === 'actor' 
-                        ? result.actor.successes 
-                        : result.opponent?.successes ?? 0;
-                      const winThreshold = winnerSuccesses * 4;
-                      const winScale = resultToScale(winThreshold);
-                      const relativeScale = winScale !== null ? winScale + 1 : null;
-                      
-                      return (
-                        <>
-                          <span className="text-white font-medium">{winnerSuccesses}</span> {winnerSuccesses === 1 ? 'success' : 'successes'}
-                          {relativeScale !== null && (
-                            <span className="ml-2">
-                              (Scale <span className="text-white font-medium">{formatScale(relativeScale)}x</span>)
-                            </span>
-                          )}
-                        </>
-                      );
-                    })()}
+          {/* Resolution Buttons */}
+          <div className="bg-slate-800 rounded p-2">
+            <div className="flex items-center justify-between mb-1.5">
+              <h2 className="text-sm font-bold text-amber-400">Resolve</h2>
+              <button
+                onClick={calculateProbability}
+                disabled={probability.loading}
+                className="bg-purple-700 hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-2 py-0.5 rounded text-xs font-medium transition-colors"
+              >
+                {probability.loading ? '...' : '📊 Odds'}
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <button
+                onClick={handleBaseline}
+                disabled={!isBandAvailable(actorPoolEntry.pool, 'green')}
+                className="bg-green-700 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded text-sm font-medium transition-colors"
+              >
+                🟩 Baseline
+                {isBandAvailable(actorPoolEntry.pool, 'green') && actorThresholds.green !== null && (
+                  <div className="text-xs opacity-75">Result: {actorThresholds.green + actorTotalModifier}</div>
+                )}
+              </button>
+              <button
+                onClick={handleRoll}
+                className="bg-slate-600 hover:bg-slate-500 text-white py-2 rounded text-sm font-medium transition-colors"
+              >
+                🎲 Roll Dice
+              </button>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-slate-400">Push with Surge:</div>
+                {hasCharacter && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-amber-400 text-xs">⚡</span>
+                    <span className={`text-xs font-bold ${currentSurge <= 0 ? 'text-red-400' : currentSurge <= 2 ? 'text-yellow-400' : 'text-cyan-400'}`}>
+                      {currentSurge}/{character.computedCharacter.surge}
+                    </span>
                   </div>
                 )}
               </div>
-            </div>
-          ) : (
-            // Challenge result
-            <div className="space-y-4">
-              {renderActionResult(result, 'Result')}
-              <div className={`text-center p-3 rounded ${
-                result.successes > 0 ? 'bg-green-900/30' : 'bg-red-900/30'
-              }`}>
-                <div className="font-bold">
-                  {result.successes > 0 
-                    ? `✓ Success! Beat TN ${targetNumber} by ${result.result - targetNumber}` 
-                    : `✗ Failed by ${targetNumber - result.result}`}
-                </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                <button
+                  onClick={() => handleSurge('yellow')}
+                  disabled={!isBandAvailable(actorPoolEntry.pool, 'yellow') || currentSurge < 1}
+                  className="bg-yellow-700 hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-1.5 rounded text-sm transition-colors"
+                >
+                  🟨 Yellow (1)
+                </button>
+                <button
+                  onClick={() => handleSurge('orange')}
+                  disabled={!isBandAvailable(actorPoolEntry.pool, 'orange') || currentSurge < 2}
+                  className="bg-orange-700 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-1.5 rounded text-sm transition-colors"
+                >
+                  🟧 Orange (2)
+                </button>
+                <button
+                  onClick={() => handleSurge('red')}
+                  disabled={!isBandAvailable(actorPoolEntry.pool, 'red') || currentSurge < 3}
+                  className="bg-red-700 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-1.5 rounded text-sm transition-colors"
+                >
+                  🟥 Red (3)
+                </button>
               </div>
+              
+              {probability.result && (
+                <div className="text-xs text-right">
+                  {testType === 'challenge' ? (
+                    <span className={probability.result.success && probability.result.success >= 50 ? 'text-green-400' : 'text-red-400'}>
+                      {probability.result.success}% success
+                    </span>
+                  ) : (
+                    <div className="flex gap-1 justify-end">
+                      <span className="text-green-400">{probability.result.win}%</span>
+                      <span className="text-slate-400">/</span>
+                      <span className="text-red-400">{probability.result.lose}%</span>
+                      {probability.result.tie && probability.result.tie > 0 && (
+                        <>
+                          <span className="text-slate-400">/</span>
+                          <span className="text-slate-300">{probability.result.tie}%</span>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Result Display */}
+          {result && (
+            <div className="bg-slate-800 rounded p-2">
+              <div className="flex items-center justify-between mb-1.5">
+                <h2 className="text-sm font-bold text-amber-400">Result</h2>
+                <div className="text-xs text-slate-400">{lastApproach}</div>
+              </div>
+
+              {'winner' in result ? (
+                // Contest result
+                <div className="space-y-2">
+                  {renderActionResult(result.actor, 'Actor')}
+                  {result.opponent && renderActionResult(result.opponent, 'Opponent')}
+                  
+                  {result.foregoneEnforced && (
+                    <div className="bg-amber-900/30 border border-amber-500/50 rounded px-2 py-1 text-xs text-center">
+                      <span className="text-amber-400">⚡ Foregone Conclusion Enforced</span>
+                      <span className="text-slate-400 ml-1">— Minimum 1 success awarded</span>
+                    </div>
+                  )}
+                  
+                  <div className={`text-center p-2 rounded ${
+                    result.winner === 'actor' ? 'bg-green-900/30 border border-green-500/50' :
+                    result.winner === 'opponent' ? 'bg-red-900/30 border border-red-500/50' :
+                    'bg-slate-700/50 border border-slate-500'
+                  }`}>
+                    <div className="text-lg font-bold">
+                      {result.winner === 'actor' ? '🥇 Actor Wins!' :
+                      result.winner === 'opponent' ? '🥈 Opponent Wins!' :
+                      '⚔️ Tie!'}
+                    </div>
+                    {result.winner !== 'tie' && result.margin !== Infinity && (
+                      <div className="text-xs text-slate-400">
+                        {(() => {
+                          const winnerSuccesses = result.winner === 'actor' 
+                            ? result.actor.successes 
+                            : result.opponent?.successes ?? 0;
+                          const winThreshold = winnerSuccesses * 4;
+                          const winScale = resultToScale(winThreshold);
+                          const relativeScale = winScale !== null ? winScale + 1 : null;
+                          
+                          return (
+                            <>
+                              <span className="text-white font-medium">{winnerSuccesses}</span> {winnerSuccesses === 1 ? 'success' : 'successes'}
+                              {relativeScale !== null && (
+                                <span className="ml-1">
+                                  (Scale <span className="text-white font-medium">{formatScale(relativeScale)}x</span>)
+                                </span>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                // Challenge result
+                <div className="space-y-2">
+                  {renderActionResult(result, 'Result')}
+                  <div className={`text-center p-2 rounded ${
+                    result.successes > 0 ? 'bg-green-900/30' : 'bg-red-900/30'
+                  }`}>
+                    <div className="text-sm font-bold">
+                      {result.successes > 0 
+                        ? `✓ Success! Beat TN ${targetNumber} by ${result.result - targetNumber}` 
+                        : `✗ Failed by ${targetNumber - result.result}`}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
