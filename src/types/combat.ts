@@ -1,8 +1,8 @@
 import type { DiePool, WeaponAttack } from './character';
 
 // Weapon categories
-export type WeaponCategory = 'Pistol' | 'Gun' | 'Heavy' | 'Mounted' | 'Melee' | 'Thrown';
-export type WeaponHandedness = 'One-handed' | 'Two-handed';
+export type WeaponCategory = 'Pistol' | 'Gun' | 'Heavy' | 'Mounted' | 'Melee' | 'Thrown' | 'Spell' | 'Natural';
+export type WeaponHandedness = 'One-handed' | 'Two-handed' | 'None';
 
 export interface Weapon {
   id: string;

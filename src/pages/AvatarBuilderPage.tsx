@@ -273,7 +273,7 @@ export function AvatarBuilderPage() {
               <StepperInput
                 value={character.campaignLimit}
                 onValueChange={character.setCampaignLimit}
-                min={0}
+                min={-120}
                 step={10}
                 className="text-slate-100"
               />
@@ -363,7 +363,7 @@ export function AvatarBuilderPage() {
               <div>
                 <span className="text-slate-400">Pace: </span>
                 <span className="font-bold text-amber-400">
-                  {character.paceMultiplier}x
+                  {character.pace.walking.mph}/{character.pace.sprinting.mph} mph
                 </span>
               </div>
             </div>
@@ -371,123 +371,122 @@ export function AvatarBuilderPage() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-6 space-y-8">
+{/* Main Content */}
+<main className="max-w-7xl mx-auto px-4 py-6 space-y-8">
         {/* Step 1: Aspects, Functions, and Attributes */}
-        <section className="space-y-6">
-          {/* Aspects and Functions side by side */}
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* Aspects */}
-            <div className="bg-slate-800 rounded-lg p-4">
-              <h2 className="text-lg font-bold text-amber-400 mb-4 flex items-center gap-2">
-                <span>🧩</span> Aspects <span className="text-slate-500 text-sm font-normal">(What you are)</span>
-              </h2>
-              <div className="space-y-3">
-                {ASPECTS.map(aspect => (
-                  <div key={aspect.id}>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-sm font-medium">
-                        {aspect.emoji} {aspect.name}
-                      </label>
-                      <span className="text-xs text-slate-400">
-                        {character.aspects[aspect.id] >= 0 ? '+' : ''}{character.aspects[aspect.id]} pts
-                      </span>
-                    </div>
-                    <select
-                      value={character.aspects[aspect.id]}
-                      onChange={(e) => handleAspectChange(aspect.id, parseInt(e.target.value) as RatingValue)}
-                      className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    >
-                      {RATING_SCALE.map(val => (
-                        <option key={val} value={val}>
-                          {val >= 0 ? '+' : ''}{val} — {RATING_LABELS[val]}
-                        </option>
-                      ))}
-                    </select>
-                    {/* Conditional explanation field for +20 or higher */}
-                    {character.aspects[aspect.id] >= 20 && (
-                      <div className="mt-2">
-                        <label className="block text-xs text-amber-400 mb-1">
-                          ⚠️ {RATING_LABELS[character.aspects[aspect.id]]} Explanation Required
-                        </label>
-                        <textarea
-                          value={character.aspectExplanations[aspect.id] || ''}
-                          onChange={(e) => handleAspectExplanationChange(aspect.id, e.target.value)}
-                          placeholder={`Mythic ${aspect.name} rating! Describe how it manifests.`}
-                          className="w-full bg-slate-700/50 border border-amber-500/50 rounded px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 min-h-[60px]"
-                          rows={2}
-                        />
-                      </div>
-                    )}
+        <section className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-[1fr_1fr_2fr] gap-6">
+          {/* Aspects */}
+          <div className="bg-slate-800 rounded-lg p-4">
+            <h2 className="text-lg font-bold text-amber-400 mb-4 flex items-center gap-2">
+              <span>🧩</span> Aspects <span className="text-slate-500 text-sm font-normal">(What you are)</span>
+            </h2>
+            <div className="space-y-3">
+              {ASPECTS.map(aspect => (
+                <div key={aspect.id}>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-sm font-medium">
+                      {aspect.emoji} {aspect.name}
+                    </label>
+                    <span className="text-xs text-slate-400">
+                      {character.aspects[aspect.id] >= 0 ? '+' : ''}{character.aspects[aspect.id]} pts
+                    </span>
                   </div>
-                ))}
-              </div>
-              <div className="mt-4 pt-3 border-t border-slate-700">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Aspect Total:</span>
-                  <span className="font-bold text-amber-400">
-                    {Object.values(character.aspects).reduce<number>((sum, v) => sum + v, 0)}
-                  </span>
+                  <select
+                    value={character.aspects[aspect.id]}
+                    onChange={(e) => handleAspectChange(aspect.id, parseInt(e.target.value) as RatingValue)}
+                    className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  >
+                    {RATING_SCALE.map(val => (
+                      <option key={val} value={val}>
+                        {val >= 0 ? '+' : ''}{val} — {RATING_LABELS[val]}
+                      </option>
+                    ))}
+                  </select>
+                  {/* Conditional explanation field for +20 or higher */}
+                  {character.aspects[aspect.id] >= 20 && (
+                    <div className="mt-2">
+                      <label className="block text-xs text-amber-400 mb-1">
+                        ⚠️ {RATING_LABELS[character.aspects[aspect.id]]} Explanation Required
+                      </label>
+                      <textarea
+                        value={character.aspectExplanations[aspect.id] || ''}
+                        onChange={(e) => handleAspectExplanationChange(aspect.id, e.target.value)}
+                        placeholder={`Mythic ${aspect.name} rating! Describe how it manifests.`}
+                        className="w-full bg-slate-700/50 border border-amber-500/50 rounded px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 min-h-[60px]"
+                        rows={2}
+                      />
+                    </div>
+                  )}
                 </div>
-              </div>
+              ))}
             </div>
-            {/* Functions */}
-            <div className="bg-slate-800 rounded-lg p-4">
-              <h2 className="text-lg font-bold text-amber-400 mb-4 flex items-center gap-2">
-                <span>⚡</span> Functions <span className="text-slate-500 text-sm font-normal">(What you do)</span>
-              </h2>
-              <div className="space-y-3">
-                {FUNCTIONS.map(func => (
-                  <div key={func.id}>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-sm font-medium">
-                        {func.emoji} {func.name}
-                      </label>
-                      <span className="text-xs text-slate-400">
-                        {character.functions[func.id] >= 0 ? '+' : ''}{character.functions[func.id]} pts
-                      </span>
-                    </div>
-                    <select
-                      value={character.functions[func.id]}
-                      onChange={(e) => handleFunctionChange(func.id, parseInt(e.target.value) as RatingValue)}
-                      className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    >
-                      {RATING_SCALE.map(val => (
-                        <option key={val} value={val}>
-                          {val >= 0 ? '+' : ''}{val} — {RATING_LABELS[val]}
-                        </option>
-                      ))}
-                    </select>
-                    {/* Conditional explanation field for +20 or higher */}
-                    {character.functions[func.id] >= 20 && (
-                      <div className="mt-2">
-                        <label className="block text-xs text-amber-400 mb-1">
-                          ⚠️ {RATING_LABELS[character.functions[func.id]]} Explanation Required
-                        </label>
-                        <textarea
-                          value={character.functionExplanations[func.id] || ''}
-                          onChange={(e) => handleFunctionExplanationChange(func.id, e.target.value)}
-                          placeholder={`Mythic ${func.name} rating! Describe how it manifests.`}
-                          className="w-full bg-slate-700/50 border border-amber-500/50 rounded px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 min-h-[60px]"
-                          rows={2}
-                        />
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 pt-3 border-t border-slate-700">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Function Total:</span>
-                  <span className="font-bold text-amber-400">
-                    {Object.values(character.functions).reduce<number>((sum, v) => sum + v, 0)}
-                  </span>
-                </div>
+            <div className="mt-4 pt-3 border-t border-slate-700">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400">Aspect Total:</span>
+                <span className="font-bold text-amber-400">
+                  {Object.values(character.aspects).reduce<number>((sum, v) => sum + v, 0)}
+                </span>
               </div>
             </div>
           </div>
-          {/* Attributes Grid - 4x4 table */}
+
+          {/* Functions */}
           <div className="bg-slate-800 rounded-lg p-4">
+            <h2 className="text-lg font-bold text-amber-400 mb-4 flex items-center gap-2">
+              <span>⚡</span> Functions <span className="text-slate-500 text-sm font-normal">(What you do)</span>
+            </h2>
+            <div className="space-y-3">
+              {FUNCTIONS.map(func => (
+                <div key={func.id}>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-sm font-medium">
+                      {func.emoji} {func.name}
+                    </label>
+                    <span className="text-xs text-slate-400">
+                      {character.functions[func.id] >= 0 ? '+' : ''}{character.functions[func.id]} pts
+                    </span>
+                  </div>
+                  <select
+                    value={character.functions[func.id]}
+                    onChange={(e) => handleFunctionChange(func.id, parseInt(e.target.value) as RatingValue)}
+                    className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  >
+                    {RATING_SCALE.map(val => (
+                      <option key={val} value={val}>
+                        {val >= 0 ? '+' : ''}{val} — {RATING_LABELS[val]}
+                      </option>
+                    ))}
+                  </select>
+                  {/* Conditional explanation field for +20 or higher */}
+                  {character.functions[func.id] >= 20 && (
+                    <div className="mt-2">
+                      <label className="block text-xs text-amber-400 mb-1">
+                        ⚠️ {RATING_LABELS[character.functions[func.id]]} Explanation Required
+                      </label>
+                      <textarea
+                        value={character.functionExplanations[func.id] || ''}
+                        onChange={(e) => handleFunctionExplanationChange(func.id, e.target.value)}
+                        placeholder={`Mythic ${func.name} rating! Describe how it manifests.`}
+                        className="w-full bg-slate-700/50 border border-amber-500/50 rounded px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 min-h-[60px]"
+                        rows={2}
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-700">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400">Function Total:</span>
+                <span className="font-bold text-amber-400">
+                  {Object.values(character.functions).reduce<number>((sum, v) => sum + v, 0)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Attributes Grid - 4x4 table */}
+          <div className="bg-slate-800 rounded-lg p-4 lg:col-span-2 xl:col-span-1">
             <h2 className="text-lg font-bold text-amber-400 mb-4 flex items-center gap-2">
               <span>📊</span> Attributes <span className="text-slate-500 text-sm font-normal">(Derived = Function + Aspect)</span>
             </h2>

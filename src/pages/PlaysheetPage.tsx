@@ -11,7 +11,6 @@ import { getScaleForPool } from '../data/actionEffortTable';
 import { POWERS } from '../data/powers';
 import { SKILLS } from '../data/skills';
 import { getPowerDisplay } from '../utils/powerDisplay';
-import { DAMAGE_MAGNITUDE_TABLE } from '../data/damageTable';
 import { generateHomebreweryMarkdown } from '../utils/homebreweryExport';
 import { type ReactionPoolKey } from '../context/GameStateContext';
 
@@ -45,21 +44,22 @@ export interface CombatPageState {
   defenderAspect?: AspectName;
 }
 
+type TabId = 'actions' | 'defense' | 'abilities';
+
 export function PlaysheetPage() {
   const character = useCharacter();
   const gameState = useGameState();
   const navigate = useNavigate();
   
-  // Selection state for roll
+  const [activeTab, setActiveTab] = useState<TabId>('actions');
   const [selectedAttribute, setSelectedAttribute] = useState<AttributeName | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
-
-  // Healing state
-  const [activeHealAspect, setActiveHealAspect] = useState<AspectName | null>(null);
+  const [healModalAspect, setHealModalAspect] = useState<AspectName | null>(null);
   const [healPoolRank, setHealPoolRank] = useState(5);
   const [healSkillBonus, setHealSkillBonus] = useState(0);
   const [healModifier, setHealModifier] = useState(0);
   const [healResult, setHealResult] = useState<{ aspect: AspectName; successes: number; roll: number } | null>(null);
+  const [surgeExpanded, setSurgeExpanded] = useState(false);
 
   const renderIcon = (icon: IconEntry) => {
     return icon.library === 'fontawesome' ? (
@@ -70,7 +70,6 @@ export function PlaysheetPage() {
   };
 
   const currentSurge = character.computedCharacter.surge - gameState.surgeSpent;
-  const surgePercentage = (currentSurge / character.computedCharacter.surge) * 100;
 
   const wouldHeal = (aspect: AspectName) => {
     const currentLevel = gameState.wounds[aspect];
@@ -138,7 +137,7 @@ export function PlaysheetPage() {
       successes: result.successes,
       roll: result.result,
     });
-    setActiveHealAspect(null);
+    setHealModalAspect(null);
   };
 
   const getPoolKeys = (aspectId: string): { dodge: ReactionPoolKey | null; parry: ReactionPoolKey } => {
@@ -201,7 +200,6 @@ export function PlaysheetPage() {
     });
   };
 
-  // Export handler
   const handleExportMarkdown = () => {
     const markdown = generateHomebreweryMarkdown(
       character.name,
@@ -223,11 +221,9 @@ export function PlaysheetPage() {
       character.computedCharacter.stuff,
       character.computedCharacter.surge
     );
-    // Copy to clipboard
     navigator.clipboard.writeText(markdown).then(() => {
       alert('Markdown copied to clipboard!');
     }).catch(() => {
-      // Fallback: download as file
       const blob = new Blob([markdown], { type: 'text/markdown' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -261,88 +257,158 @@ export function PlaysheetPage() {
     );
   }
 
+  const tabs: { id: TabId; label: string; emoji: string }[] = [
+    { id: 'actions', label: 'Actions', emoji: '⚔️' },
+    { id: 'defense', label: 'Defense', emoji: '🛡️' },
+    { id: 'abilities', label: 'Abilities', emoji: '✨' },
+  ];
+
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-      {/* Character Header */}
-      <div className="bg-slate-800 rounded-lg p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="text-4xl">
+    <div className="max-w-7xl mx-auto px-4 py-4 space-y-4">
+      {/* Header Bar */}
+      <div className="bg-slate-800 rounded-lg p-3">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="text-3xl">
               {renderIcon(ICONS.find(i => i.code === character.avatarIcon) || DEFAULT_ICON)}
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-amber-400">{character.name || 'Unnamed Avatar'}</h1>
-              <div className="text-sm text-slate-400">
-                {character.computedCharacter.totalPointsSpent} / {character.campaignLimit} points
+              <h1 className="text-lg font-bold text-amber-400 leading-tight">{character.name || 'Unnamed Avatar'}</h1>
+              <div className="text-xs text-slate-400">
+                {character.computedCharacter.totalPointsSpent}/{character.campaignLimit} pts
                 {character.computedCharacter.stuff !== 0 && (
-                  <span className="ml-4">
-                    {character.computedCharacter.stuff > 0 ? '🌕' : '🌑'}{' '}
-                    {Math.abs(character.computedCharacter.stuff)} {character.computedCharacter.stuff > 0 ? 'Good' : 'Bad'} Stuff
+                  <span className="ml-2">
+                    {character.computedCharacter.stuff > 0 ? '🌕' : '🌑'} {Math.abs(character.computedCharacter.stuff)}
                   </span>
                 )}
               </div>
             </div>
           </div>
+
+          {/* Wound Indicators */}
           <div className="flex gap-2">
+            {gameState.woundPenalty < 0 && (
+              <span className="text-xs bg-red-900/30 border border-red-500/50 px-2 py-1 rounded text-red-400">
+                {gameState.woundPenalty}/die penalty
+              </span>
+            )}
+          </div>
+
+          {/* Surge */}
+          <div className="flex items-center gap-2">
+            <span className="text-amber-400">⚡</span>
+            <span className={`text-lg font-bold ${currentSurge <= 0 ? 'text-red-400' : currentSurge <= 2 ? 'text-yellow-400' : 'text-cyan-400'}`}>
+              {currentSurge}/{character.computedCharacter.surge}
+            </span>
             <button
-              onClick={handleExportMarkdown}
-              className="bg-amber-500 hover:bg-amber-400 text-slate-900 px-4 py-2 rounded font-medium text-sm transition-colors"
+              onClick={() => setSurgeExpanded(!surgeExpanded)}
+              className="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-xs"
             >
-              📜 Export for Homebrewery
+              {surgeExpanded ? '▲' : '▼'}
             </button>
+          </div>
+
+          {/* Pace */}
+          <div className="flex items-center gap-2">
+              <div className="text-lg text-slate-400">Pace</div>
+              <div className="text-lg font-bold text-cyan-400">{character.pace.walking.mph}/{character.pace.sprinting.mph} mph</div>
+              <div className="text-lg text-slate-500">({character.pace.walking.kph}/{character.pace.sprinting.kph} kph)</div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex gap-1">
+            <button onClick={handleExportMarkdown} className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-1 rounded text-xs">📜</button>
+            <button onClick={handlePrint} className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-1 rounded text-xs">🖨️</button>
             <button
-              onClick={handlePrint}
-              className="bg-amber-500 hover:bg-amber-400 text-slate-900 px-4 py-2 rounded font-medium text-sm transition-colors"
+              onClick={gameState.resetAll}
+              className="bg-red-900/50 hover:bg-red-800/50 text-red-400 px-2 py-1 rounded text-xs"
             >
-              🖨️ Print PDF
+              🔄 Reset
             </button>
           </div>
         </div>
+
+        {/* Expandable Surge Controls */}
+        {surgeExpanded && (
+          <div className="mt-3 pt-3 border-t border-slate-700">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => gameState.spendSurge(1)}
+                disabled={currentSurge <= 0}
+                className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-200 px-3 py-1.5 rounded text-sm"
+              >
+                🟨 Spend 1
+              </button>
+              <button
+                onClick={() => gameState.spendSurge(2)}
+                disabled={currentSurge <= 1}
+                className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-200 px-3 py-1.5 rounded text-sm"
+              >
+                🟧 Spend 2
+              </button>
+              <button
+                onClick={() => gameState.spendSurge(3)}
+                disabled={currentSurge <= 2}
+                className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-200 px-3 py-1.5 rounded text-sm"
+              >
+                🟥 Spend 3
+              </button>
+              <button
+                onClick={() => gameState.spendSurge(-1)}
+                disabled={currentSurge >= character.computedCharacter.surge}
+                className="bg-green-700 hover:bg-green-600 disabled:opacity-50 text-slate-200 px-3 py-1.5 rounded text-sm"
+              >
+                ⚡ Regain 1
+              </button>
+              <button
+                onClick={gameState.resetSurge}
+                className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded text-sm"
+              >
+                🌅 Long Rest
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Roll Selection Bar */}
       {selectedAttribute && (
-        <div className="bg-amber-900/30 border border-amber-500/50 rounded-lg p-4">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
-              <span className="text-amber-400 font-medium">Roll Setup:</span>
-              <div className="flex items-center gap-2">
-                <span className="bg-slate-700 px-3 py-1 rounded text-white">
-                  {selectedAttribute}
-                </span>
-                {selectedSkill && (
-                  <>
-                    <span className="text-slate-400">+</span>
-                    <span className="bg-slate-700 px-3 py-1 rounded text-white">
-                      {selectedSkill} ({getSelectedSkillBonus() >= 0 ? '+' : ''}{getSelectedSkillBonus()}/die)
-                    </span>
-                  </>
-                )}
-                {gameState.woundPenalty < 0 && (
-                  <>
-                    <span className="text-slate-400">+</span>
-                    <span className="bg-red-900/50 px-3 py-1 rounded text-red-400">
-                      {gameState.woundPenalty}/die wounds
-                    </span>
-                  </>
-                )}
-              </div>
+        <div className="bg-amber-900/30 border border-amber-500/50 rounded-lg p-3">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-amber-400 font-medium text-sm">Roll:</span>
+              <span className="bg-slate-700 px-2 py-1 rounded text-white text-sm">
+                {selectedAttribute}
+              </span>
+              {selectedSkill && (
+                <>
+                  <span className="text-slate-400">+</span>
+                  <span className="bg-slate-700 px-2 py-1 rounded text-white text-sm">
+                    {selectedSkill} ({getSelectedSkillBonus() >= 0 ? '+' : ''}{getSelectedSkillBonus()}/die)
+                  </span>
+                </>
+              )}
+              {gameState.woundPenalty < 0 && (
+                <>
+                  <span className="text-slate-400">+</span>
+                  <span className="bg-red-900/50 px-2 py-1 rounded text-red-400 text-sm">
+                    {gameState.woundPenalty}/die
+                  </span>
+                </>
+              )}
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => {
-                  setSelectedAttribute(null);
-                  setSelectedSkill(null);
-                }}
-                className="bg-slate-600 hover:bg-slate-500 text-slate-200 px-4 py-2 rounded text-sm transition-colors"
+                onClick={() => { setSelectedAttribute(null); setSelectedSkill(null); }}
+                className="bg-slate-600 hover:bg-slate-500 text-slate-200 px-3 py-1 rounded text-sm"
               >
                 Clear
               </button>
               <button
                 onClick={goToResolver}
-                className="bg-amber-500 hover:bg-amber-400 text-slate-900 px-6 py-2 rounded font-medium transition-colors"
+                className="bg-amber-500 hover:bg-amber-400 text-slate-900 px-4 py-1 rounded font-medium text-sm"
               >
-                🎲 Go to Resolver
+                🎲 Resolve
               </button>
             </div>
           </div>
@@ -351,9 +417,9 @@ export function PlaysheetPage() {
 
       {/* Healing Result Toast */}
       {healResult && (
-        <div className="bg-slate-800 rounded-lg p-4 border border-green-500/50">
+        <div className="bg-slate-800 rounded-lg p-3 border border-green-500/50">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="text-sm">
               <span className="text-slate-400">Healing {healResult.aspect}: </span>
               <span className="text-white font-bold">Rolled {healResult.roll}</span>
               {healResult.successes > 0 ? (
@@ -362,132 +428,467 @@ export function PlaysheetPage() {
                 <span className="text-red-400 ml-2">No restoration points</span>
               )}
             </div>
-            <button
-              onClick={() => setHealResult(null)}
-              className="text-slate-500 hover:text-slate-300"
-            >
-              ✕
-            </button>
+            <button onClick={() => setHealResult(null)} className="text-slate-500 hover:text-slate-300">✕</button>
           </div>
         </div>
       )}
 
-      {/* Main Grid */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Left Column: Attributes & Die Pools */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Attributes Grid */}
-          <div className="bg-slate-800 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-amber-400">Attributes</h2>
-              <span className="text-xs text-slate-500">Click an attribute to select for rolling</span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr>
-                    <th className="p-2"></th>
-                    <th className="p-2"></th>
-                    {ASPECTS.map(aspect => (
-                      <th key={aspect.id} className="p-2 text-center border-b border-slate-600">
-                        <div className="font-bold text-amber-300">{aspect.emoji} {aspect.name}</div>
-                        <div className="text-xs text-slate-400">
-                          {character.aspects[aspect.id] >= 0 ? '+' : ''}{character.aspects[aspect.id]}
-                        </div>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {FUNCTIONS.map(func => {
-                    const funcRating = character.functions[func.id];
-                    return (
-                      <tr key={func.id}>
-                        <td className="p-2 text-xl">{func.emoji}</td>
-                        <td className="p-2 border-b border-slate-700">
-                          <div className="font-bold text-amber-300">{func.name}</div>
+      {/* Tab Navigation */}
+      <div className="flex gap-2">
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-colors ${
+              activeTab === tab.id
+                ? 'bg-amber-500 text-slate-900'
+                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+            }`}
+          >
+            {tab.emoji} {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'actions' && (
+        <div className="space-y-4">
+          {/* Attributes & Skills */}
+          <div className="grid lg:grid-cols-2 gap-4">
+            {/* Attributes Grid */}
+            <div className="bg-slate-800 rounded-lg p-3">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-bold text-amber-400">Attributes</h2>
+                <span className="text-xs text-slate-500">Click to select for rolling</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr>
+                      <th className="p-1.5 w-8"></th>
+                      <th className="p-1.5 w-20"></th>
+                      {ASPECTS.map(aspect => (
+                        <th key={aspect.id} className="p-1.5 text-center border-b border-slate-600">
+                          <div className="font-bold text-amber-300 text-xs">{aspect.emoji} {aspect.name}</div>
                           <div className="text-xs text-slate-400">
-                            {funcRating >= 0 ? '+' : ''}{funcRating}
+                            {character.aspects[aspect.id] >= 0 ? '+' : ''}{character.aspects[aspect.id]}
                           </div>
-                        </td>
-                        {ASPECTS.map(aspect => {
-                          const attr = ATTRIBUTES.find(a => a.func === func.id && a.aspect === aspect.id);
-                          if (!attr) return <td key={aspect.id} className="p-2"></td>;
-                          const entry = character.attributeDiePools[attr.id];
-                          const isSelected = selectedAttribute === attr.id;
-                          const scale = getScaleForPool(entry.pool);
-                          return (
-                            <td 
-                              key={aspect.id} 
-                              className={`p-2 text-center border-b border-slate-700 cursor-pointer transition-all ${
-                                isSelected 
-                                  ? 'bg-amber-500/20 ring-2 ring-amber-500' 
-                                  : 'hover:bg-slate-700/50'
-                              }`}
-                              onClick={() => setSelectedAttribute(isSelected ? null : attr.id)}
-                            >
-                              <div className={`font-medium ${isSelected ? 'text-amber-400' : 'text-slate-200'}`}>
-                                {attr.name}
-                              </div>
-                              <div className="text-xs text-slate-400">
-                                {scale !== null && scale !== undefined ? `${scale}x average` : `Rank ${entry.rank}`}
-                              </div>
-                              <div className={`text-sm font-bold ${isSelected ? 'text-amber-300' : 'text-cyan-400'}`}>
-                                {entry.pool.notation}
-                              </div>
-                            </td>
-                          );
-                        })}
-                      </tr>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {FUNCTIONS.map(func => {
+                      const funcRating = character.functions[func.id];
+                      return (
+                        <tr key={func.id}>
+                          <td className="p-1.5 text-lg">{func.emoji}</td>
+                          <td className="p-1.5 border-b border-slate-700">
+                            <div className="font-bold text-amber-300 text-xs">{func.name}</div>
+                            <div className="text-xs text-slate-400">
+                              {funcRating >= 0 ? '+' : ''}{funcRating}
+                            </div>
+                          </td>
+                          {ASPECTS.map(aspect => {
+                            const attr = ATTRIBUTES.find(a => a.func === func.id && a.aspect === aspect.id);
+                            if (!attr) return <td key={aspect.id} className="p-1.5"></td>;
+                            const entry = character.attributeDiePools[attr.id];
+                            const isSelected = selectedAttribute === attr.id;
+                            const gscale = getScaleForPool(entry.pool, 'green');
+                            const yscale = getScaleForPool(entry.pool, 'yellow');
+                            const scale = getScaleForPool(entry.pool, 'orange');
+                            const rscale = getScaleForPool(entry.pool, 'red');
+                            return (
+                              <td 
+                                key={aspect.id} 
+                                className={`p-1.5 text-center border-b border-slate-700 cursor-pointer transition-all ${
+                                  isSelected 
+                                    ? 'bg-amber-500/20 ring-2 ring-amber-500' 
+                                    : 'hover:bg-slate-700/50'
+                                }`}
+                                onClick={() => setSelectedAttribute(isSelected ? null : attr.id)}
+                              >
+                                <div className={`font-medium text-xs ${isSelected ? 'text-amber-400' : 'text-slate-200'}`}>
+                                  {attr.name}
+                                </div>
+                                <div className="text-xs text-slate-400">
+                                  {gscale !== null && gscale !== undefined ? `${gscale}` : `R${entry.rank}`}
+                                  / 
+                                  {yscale !== null && yscale !== undefined ? `${yscale}` : `R${entry.rank}`}
+                                  / 
+                                  {scale !== null && scale !== undefined ? `${scale}` : `R${entry.rank}`}
+                                  /
+                                  {rscale !== null && rscale !== undefined ? `${rscale}x` : `R${entry.rank}`}
+                                </div>
+                                <div className={`text-sm font-bold ${isSelected ? 'text-amber-300' : 'text-cyan-400'}`}>
+                                  {entry.pool.notation}
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Skills Grid */}
+            {character.skills.length > 0 && (
+              <div className="bg-slate-800 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-base font-bold text-amber-400">Skills</h2>
+                  <span className="text-xs text-slate-500">Click to add to roll</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {character.skills.map(skillEntry => {
+                    const isSelected = selectedSkill === skillEntry.skillId;
+                    const bonus = SKILL_RATING_TO_BONUS[skillEntry.rating] ?? 0;
+                    const skill = SKILLS.find(s => s.id === skillEntry.skillId);
+                    const displayName = skillEntry.specialty || skill?.name || skillEntry.skillId;
+                    const hasSpecialty = Boolean(skillEntry.specialty);
+                    
+                    return (
+                      <div 
+                        key={skillEntry.skillId} 
+                        className={`rounded p-2 cursor-pointer transition-all ${
+                          isSelected 
+                            ? 'bg-amber-500/20 ring-2 ring-amber-500' 
+                            : 'bg-slate-700/50 hover:bg-slate-700'
+                        }`}
+                        onClick={() => setSelectedSkill(isSelected ? null : skillEntry.skillId)}
+                      >
+                        <div className={`font-bold text-sm leading-tight ${isSelected ? 'text-amber-400' : 'text-white'}`}>
+                          {skill?.emoji && <span className="mr-1">{skill.emoji}</span>}
+                          {displayName}
+                        </div>
+                        {hasSpecialty && skill?.name && (
+                          <div className={`text-xs mt-0.5 ${isSelected ? 'text-amber-300/70' : 'text-slate-400'}`}>
+                            {skill.name}
+                          </div>
+                        )}
+                        <div className={`text-xs mt-1 ${isSelected ? 'text-amber-400' : 'text-slate-500'}`}>
+                          {skillEntry.rating} ({bonus >= 0 ? '+' : ''}{bonus}/die)
+                        </div>
+                      </div>
                     );
                   })}
-                </tbody>
-              </table>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Weapons Grid */}
+          <div className="bg-slate-800 rounded-lg p-3">
+            <h2 className="text-base font-bold text-amber-400 mb-3">⚔️ Weapons</h2>
+            
+            {character.weapons.length === 0 ? (
+              <div className="text-center py-4 bg-slate-700/30 rounded">
+                <div className="text-slate-500 text-sm">No weapons equipped.</div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                {character.weapons.map(weapon => (
+                  <div key={weapon.id} className="bg-slate-700/50 rounded p-2">
+                    <div className="font-medium text-sm text-white mb-1.5">{weapon.name}</div>
+                    <div className="text-xs text-slate-400 mb-2">
+                      {weapon.category}{weapon.handedness && ` • ${weapon.handedness}`}{weapon.ammo && ` • ${weapon.ammo}`}
+                    </div>
+                    
+                    <div className="space-y-1">
+                      {weapon.attacks.map((attack, idx) => {
+                        const aspectInfo = ASPECTS.find(a => a.id === attack.aspect);
+                        const pen = typeof attack.penetration === 'number' ? attack.penetration : attack.penetration[0];
+                        
+                        return (
+                          <button
+                            key={attack.id}
+                            onClick={() => goToCombatAsAttacker(weapon.id, idx)}
+                            className="w-full flex items-center justify-between bg-slate-600/50 hover:bg-red-900/30 border border-slate-600 hover:border-red-500/50 rounded px-2 py-1 text-xs transition-all group"
+                          >
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="flex-shrink-0">{aspectInfo?.emoji}</span>
+                              <div className="min-w-0">
+                                <div className="text-slate-200 group-hover:text-white truncate">
+                                  {attack.type}
+                                  {attack.isConditional && <span className="text-amber-400 ml-0.5">⚠️</span>}
+                                </div>
+                                <div className="text-slate-400 truncate">
+                                  {attack.range && `${attack.range} • `}
+                                  M{attack.magnitude}{pen > 0 && ` • Pen ${pen}`}
+                                </div>
+                              </div>
+                            </div>
+                            <span className="text-slate-500 group-hover:text-red-400 flex-shrink-0 ml-1">⚔️</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    {weapon.notes && weapon.notes.length > 0 && (
+                      <div className="mt-1.5 text-xs text-slate-500 truncate" title={weapon.notes.join(' • ')}>
+                        {weapon.notes.join(' • ')}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'defense' && (
+        <div className="space-y-4">
+          {/* Defense Summary */}
+          <div className="bg-slate-800 rounded-lg p-3">
+            <h2 className="text-base font-bold text-amber-400 mb-3">🛡️ Defense</h2>
+
+            <div className="mb-3 grid grid-cols-2 gap-2">
+              <div className="bg-slate-700/50 rounded p-2">
+                <div className="text-xs text-slate-400">Material Size</div>
+                <div className="text-sm font-bold text-amber-400">
+                  {SIZE_OPTIONS.find(s => s.value === character.size)?.label ?? 'Average'}
+                </div>
+              </div>
+              <div className="bg-slate-700/50 rounded p-2">
+                <div className="text-xs text-slate-400">Immaterial Size</div>
+                <div className="text-sm font-bold text-amber-400">
+                  {SIZE_OPTIONS.find(s => s.value === character.immaterialSize)?.label ?? 'Average'}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {ASPECTS.map(aspect => {
+                const defenseAttr = DEFENSE_ATTRIBUTES[aspect.id];
+                const diePool = character.attributeDiePools[defenseAttr];
+                const armor = character.armor[defenseAttr as ArmorAttributeName];
+                const isPhysical = aspect.id === 'Form' || aspect.id === 'Flesh';
+                const sizeValue = isPhysical ? character.size : character.immaterialSize;
+
+                return (
+                  <div key={aspect.id} className="bg-slate-700/50 rounded p-2">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-base">{aspect.emoji}</span>
+                        <span className="font-medium text-white text-sm">{aspect.name}</span>
+                      </div>
+                      <button
+                        onClick={() => goToCombatAsDefender(aspect.id)}
+                        className="bg-blue-600 hover:bg-blue-500 text-white px-2 py-0.5 rounded text-xs font-medium"
+                      >
+                        🛡️ Defend
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1 text-center text-xs">
+                      <div>
+                        <div className="text-slate-400">{defenseAttr}</div>
+                        <div className="text-cyan-400 font-bold">{diePool.pool.notation}</div>
+                      </div>
+                      <div>
+                        <div className="text-slate-400">Armor</div>
+                        <div className={`font-bold ${armor > 0 ? 'text-green-400' : 'text-slate-500'}`}>{armor}</div>
+                      </div>
+                      <div>
+                        <div className="text-slate-400">Size</div>
+                        <div className="text-amber-400 font-bold">{sizeValue >= 0 ? '+' : ''}{sizeValue}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* Skills */}
-          {character.skills.length > 0 && (
-            <div className="bg-slate-800 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-amber-400">Skills</h2>
-                <span className="text-xs text-slate-500">Click a skill to add to roll (optional)</span>
-              </div>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-2">
-                {character.skills.map(skillEntry => {
-                  const isSelected = selectedSkill === skillEntry.skillId;
-                  const bonus = SKILL_RATING_TO_BONUS[skillEntry.rating] ?? 0;
-                  const skill = SKILLS.find(s => s.id === skillEntry.skillId);
-                  return (
-                    <div 
-                      key={skillEntry.skillId} 
-                      className={`rounded p-2 text-sm cursor-pointer transition-all ${
-                        isSelected 
-                          ? 'bg-amber-500/20 ring-2 ring-amber-500' 
-                          : 'bg-slate-700/50 hover:bg-slate-700'
-                      }`}
-                      onClick={() => setSelectedSkill(isSelected ? null : skillEntry.skillId)}
-                    >
-                      <div className={`font-medium ${isSelected ? 'text-amber-400' : ''}`}>
-                        {skill?.emoji} {skill?.name}
-                      </div>
-                      <div className={`text-xs ${isSelected ? 'text-amber-300/70' : 'text-slate-400'}`}>
-                        {skill?.description}
-                      </div>
-                      <div className={`text-xs ${isSelected ? 'text-amber-400' : ''}`}>
-                        {skillEntry.rating} ({bonus >= 0 ? '+' : ''}{bonus}/die)
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+          {/* Reaction Pools */}
+          <div className="bg-slate-800 rounded-lg p-3">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-bold text-amber-400">⚔️ Reaction Pools</h2>
+              <button
+                onClick={gameState.resetReactionPools}
+                className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-1 rounded text-xs"
+              >
+                🔄 New Round
+              </button>
             </div>
-          )}
 
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {ASPECTS.map(aspect => {
+                const adaptAttr = ATTRIBUTES.find(a => a.aspect === aspect.id && a.func === 'Adapt');
+                if (!adaptAttr) return null;
+
+                const diceCount = character.attributeDiePools[adaptAttr.id].pool.dice.length;
+                const notation = character.attributeDiePools[adaptAttr.id].pool.notation;
+                const poolKeys = getPoolKeys(aspect.id);
+                const dodgeUsed = poolKeys.dodge ? gameState.reactionPools[poolKeys.dodge] : 0;
+                const parryUsed = poolKeys.parry ? gameState.reactionPools[poolKeys.parry] : 0;
+
+                return (
+                  <div key={aspect.id} className="bg-slate-700/50 rounded p-2">
+                    <div className="text-center mb-1.5">
+                      <div className="text-base">{aspect.emoji}</div>
+                      <div className="text-xs font-medium text-white">{aspect.name}</div>
+                      <div className="text-xs text-slate-400">{notation}</div>
+                    </div>
+
+                    {aspect.id === 'Flesh' ? (
+                      <div className="text-center py-1">
+                        <div className="text-xs text-slate-400">⚡ Surprise Save</div>
+                        <div className="text-xs text-amber-400 font-bold">{notation}</div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col md:flex-row md:gap-2">
+                        {poolKeys.dodge && (
+                          <div className="mb-1.5 md:mb-0 md:flex-1">
+                            <div className="text-xs text-slate-400 text-center">Dodge</div>
+                            <div className="flex justify-center gap-0.5">
+                              {Array.from({ length: diceCount }, (_, i) => (
+                                <button
+                                  key={i}
+                                  onClick={() => handlePoolClick(poolKeys.dodge!, i + 1)}
+                                  className={`w-4 h-4 rounded-full border-2 transition-colors ${
+                                    i < dodgeUsed
+                                      ? 'bg-red-500 border-red-400'
+                                      : 'bg-slate-700 border-slate-500 hover:bg-amber-500 hover:border-amber-400'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <div className="text-xs text-slate-500 text-center mt-0.5">
+                              {diceCount - dodgeUsed}/{diceCount}
+                            </div>
+                          </div>
+                        )}
+
+                        {poolKeys.parry && (
+                          <div className="md:flex-1">
+                            <div className="text-xs text-slate-400 text-center">Parry</div>
+                            <div className="flex justify-center gap-0.5">
+                              {Array.from({ length: diceCount }, (_, i) => (
+                                <button
+                                  key={i}
+                                  onClick={() => handlePoolClick(poolKeys.parry!, i + 1)}
+                                  className={`w-4 h-4 rounded-full border-2 transition-colors ${
+                                    i < parryUsed
+                                      ? 'bg-red-500 border-red-400'
+                                      : 'bg-slate-700 border-slate-500 hover:bg-amber-500 hover:border-amber-400'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <div className="text-xs text-slate-500 text-center mt-0.5">
+                              {diceCount - parryUsed}/{diceCount}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Wounds - and Healing */}
+          <div className="bg-slate-800 rounded-lg p-3">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-bold text-amber-400">🩸 Wounds</h2>
+              {gameState.woundPenalty < 0 && (
+                <span className="text-xs bg-red-900/30 border border-red-500/50 px-2 py-1 rounded text-red-400">
+                  {gameState.woundPenalty}/die penalty
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {ASPECTS.map(aspect => {
+                const woundLevel = gameState.wounds[aspect.id];
+                const woundInfo = WOUND_LABELS[woundLevel];
+                const defenseAttr = DEFENSE_ATTRIBUTES[aspect.id];
+                const diePool = character.attributeDiePools[defenseAttr];
+                const armor = character.armor[defenseAttr as ArmorAttributeName];
+                const restoration = gameState.restorationPoints[aspect.id];
+                const canHeal = wouldHeal(aspect.id);
+
+                return (
+                  <div key={aspect.id} className={`bg-slate-700/50 rounded p-2 ${woundLevel > 0 ? 'ring-1 ring-red-500/30' : ''}`}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-base">{aspect.emoji}</span>
+                        <span className="font-medium text-sm">{aspect.name}</span>
+                      </div>
+                      {woundInfo.emoji && <span className="text-sm">{woundInfo.emoji}</span>}
+                    </div>
+                    
+                    <select
+                      value={woundLevel}
+                      onChange={(e) => gameState.setWound(aspect.id, parseInt(e.target.value) as WoundLevel)}
+                      className="w-full bg-slate-600 border border-slate-500 rounded px-1.5 py-0.5 text-xs mb-1.5"
+                    >
+                      {Array.from({ length: 9 }, (_, i) => (
+                        <option key={i} value={i}>
+                          {i === 0 ? 'None' : `L${i} ${WOUND_LABELS[i as WoundLevel].label}`}
+                          {WOUND_PENALTIES[i as WoundLevel] < 0 ? ` (${WOUND_PENALTIES[i as WoundLevel]}/die)` : ''}
+                        </option>
+                      ))}
+                    </select>
+
+                    <div className="text-xs text-slate-400 mb-1.5">
+                      {diePool.pool.notation} + {armor} armor
+                    </div>
+
+                    {woundLevel > 1 && (
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => rollNaturalHealing(aspect.id)}
+                          className="flex-1 bg-slate-600 hover:bg-slate-500 text-slate-200 px-1.5 py-1 rounded text-xs"
+                        >
+                          🎲 Natural
+                        </button>
+                        <button
+                          onClick={() => {
+                            setHealModalAspect(aspect.id);
+                            setHealPoolRank(5);
+                            setHealSkillBonus(0);
+                            setHealModifier(0);
+                          }}
+                          className="flex-1 bg-green-700 hover:bg-green-600 text-white px-1.5 py-1 rounded text-xs"
+                        >
+                          💚 Aided
+                        </button>
+                      </div>
+                    )}
+
+                    {woundLevel > 2 && (
+                      <div className="mt-1.5 text-xs text-center">
+                        <span className={canHeal ? 'text-green-400' : 'text-slate-400'}>
+                          {restoration}/{woundLevel} pts
+                        </span>
+                        {canHeal && (
+                          <button
+                            onClick={() => applyHealing(aspect.id)}
+                            className="ml-1 text-green-400 hover:text-green-300 underline"
+                          >
+                            Apply
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'abilities' && (
+        <div className="space-y-4">
           {/* Powers */}
-          {character.powers.length > 0 && (
-            <div className="bg-slate-800 rounded-lg p-4">
-              <h2 className="text-lg font-bold text-amber-400 mb-4">Powers</h2>
+          {character.powers.length > 0 ? (
+            <div className="bg-slate-800 rounded-lg p-3">
+              <h2 className="text-base font-bold text-amber-400 mb-3">✨ Powers</h2>
               <div className="grid md:grid-cols-2 gap-2">
                 {character.powers.map(powerEntry => {
                   const power = POWERS.find(p => p.id === powerEntry.powerId);
@@ -507,483 +908,110 @@ export function PlaysheetPage() {
                 })}
               </div>
             </div>
+          ) : (
+            <div className="bg-slate-800 rounded-lg p-3">
+              <h2 className="text-base font-bold text-amber-400 mb-3">✨ Powers</h2>
+              <div className="text-center py-4 bg-slate-700/30 rounded">
+                <div className="text-slate-500 text-sm">No powers acquired.</div>
+              </div>
+            </div>
           )}
 
-          {/* Weapons */}
-          <div className="bg-slate-800 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-amber-400">⚔️ Weapons</h2>
-              {character.weapons.length > 0 && (
-                <span className="text-xs text-slate-500">Click an attack to enter combat</span>
-              )}
-            </div>
-            
-            {character.weapons.length === 0 ? (
-              <div className="text-center py-6 bg-slate-700/30 rounded">
-                <div className="text-slate-500 text-sm">No weapons equipped.</div>
-                <div className="text-slate-600 text-xs mt-1">Add weapons in the Avatar Builder.</div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {character.weapons.map(weapon => (
-                  <div key={weapon.id} className="bg-slate-700/50 rounded p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <span className="text-white font-medium">{weapon.name}</span>
-                        <span className="text-xs text-slate-400 ml-2">
-                          {weapon.category} • {weapon.handedness}
-                          {weapon.ammo && ` • ${weapon.ammo}`}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {/* Attack modes */}
-                    <div className="space-y-1.5">
-                      {weapon.attacks.map((attack, idx) => {
-                        const aspectInfo = ASPECTS.find(a => a.id === attack.aspect);
-                        const magnitudeInfo = DAMAGE_MAGNITUDE_TABLE.find(m => m.magnitude === attack.magnitude);
-                        const pen = typeof attack.penetration === 'number' ? attack.penetration : attack.penetration[0];
-                        
-                        return (
-                          <button
-                            key={attack.id}
-                            onClick={() => goToCombatAsAttacker(weapon.id, idx)}
-                            className="w-full flex items-center justify-between bg-slate-600/50 hover:bg-red-900/30 border border-slate-600 hover:border-red-500/50 rounded px-3 py-2 text-sm transition-all group"
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg">{aspectInfo?.emoji}</span>
-                              <div className="text-left">
-                                <div className="text-slate-200 group-hover:text-white">
-                                  {attack.type}
-                                  {attack.isConditional && <span className="text-amber-400 ml-1">⚠️</span>}
-                                </div>
-                                <div className="text-xs text-slate-400">
-                                  {attack.range && `${attack.range} • `}
-                                  Magnitude {attack.magnitude} ({magnitudeInfo?.pool.notation || '?'})
-                                  {pen > 0 && ` • Pen ${pen}`}
-                                </div>
-                              </div>
-                            </div>
-                            <span className="text-slate-500 group-hover:text-red-400 text-lg">⚔️</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    
-                    {/* Notes */}
-                    {weapon.notes && weapon.notes.length > 0 && (
-                      <div className="mt-2 text-xs text-slate-500">
-                        {weapon.notes.map((note, i) => (
-                          <div key={i}>• {note}</div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          {/* Reaction Pools */}
-          <div className="bg-slate-800 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-bold text-amber-400">⚔️ Reaction Pools</h2>
-                <button
-                  onClick={gameState.resetReactionPools}
-                  className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1 rounded text-sm transition-colors"
-                >
-                  🔄 New Round
-                </button>
-              </div>
-              <p className="text-xs text-slate-500 mb-3">
-                Dodge and Parry uses per round, based on Adapt dice for each Aspect.
-              </p>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {ASPECTS.map(aspect => {
-                  const adaptAttr = ATTRIBUTES.find(a => a.aspect === aspect.id && a.func === 'Adapt');
-                  if (!adaptAttr) return null;
-
-                  const diceCount = character.attributeDiePools[adaptAttr.id].pool.dice.length;
-                  const notation = character.attributeDiePools[adaptAttr.id].pool.notation;
-                  const poolKeys = getPoolKeys(aspect.id);
-                  const dodgeUsed = poolKeys.dodge ? gameState.reactionPools[poolKeys.dodge] : 0;
-                  const parryUsed = poolKeys.parry ? gameState.reactionPools[poolKeys.parry] : 0;
-
+          {/* Skills Detail View (if needed) */}
+          {character.skills.length > 0 && (
+            <div className="bg-slate-800 rounded-lg p-3">
+              <h2 className="text-base font-bold text-amber-400 mb-3">📚 Skills Detail</h2>
+              <div className="grid md:grid-cols-2 gap-2">
+                {character.skills.map(skillEntry => {
+                  const skill = SKILLS.find(s => s.id === skillEntry.skillId);
+                  const bonus = SKILL_RATING_TO_BONUS[skillEntry.rating] ?? 0;
                   return (
-                    <div key={aspect.id} className="bg-slate-700/50 rounded p-3">
-                      <div className="text-center mb-2">
-                        <div className="text-lg">{aspect.emoji}</div>
-                        <div className="text-sm font-medium text-white">{aspect.name}</div>
-                        <div className="text-xs text-slate-400">{adaptAttr.id}: {notation}</div>
+                    <div key={skillEntry.skillId} className="bg-slate-700/50 rounded p-2">
+                      <div className="font-medium text-sm">
+                        {skill?.emoji} {skill?.name}
                       </div>
-
-                      {/* Dodge or Surprise Save */}
-                      {aspect.id === 'Flesh' ? (
-                        <div className="mb-2 text-center py-1">
-                          <div className="text-xs text-slate-400 mb-0.5">⚡ Surprise Save</div>
-                          <div className="text-sm text-amber-400 font-bold">{notation}</div>
-                        </div>
-                      ) : poolKeys.dodge && (
-                        <div className="mb-2">
-                          <div className="text-xs text-slate-400 text-center mb-1">Dodge</div>
-                          <div className="flex justify-center gap-1">
-                            {Array.from({ length: diceCount }, (_, i) => (
-                              <button
-                                key={i}
-                                onClick={() => handlePoolClick(poolKeys.dodge!, i + 1)}
-                                className={`w-5 h-5 rounded-full border-2 transition-colors ${
-                                  i < dodgeUsed
-                                    ? 'bg-red-500 border-red-400'
-                                    : 'bg-slate-700 border-slate-500 hover:bg-amber-500 hover:border-amber-400'
-                                }`}
-                                title={i < dodgeUsed ? 'Click to unspend' : 'Click to spend'}
-                              />
-                            ))}
-                          </div>
-                          <div className="text-xs text-slate-500 text-center mt-1">
-                            {diceCount - dodgeUsed}/{diceCount}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Parry */}
-                      {poolKeys.parry && (
-                        <div>
-                          <div className="text-xs text-slate-400 text-center mb-1">Parry</div>
-                          <div className="flex justify-center gap-1">
-                            {Array.from({ length: diceCount }, (_, i) => (
-                              <button
-                                key={i}
-                                onClick={() => handlePoolClick(poolKeys.parry!, i + 1)}
-                                className={`w-5 h-5 rounded-full border-2 transition-colors ${
-                                  i < parryUsed
-                                    ? 'bg-red-500 border-red-400'
-                                    : 'bg-slate-700 border-slate-500 hover:bg-amber-500 hover:border-amber-400'
-                                }`}
-                                title={i < parryUsed ? 'Click to unspend' : 'Click to spend'}
-                              />
-                            ))}
-                          </div>
-                          <div className="text-xs text-slate-500 text-center mt-1">
-                            {diceCount - parryUsed}/{diceCount}
-                          </div>
-                        </div>
+                      <div className="text-xs text-amber-400">{skillEntry.rating} ({bonus >= 0 ? '+' : ''}{bonus}/die)</div>
+                      {skill?.description && (
+                        <div className="text-xs text-slate-400 mt-1">{skill.description}</div>
                       )}
                     </div>
                   );
                 })}
               </div>
             </div>
+          )}
         </div>
+      )}
 
-        {/* Right Column: Play State */}
-        <div className="space-y-6">
-          {/* Surge Tracker */}
-          <div className="bg-slate-800 rounded-lg p-4">
-            <h2 className="text-lg font-bold text-amber-400 mb-4">⚡ Surge</h2>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400">Current</span>
-                <span className={`text-2xl font-bold ${currentSurge <= 0 ? 'text-red-400' : currentSurge <= 2 ? 'text-yellow-400' : 'text-cyan-400'}`}>
-                  {currentSurge} / {character.computedCharacter.surge}
-                </span>
-              </div>
-              <div className="w-full bg-slate-700 rounded-full h-3">
-                <div
-                  className={`h-3 rounded-full transition-all ${
-                    currentSurge <= 0 ? 'bg-red-500' : currentSurge <= 2 ? 'bg-yellow-500' : 'bg-cyan-500'
-                  }`}
-                  style={{ width: `${Math.max(0, surgePercentage)}%` }}
-                />
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => gameState.spendSurge(1)}
-                  disabled={currentSurge <= 0}
-                  className="flex-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-200 px-3 py-2 rounded text-sm transition-colors"
-                >
-                  🟨 Spend 1
-                </button>
-                <button
-                  onClick={() => gameState.spendSurge(2)}
-                  disabled={currentSurge <= 1}
-                  className="flex-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-200 px-3 py-2 rounded text-sm transition-colors"
-                >
-                  🟧 Spend 2
-                </button>
-                <button
-                  onClick={() => gameState.spendSurge(3)}
-                  disabled={currentSurge <= 2}
-                  className="flex-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-200 px-3 py-2 rounded text-sm transition-colors"
-                >
-                  🟥 Spend 3
-                </button>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => gameState.spendSurge(-1)}
-                  disabled={currentSurge >= character.computedCharacter.surge}
-                  className="flex-1 bg-green-700 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-200 px-3 py-2 rounded text-sm transition-colors"
-                >
-                  ⚡ Regain 1
-                </button>
-                <button
-                  onClick={gameState.resetSurge}
-                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-2 rounded text-sm transition-colors"
-                >
-                  🌅 Long Rest
-                </button>
-              </div>
+      {/* Healing Modal */}
+      {healModalAspect && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setHealModalAspect(null)}>
+          <div className="bg-slate-800 rounded-lg p-4 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-bold text-amber-400">
+                💚 Aided Healing — {healModalAspect}
+              </h3>
+              <button onClick={() => setHealModalAspect(null)} className="text-slate-500 hover:text-slate-300">✕</button>
             </div>
-          </div>
-
-          {/* Wounds */}
-          <div className="bg-slate-800 rounded-lg p-4">
-            <h2 className="text-lg font-bold text-amber-400 mb-2">🩸 Wounds</h2>
-            {gameState.woundPenalty < 0 && (
-              <div className="mb-3 p-2 bg-red-900/30 border border-red-500/50 rounded text-sm text-red-400">
-                Global Penalty: {gameState.woundPenalty}/die
-              </div>
-            )}
+            
             <div className="space-y-3">
-              {ASPECTS.map(aspect => {
-                const woundLevel = gameState.wounds[aspect.id];
-                const woundInfo = WOUND_LABELS[woundLevel];
-                const defenseAttr = DEFENSE_ATTRIBUTES[aspect.id];
-                const diePool = character.attributeDiePools[defenseAttr];
-                const armor = character.armor[defenseAttr as ArmorAttributeName];
-                const restoration = gameState.restorationPoints[aspect.id];
-                const canHeal = wouldHeal(aspect.id);
-                const healingAttr = HEALING_ATTRIBUTES[aspect.id];
-                const healingPool = character.attributeDiePools[healingAttr];
-
-                return (
-                  <div key={aspect.id} className="bg-slate-700/50 rounded p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">{aspect.emoji}</span>
-                        <span className="font-medium">{aspect.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {woundInfo.emoji && <span>{woundInfo.emoji}</span>}
-                        <select
-                          value={woundLevel}
-                          onChange={(e) => gameState.setWound(aspect.id, parseInt(e.target.value) as WoundLevel)}
-                          className="bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                        >
-                          {Array.from({ length: 9 }, (_, i) => (
-                            <option key={i} value={i}>
-                              {i === 0 ? 'None' : `L${i} ${WOUND_LABELS[i as WoundLevel].label}`}
-                              {WOUND_PENALTIES[i as WoundLevel] < 0 ? ` (${WOUND_PENALTIES[i as WoundLevel]}/die)` : ''}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-                      <span>Defense: {diePool.pool.notation} + {armor} armor</span>
-                      {woundLevel > 2 && (
-                        <span>
-                          Heal: {restoration}/{woundLevel} pts
-                          {canHeal && (
-                            <button
-                              onClick={() => applyHealing(aspect.id)}
-                              className="ml-2 text-green-400 hover:text-green-300"
-                            >
-                              ✓ Apply
-                            </button>
-                          )}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Healing controls */}
-                    {woundLevel > 1 && (
-                      <div className="mt-2 pt-2 border-t border-slate-600">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => rollNaturalHealing(aspect.id)}
-                            className="flex-1 bg-slate-600 hover:bg-slate-500 text-slate-200 px-2 py-1 rounded text-xs"
-                          >
-                            🎲 Natural ({healingPool.pool.notation})
-                          </button>
-                          <button
-                            onClick={() => setActiveHealAspect(activeHealAspect === aspect.id ? null : aspect.id)}
-                            className="flex-1 bg-slate-600 hover:bg-slate-500 text-slate-200 px-2 py-1 rounded text-xs"
-                          >
-                            💚 Aided Heal
-                          </button>
-                        </div>
-                        
-                        {activeHealAspect === aspect.id && (
-                          <div className="mt-2 space-y-2">
-                            <select
-                              value={healPoolRank}
-                              onChange={(e) => setHealPoolRank(parseInt(e.target.value))}
-                              className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-xs"
-                            >
-                              {DIE_POOL_TABLE.map((entry: DiePoolEntry) => (
-                                <option key={entry.rank} value={entry.rank}>
-                                  {entry.pool.notation} (Rank {entry.rank})
-                                </option>
-                              ))}
-                            </select>
-                            <div className="flex gap-2">
-                              <div className="flex-1">
-                                <label className="block text-xs text-slate-400 mb-1">Skill</label>
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    onClick={() => setHealSkillBonus(Math.max(-1, healSkillBonus - 1))}
-                                    className="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-xs"
-                                  >
-                                    -
-                                  </button>
-                                  <span className={`flex-1 text-center ${healSkillBonus >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                    {healSkillBonus >= 0 ? '+' : ''}{healSkillBonus}
-                                  </span>
-                                  <button
-                                    onClick={() => setHealSkillBonus(Math.min(4, healSkillBonus + 1))}
-                                    className="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-xs"
-                                  >
-                                    +
-                                  </button>
-                                </div>
-                              </div>
-                              <div className="flex-1">
-                                <label className="block text-xs text-slate-400 mb-1">Mod</label>
-                                <input
-                                  type="number"
-                                  value={healModifier}
-                                  onChange={(e) => setHealModifier(parseInt(e.target.value) || 0)}
-                                  className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-xs text-center"
-                                />
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => rollAidedHealing(aspect.id)}
-                              className="w-full bg-green-600 hover:bg-green-500 text-white px-2 py-1 rounded text-xs"
-                            >
-                              🎲 Roll Healing
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Die Pool Rank</label>
+                <select
+                  value={healPoolRank}
+                  onChange={(e) => setHealPoolRank(parseInt(e.target.value))}
+                  className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm"
+                >
+                  {DIE_POOL_TABLE.map((entry: DiePoolEntry) => (
+                    <option key={entry.rank} value={entry.rank}>
+                      {entry.pool.notation} (Rank {entry.rank})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm text-slate-400 mb-1">Skill Bonus</label>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setHealSkillBonus(Math.max(-1, healSkillBonus - 1))}
+                      className="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-sm"
+                    >
+                      -
+                    </button>
+                    <span className={`flex-1 text-center font-bold ${healSkillBonus >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {healSkillBonus >= 0 ? '+' : ''}{healSkillBonus}
+                    </span>
+                    <button
+                      onClick={() => setHealSkillBonus(Math.min(4, healSkillBonus + 1))}
+                      className="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-sm"
+                    >
+                      +
+                    </button>
                   </div>
-                );
-              })}
+                </div>
+                <div>
+                  <label className="block text-sm text-slate-400 mb-1">Modifier</label>
+                  <input
+                    type="number"
+                    value={healModifier}
+                    onChange={(e) => setHealModifier(parseInt(e.target.value) || 0)}
+                    className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-center"
+                  />
+                </div>
+              </div>
+              
+              <button
+                onClick={() => rollAidedHealing(healModalAspect)}
+                className="w-full bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded font-medium"
+              >
+                🎲 Roll Healing
+              </button>
             </div>
           </div>
-
-          {/* Defense */}
-          <div className="bg-slate-800 rounded-lg p-4">
-            <h2 className="text-lg font-bold text-amber-400 mb-4">🛡️ Defense</h2>
-
-            {/* Size Summary */}
-            <div className="mb-4 grid grid-cols-2 gap-3">
-              <div className="bg-slate-700/50 rounded p-3">
-                <div className="text-xs text-slate-400 mb-1">Material Size</div>
-                <div className="text-lg font-bold text-amber-400">
-                  {SIZE_OPTIONS.find(s => s.value === character.size)?.label ?? 'Average'}
-                </div>
-                <div className="text-xs text-slate-500">
-                  {SIZE_OPTIONS.find(s => s.value === character.size)?.description ?? 'to 200kg'}
-                </div>
-              </div>
-              <div className="bg-slate-700/50 rounded p-3">
-                <div className="text-xs text-slate-400 mb-1">Immaterial Size</div>
-                <div className="text-lg font-bold text-amber-400">
-                  {SIZE_OPTIONS.find(s => s.value === character.immaterialSize)?.label ?? 'Average'}
-                </div>
-                <div className="text-xs text-slate-500">
-                  {SIZE_OPTIONS.find(s => s.value === character.immaterialSize)?.description ?? 'to 200kg'}
-                </div>
-              </div>
-            </div>
-
-            {/* Aspect Defense Sections */}
-            <div className="space-y-3">
-              {ASPECTS.map(aspect => {
-                const defenseAttr = DEFENSE_ATTRIBUTES[aspect.id];
-                const diePool = character.attributeDiePools[defenseAttr];
-                const armor = character.armor[defenseAttr as ArmorAttributeName];
-                const isPhysical = aspect.id === 'Form' || aspect.id === 'Flesh';
-                const sizeValue = isPhysical ? character.size : character.immaterialSize;
-                const sizeLabel = SIZE_OPTIONS.find(s => s.value === sizeValue)?.label ?? 'Average';
-
-                return (
-                  <div key={aspect.id} className="bg-slate-700/50 rounded p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">{aspect.emoji}</span>
-                        <span className="font-medium text-white">{aspect.name}</span>
-                      </div>
-                      <button
-                        onClick={() => goToCombatAsDefender(aspect.id)}
-                        className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
-                      >
-                        🛡️ Defend
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 text-center text-sm">
-                      <div>
-                        <div className="text-xs text-slate-400">{defenseAttr}</div>
-                        <div className="text-cyan-400 font-bold">{diePool.pool.notation}</div>
-                        <div className="text-xs text-slate-500">Rank {diePool.rank}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-slate-400">Armor</div>
-                        <div className={`font-bold ${armor > 0 ? 'text-green-400' : 'text-slate-500'}`}>{armor}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-slate-400">{isPhysical ? 'Mat. Size' : 'Imm. Size'}</div>
-                        <div className="text-amber-400 font-bold">{sizeLabel}</div>
-                        <div className="text-xs text-slate-500">{sizeValue >= 0 ? '+' : ''}{sizeValue}</div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Pace */}
-          <div className="bg-slate-800 rounded-lg p-4">
-            <h2 className="text-lg font-bold text-amber-400 mb-4">🏃 Pace</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-slate-700/50 rounded p-3">
-                <div className="text-xs text-slate-400 mb-1">Walking</div>
-                <div className="text-lg font-bold text-cyan-400">{character.pace.walking.mph} mph</div>
-                <div className="text-xs text-slate-500">{character.pace.walking.kph} kph • {character.pace.walking.ms} m/s</div>
-              </div>
-              <div className="bg-slate-700/50 rounded p-3">
-                <div className="text-xs text-slate-400 mb-1">Sprinting</div>
-                <div className="text-lg font-bold text-amber-400">{character.pace.sprinting.mph} mph</div>
-                <div className="text-xs text-slate-500">{character.pace.sprinting.kph} kph • {character.pace.sprinting.ms} m/s</div>
-              </div>
-            </div>
-            {character.paceMultiplier !== 1 && (
-              <div className="mt-3 text-center">
-                <span className="bg-amber-900/40 text-amber-400 px-3 py-1 rounded-full text-sm">
-                  ×{character.paceMultiplier} multiplier
-                </span>
-              </div>
-            )}
-            <div className="mt-3 text-xs text-slate-500 text-center">
-              Based on Reflexes {character.attributeDiePools['Reflexes'].pool.notation} + Size {character.size >= 0 ? '+' : ''}{character.size}
-            </div>
-          </div>
-
-          {/* Reset */}
-          <button
-            onClick={gameState.resetAll}
-            className="w-full bg-red-900/50 hover:bg-red-800/50 border border-red-500/50 text-red-400 px-4 py-2 rounded text-sm transition-colors"
-          >
-            🔄 Reset All Play State
-          </button>
         </div>
-      </div>
+      )}
     </div>
   );
 }

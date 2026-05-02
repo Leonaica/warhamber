@@ -12,6 +12,8 @@ import {
 import { isBandAvailable, resultToScale } from '../data/actionEffortTable';
 import type { EffortBand, ActionResult, ContestResult } from '../types/resolution';
 import StepperInput from '../components/StepperInput';
+import { useGameState } from '../context/GameStateContext';
+import { useCharacter } from '../context/CharacterContext';
 
 // Interface for navigation state from playsheet
 interface PlaysheetState {
@@ -51,6 +53,15 @@ export function ResolverPage() {
       setHasPlaysheetData(true);
     }
   }, [playsheetState]);
+
+  const gameState = useGameState();
+  const character = useCharacter();
+
+  // Only enforce surge limits when a character is loaded
+  const hasCharacter = character.hasCharacter;
+  const currentSurge = hasCharacter 
+    ? character.computedCharacter.surge - gameState.surgeSpent 
+    : Infinity;
 
   // Test type
   const [testType, setTestType] = useState<'challenge' | 'contest'>('challenge');
@@ -249,6 +260,9 @@ export function ResolverPage() {
   };
   
   const handleSurge = (band: EffortBand) => {
+    const surgeCost = getSurgeCost(band);
+    if (hasCharacter && currentSurge < surgeCost) return;
+  
     if (testType === 'challenge') {
       const res = resolveTest({
         attributePool: actorPoolEntry.pool,
@@ -286,6 +300,12 @@ export function ResolverPage() {
       );
       setResult(res);
     }
+    
+    // Spend surge from the character's pool
+    if (hasCharacter) {
+      gameState.spendSurge(surgeCost);
+    }
+    
     setLastApproach(`Surge (${band})`);
   };
 
@@ -844,30 +864,41 @@ export function ResolverPage() {
     </div>
 
     <div className="space-y-2">
-    <div className="text-sm text-slate-400">Push with Surge:</div>
-    <div className="grid grid-cols-3 gap-2">
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-slate-400">Push with Surge:</div>
+        {hasCharacter && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-amber-400">⚡</span>
+            <span className={`text-sm font-bold ${currentSurge <= 0 ? 'text-red-400' : currentSurge <= 2 ? 'text-yellow-400' : 'text-cyan-400'}`}>
+              {currentSurge}/{character.computedCharacter.surge}
+            </span>
+          </div>
+        )}
+      </div>
+      
+      <div className="grid grid-cols-3 gap-2">
         <button
-        onClick={() => handleSurge('yellow')}
-        disabled={!isBandAvailable(actorPoolEntry.pool, 'yellow')}
-        className="bg-yellow-700 hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded text-sm transition-colors"
+          onClick={() => handleSurge('yellow')}
+          disabled={!isBandAvailable(actorPoolEntry.pool, 'yellow') || currentSurge < 1}
+          className="bg-yellow-700 hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded text-sm transition-colors"
         >
-        🟨 Yellow (1)
+          🟨 Yellow (1)
         </button>
         <button
-        onClick={() => handleSurge('orange')}
-        disabled={!isBandAvailable(actorPoolEntry.pool, 'orange')}
-        className="bg-orange-700 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded text-sm transition-colors"
+          onClick={() => handleSurge('orange')}
+          disabled={!isBandAvailable(actorPoolEntry.pool, 'orange') || currentSurge < 2}
+          className="bg-orange-700 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded text-sm transition-colors"
         >
-        🟧 Orange (2)
+          🟧 Orange (2)
         </button>
         <button
-        onClick={() => handleSurge('red')}
-        disabled={!isBandAvailable(actorPoolEntry.pool, 'red')}
-        className="bg-red-700 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded text-sm transition-colors"
+          onClick={() => handleSurge('red')}
+          disabled={!isBandAvailable(actorPoolEntry.pool, 'red') || currentSurge < 3}
+          className="bg-red-700 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded text-sm transition-colors"
         >
-        🟥 Red (3)
+          🟥 Red (3)
         </button>
-        </div>
+      </div>
         
         {probability.result && (
         <div className="text-sm text-right">
@@ -876,24 +907,24 @@ export function ResolverPage() {
                 {probability.result.success}% success
             </span>
             ) : (
-            <div>
+              <div>
                 <div className="flex gap-1 justify-end">
                 <span className="text-green-400">{probability.result.win}%</span>
                 <span className="text-slate-400">/</span>
                 <span className="text-red-400">{probability.result.lose}%</span>
                 {probability.result.tie && probability.result.tie > 0 && (
-                    <>
-                    <span className="text-slate-400">/</span>
-                    <span className="text-slate-300">{probability.result.tie}%</span>
-                    </>
+                  <>
+                  <span className="text-slate-400">/</span>
+                  <span className="text-slate-300">{probability.result.tie}%</span>
+                  </>
                 )}
-                </div>
-                <div className="text-xs text-slate-500">win / lose / tie</div>
+              </div>
+              <div className="text-xs text-slate-500">win / lose / tie</div>
             </div>
             )}
-        </div>
+          </div>
         )}
-    </div>
+      </div>
     </div>
 
       {/* Result Display */}

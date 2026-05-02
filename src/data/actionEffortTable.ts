@@ -108,7 +108,7 @@ export function isBandAvailable(pool: DiePool, band: EffortBand): boolean {
   return tableEntry[band] !== null;
 }
 
-export function getScaleForPool(pool: DiePool): number | null {
+export function getScaleForPool(pool: DiePool, band: EffortBand = 'orange'): number | null {
   // Get base notation (strip divisor suffix if present)
   const baseNotation = pool.divisor 
     ? pool.notation.replace(/\/\d+$/, '')
@@ -117,8 +117,29 @@ export function getScaleForPool(pool: DiePool): number | null {
   const tableEntry = ACTION_EFFORT_TABLE[baseNotation];
   if (!tableEntry) return null;
   
-  const threshold = tableEntry.orange ?? tableEntry.yellow ?? tableEntry.red;
-  if (threshold === null || threshold === undefined) return null;
+  const threshold = tableEntry[band];
+  
+  // Handle null thresholds with special case scales
+  if (threshold === null || threshold === undefined) {
+    // Green band null → scale of 0.25
+    if (band === 'green') {
+      let scale = 0.25;
+      if (pool.divisor) {
+        scale = scale / pool.divisor;
+      }
+      return scale;
+    }
+    // Orange band null (d4 only) → scale of 0.7
+    if (band === 'orange' && baseNotation === 'd4') {
+      let scale = 0.7;
+      if (pool.divisor) {
+        scale = scale / pool.divisor;
+      }
+      return scale;
+    }
+    // Other nulls are genuinely unavailable
+    return null;
+  }
   
   let scale = SCALE_TABLE[threshold] ?? null;
   if (scale === null) return null;
