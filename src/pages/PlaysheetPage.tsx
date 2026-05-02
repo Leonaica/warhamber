@@ -73,14 +73,14 @@ export function PlaysheetPage() {
 
   const wouldHeal = (aspect: AspectName) => {
     const currentLevel = gameState.wounds[aspect];
-    if (currentLevel <= 1) return false;
+    if (currentLevel <= 0) return false;
     const pointsNeeded = currentLevel;
     return gameState.restorationPoints[aspect] >= pointsNeeded;
   };
 
   const applyHealing = (aspect: AspectName) => {
     const currentLevel = gameState.wounds[aspect];
-    if (currentLevel <= 1) return;
+    if (currentLevel <= 0) return;
     const pointsNeeded = currentLevel;
     if (gameState.restorationPoints[aspect] >= pointsNeeded) {
       gameState.setWound(aspect, (currentLevel - 1) as WoundLevel);
@@ -281,13 +281,16 @@ export function PlaysheetPage() {
     <div className="max-w-7xl mx-auto px-4 py-4 space-y-4">
       {/* Header Bar */}
       <div className="bg-slate-800 rounded-lg p-3">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="text-3xl">
+        {/* Row 1: Character info + action buttons */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="text-3xl shrink-0">
               {renderIcon(ICONS.find(i => i.code === character.avatarIcon) || DEFAULT_ICON)}
             </div>
-            <div>
-              <h1 className="text-lg font-bold text-amber-400 leading-tight">{character.name || 'Unnamed Avatar'}</h1>
+            <div className="min-w-0">
+              <h1 className="text-lg font-bold text-amber-400 leading-tight truncate">
+                {character.name || 'Unnamed Avatar'}
+              </h1>
               <div className="text-xs text-slate-400">
                 {character.computedCharacter.totalPointsSpent}/{character.campaignLimit} pts
                 {character.computedCharacter.stuff !== 0 && (
@@ -299,14 +302,42 @@ export function PlaysheetPage() {
             </div>
           </div>
 
-          {/* Wound Indicators */}
-          <div className="flex gap-2">
-            {gameState.woundPenalty < 0 && (
-              <span className="text-xs bg-red-900/30 border border-red-500/50 px-2 py-1 rounded text-red-400">
-                {gameState.woundPenalty}/die penalty
-              </span>
-            )}
+          {/* Action buttons */}
+          <div className="flex gap-1 shrink-0">
+            <div className="relative group">
+              <button onClick={handleExportMarkdown} className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-1 rounded text-xs">📜</button>
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-slate-950 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 shadow-lg">
+                Export Markdown
+              </div>
+            </div>
+            <div className="relative group">
+              <button onClick={handlePrint} className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-1 rounded text-xs">🖨️</button>
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-slate-950 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 shadow-lg">
+                Print Character
+              </div>
+            </div>
+            <div className="relative group">
+              <button
+                onClick={gameState.resetAll}
+                className="bg-red-900/50 hover:bg-red-800/50 text-red-400 px-2 py-1 rounded text-xs"
+              >
+                🔄
+              </button>
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-slate-950 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 shadow-lg">
+                Reset All
+              </div>
+            </div>
           </div>
+        </div>
+
+        {/* Row 2: Stats - stack on mobile, row on larger screens */}
+        <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-2 sm:gap-x-4 sm:gap-y-2 mt-2 pt-2 border-t border-slate-700/50">
+          {/* Wound Indicators */}
+          {gameState.woundPenalty < 0 && (
+            <span className="text-xs bg-red-900/30 border border-red-500/50 px-2 py-1 rounded text-red-400">
+              {gameState.woundPenalty}/die penalty
+            </span>
+          )}
 
           {/* Surge */}
           <div className="flex items-center gap-2">
@@ -324,21 +355,9 @@ export function PlaysheetPage() {
 
           {/* Pace */}
           <div className="flex items-center gap-2">
-              <div className="text-lg text-slate-400">Pace</div>
-              <div className="text-lg font-bold text-cyan-400">{character.pace.walking.mph}/{character.pace.sprinting.mph} mph</div>
-              <div className="text-lg text-slate-500">({character.pace.walking.kph}/{character.pace.sprinting.kph} kph)</div>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex gap-1">
-            <button onClick={handleExportMarkdown} className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-1 rounded text-xs">📜</button>
-            <button onClick={handlePrint} className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-1 rounded text-xs">🖨️</button>
-            <button
-              onClick={gameState.resetAll}
-              className="bg-red-900/50 hover:bg-red-800/50 text-red-400 px-2 py-1 rounded text-xs"
-            >
-              🔄 Reset
-            </button>
+            <span className="text-sm text-slate-400">Pace</span>
+            <span className="text-sm font-bold text-cyan-400">{character.pace.walking.mph}/{character.pace.sprinting.mph} mph</span>
+            <span className="text-sm text-slate-500 hidden sm:inline">({character.pace.walking.kph}/{character.pace.sprinting.kph} kph)</span>
           </div>
         </div>
 
@@ -425,24 +444,6 @@ export function PlaysheetPage() {
                 🎲 Resolve
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Healing Result Toast */}
-      {healResult && (
-        <div className="bg-slate-800 rounded-lg p-3 border border-green-500/50">
-          <div className="flex items-center justify-between">
-            <div className="text-sm">
-              <span className="text-slate-400">Healing {healResult.aspect}: </span>
-              <span className="text-white font-bold">Rolled {healResult.roll}</span>
-              {healResult.successes > 0 ? (
-                <span className="text-green-400 ml-2">+{healResult.successes} restoration point{healResult.successes > 1 ? 's' : ''}</span>
-              ) : (
-                <span className="text-red-400 ml-2">No restoration points</span>
-              )}
-            </div>
-            <button onClick={() => setHealResult(null)} className="text-slate-500 hover:text-slate-300">✕</button>
           </div>
         </div>
       )}
@@ -852,7 +853,7 @@ export function PlaysheetPage() {
                       {diePool.pool.notation} + {armor} armor
                     </div>
 
-                    {woundLevel > 1 && (
+                    {woundLevel > 0 && (
                       <div className="flex gap-1">
                         <button
                           onClick={() => rollNaturalHealing(aspect.id)}
@@ -874,7 +875,7 @@ export function PlaysheetPage() {
                       </div>
                     )}
 
-                    {woundLevel > 2 && (
+                    {woundLevel > 0 && (
                       <div className="mt-1.5 text-xs text-center">
                         <span className={canHeal ? 'text-green-400' : 'text-slate-400'}>
                           {restoration}/{woundLevel} pts
@@ -882,7 +883,7 @@ export function PlaysheetPage() {
                         {canHeal && (
                           <button
                             onClick={() => applyHealing(aspect.id)}
-                            className="ml-1 text-green-400 hover:text-green-300 underline"
+                            className="flex-1 bg-green-700 hover:bg-green-600 text-white px-1.5 py-1 rounded text-xs"
                           >
                             Apply
                           </button>
@@ -954,6 +955,24 @@ export function PlaysheetPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Healing Result Toast */}
+      {healResult && (
+        <div className="bg-slate-800 rounded-lg p-3 border border-green-500/50">
+          <div className="flex items-center justify-between">
+            <div className="text-sm">
+              <span className="text-slate-400">Healing {healResult.aspect}: </span>
+              <span className="text-white font-bold">Rolled {healResult.roll}</span>
+              {healResult.successes > 0 ? (
+                <span className="text-green-400 ml-2">+{healResult.successes} restoration point{healResult.successes > 1 ? 's' : ''}</span>
+              ) : (
+                <span className="text-red-400 ml-2">No restoration points</span>
+              )}
+            </div>
+            <button onClick={() => setHealResult(null)} className="text-slate-500 hover:text-slate-300">✕</button>
+          </div>
         </div>
       )}
 
