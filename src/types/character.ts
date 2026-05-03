@@ -326,8 +326,8 @@ export interface CharacterWeapon {
   id: string;
   name: string;
   attacks: WeaponAttack[];
-  category: string;
-  handedness: 'One-handed' | 'Two-handed';
+  category: WeaponCategory;
+  handedness: WeaponHandedness;
   ammo?: string;
   notes?: string[];
 }

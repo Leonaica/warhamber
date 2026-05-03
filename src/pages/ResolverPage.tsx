@@ -738,132 +738,105 @@ export function ResolverPage() {
 
         {/* RIGHT: Resolution & Results */}
         <div className="lg:col-span-3 space-y-2">
-          {/* Band Thresholds */}
-          <div className="bg-slate-800 rounded p-2">
-            <h2 className="text-sm font-bold text-amber-400 mb-1.5">
-              Effort Bands — {actorPoolEntry.pool.notation}
-            </h2>
-            <div className="grid grid-cols-4 gap-1.5 text-center text-xs">
-              {(['green', 'yellow', 'orange', 'red'] as EffortBand[]).map(band => {
-                const available = isBandAvailable(actorPoolEntry.pool, band);
-                const value = actorThresholds[band];
-                const style = bandStyles[band];
-                return (
-                  <div 
-                    key={band}
-                    className={`rounded px-1.5 py-1 ${
-                      available 
-                        ? `${style.bg} border ${style.border}`
-                        : 'bg-slate-800/50 border border-slate-600 opacity-50'
-                    }`}
-                  >
-                    <div className={`font-bold ${style.text}`}>
-                      {style.emoji} {band.charAt(0).toUpperCase() + band.slice(1)}
-                    </div>
-                    <div className="text-base text-slate-200">
-                      {available ? value : '—'}
-                    </div>
-                    <div className="text-slate-500">
-                      {!available && 'N/A'}
-                      {available && band === 'green' && 'Baseline'}
-                      {available && band !== 'green' && `${getSurgeCost(band)} Surge`}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Resolution Buttons */}
+          {/* Resolution */}
           <div className="bg-slate-800 rounded p-2">
             <div className="flex items-center justify-between mb-1.5">
-              <h2 className="text-sm font-bold text-amber-400">Resolve</h2>
-              <button
-                onClick={calculateProbability}
-                disabled={probability.loading}
-                className="bg-purple-700 hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-2 py-0.5 rounded text-xs font-medium transition-colors"
-              >
-                {probability.loading ? '...' : '📊 Odds'}
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-2 mb-2">
-              <button
-                onClick={handleBaseline}
-                disabled={!isBandAvailable(actorPoolEntry.pool, 'green')}
-                className="bg-green-700 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded text-sm font-medium transition-colors"
-              >
-                🟩 Baseline
-                {isBandAvailable(actorPoolEntry.pool, 'green') && actorThresholds.green !== null && (
-                  <div className="text-xs opacity-75">Result: {actorThresholds.green + actorTotalModifier}</div>
-                )}
-              </button>
-              <button
-                onClick={handleRoll}
-                className="bg-slate-600 hover:bg-slate-500 text-white py-2 rounded text-sm font-medium transition-colors"
-              >
-                🎲 Roll Dice
-              </button>
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <div className="text-xs text-slate-400">Push with Surge:</div>
+              <h2 className="text-sm font-bold text-amber-400">
+                Resolve — {actorPoolEntry.pool.notation}
+              </h2>
+              <div className="flex items-center gap-2">
                 {hasCharacter && (
                   <div className="flex items-center gap-1">
-                    <span className="text-amber-400 text-xs">⚡</span>
+                    <span className="text-amber-400">⚡</span>
                     <span className={`text-xs font-bold ${currentSurge <= 0 ? 'text-red-400' : currentSurge <= 2 ? 'text-yellow-400' : 'text-cyan-400'}`}>
                       {currentSurge}/{character.computedCharacter.surge}
                     </span>
                   </div>
                 )}
-              </div>
-              <div className="grid grid-cols-3 gap-1.5">
                 <button
-                  onClick={() => handleSurge('yellow')}
-                  disabled={!isBandAvailable(actorPoolEntry.pool, 'yellow') || currentSurge < 1}
-                  className="bg-yellow-700 hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-1.5 rounded text-sm transition-colors"
+                  onClick={calculateProbability}
+                  disabled={probability.loading}
+                  className="bg-purple-700 hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-2 py-0.5 rounded text-xs font-medium transition-colors"
                 >
-                  🟨 Yellow (1)
-                </button>
-                <button
-                  onClick={() => handleSurge('orange')}
-                  disabled={!isBandAvailable(actorPoolEntry.pool, 'orange') || currentSurge < 2}
-                  className="bg-orange-700 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-1.5 rounded text-sm transition-colors"
-                >
-                  🟧 Orange (2)
-                </button>
-                <button
-                  onClick={() => handleSurge('red')}
-                  disabled={!isBandAvailable(actorPoolEntry.pool, 'red') || currentSurge < 3}
-                  className="bg-red-700 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-1.5 rounded text-sm transition-colors"
-                >
-                  🟥 Red (3)
+                  {probability.loading ? '...' : '📊 Odds'}
                 </button>
               </div>
-              
-              {probability.result && (
-                <div className="text-xs text-right">
-                  {testType === 'challenge' ? (
-                    <span className={probability.result.success && probability.result.success >= 50 ? 'text-green-400' : 'text-red-400'}>
-                      {probability.result.success}% success
-                    </span>
-                  ) : (
-                    <div className="flex gap-1 justify-end">
-                      <span className="text-green-400">{probability.result.win}%</span>
-                      <span className="text-slate-400">/</span>
-                      <span className="text-red-400">{probability.result.lose}%</span>
-                      {probability.result.tie && probability.result.tie > 0 && (
+            </div>
+
+            <div className="grid grid-cols-5 gap-1.5 text-center text-xs">
+              {(['green', 'yellow', 'orange', 'red'] as EffortBand[]).map(band => {
+                const available = isBandAvailable(actorPoolEntry.pool, band);
+                const value = actorThresholds[band];
+                const style = bandStyles[band];
+                const surgeCost = band === 'green' ? 0 : getSurgeCost(band);
+                const disabled = !available || (band !== 'green' && currentSurge < surgeCost);
+
+                return (
+                  <button
+                    key={band}
+                    onClick={() => band === 'green' ? handleBaseline() : handleSurge(band)}
+                    disabled={disabled}
+                    className={`rounded px-1.5 py-2 transition-colors ${
+                      !available
+                        ? 'bg-slate-800/50 border border-slate-600 opacity-30 cursor-not-allowed'
+                        : disabled
+                          ? `${style.bg} border ${style.border} opacity-50 cursor-not-allowed`
+                          : `${style.bg} border ${style.border} hover:brightness-110`
+                    }`}
+                  >
+                    <div className={`font-bold ${style.text}`}>
+                      {style.emoji} {band.charAt(0).toUpperCase() + band.slice(1)}
+                    </div>
+                    <div className="text-lg text-slate-200">
+                      {available ? value : '—'}
+                    </div>
+                    <div className="text-slate-400">
+                      {band === 'green' ? (
                         <>
-                          <span className="text-slate-400">/</span>
-                          <span className="text-slate-300">{probability.result.tie}%</span>
+                          <span>Baseline</span>
+                          {available && value !== null && (
+                            <div className="text-[10px]">= {value + actorTotalModifier}</div>
+                          )}
                         </>
+                      ) : (
+                        <span>{surgeCost}⚡ Surge</span>
                       )}
                     </div>
-                  )}
-                </div>
-              )}
+                  </button>
+                );
+              })}
+
+              <button
+                onClick={handleRoll}
+                className="bg-slate-600 hover:bg-slate-500 text-white rounded px-1.5 py-2 transition-colors"
+              >
+                <div className="font-bold">🎲 Roll</div>
+                <div className="text-lg text-slate-300">?</div>
+                <div className="text-slate-400">Random</div>
+              </button>
             </div>
+
+            {probability.result && (
+              <div className="text-xs text-right mt-1.5">
+                {testType === 'challenge' ? (
+                  <span className={probability.result.success && probability.result.success >= 50 ? 'text-green-400' : 'text-red-400'}>
+                    {probability.result.success}% success
+                  </span>
+                ) : (
+                  <div className="flex gap-1 justify-end">
+                    <span className="text-green-400">{probability.result.win}%</span>
+                    <span className="text-slate-400">/</span>
+                    <span className="text-red-400">{probability.result.lose}%</span>
+                    {probability.result.tie && probability.result.tie > 0 && (
+                      <>
+                        <span className="text-slate-400">/</span>
+                        <span className="text-slate-300">{probability.result.tie}%</span>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Result Display */}
