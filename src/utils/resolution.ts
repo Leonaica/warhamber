@@ -468,3 +468,38 @@ export function resolveContest(
     };
   }
 }
+
+export interface PreviewResult {
+  result: number;
+  capped: boolean;
+}
+
+export function calculatePreviewResult(params: {
+  attributePool: DiePool;
+  band: EffortBand;
+  approach: 'baseline' | 'surge';
+  skillBonus: number;
+  woundPenalty: number;
+  situationalModifier: number;
+}): PreviewResult | null {
+  const { attributePool, band, approach, skillBonus, woundPenalty, situationalModifier } = params;
+  
+  const thresholds = getBandThresholds(attributePool);
+  const bandTN = thresholds[band];
+  
+  if (bandTN === null) return null;
+  
+  const diceCount = attributePool.dice.length;
+  const redMax = thresholds.red ?? getRedMaximum(attributePool);
+  
+  const effectiveDiceCountForSkill = approach === 'surge' ? 4 : diceCount;
+  const totalSkillBonus = skillBonus * effectiveDiceCountForSkill;
+  const totalWoundPenalty = woundPenalty * diceCount;
+  const totalModifier = totalSkillBonus + totalWoundPenalty + situationalModifier;
+  
+  const result = bandTN + totalModifier;
+  const capped = result > redMax;
+  const finalResult = capped ? redMax : result;
+  
+  return { result: finalResult, capped };
+}

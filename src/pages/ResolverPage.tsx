@@ -7,9 +7,9 @@ import type { DiePoolEntry } from '../data/diePoolTable';
 import { 
   resolveTest, 
   resolveContest, 
-  getBandThresholds,
   isForegoneConclusion,
-  getSurgeCost 
+  getSurgeCost,
+  calculatePreviewResult
 } from '../utils/resolution';
 import { isBandAvailable, resultToScale } from '../data/actionEffortTable';
 import type { EffortBand, ActionResult, ContestResult } from '../types/resolution';
@@ -104,11 +104,6 @@ export function ResolverPage() {
   const actorTotalModifier = (actorSkillBonus + actorWoundPenalty) * actorPoolEntry.pool.dice.length + actorModifier;
   const opponentTotalModifier = (opponentSkillBonus + opponentWoundPenalty) * opponentPoolEntry.pool.dice.length + opponentModifier;
 
-  // Get band thresholds for display
-  const actorThresholds = useMemo(() => {
-    return getBandThresholds(actorPoolEntry.pool);
-  }, [actorPoolEntry]);
-  
   // Define the band styles in a static lookup object so that Tailwind sees all the class names. 
   const bandStyles: Record<EffortBand, { bg: string; border: string; text: string; emoji: string }> = {
     green: {
@@ -764,47 +759,55 @@ export function ResolverPage() {
             </div>
 
             <div className="grid grid-cols-5 gap-1.5 text-center text-xs">
-              {(['green', 'yellow', 'orange', 'red'] as EffortBand[]).map(band => {
-                const available = isBandAvailable(actorPoolEntry.pool, band);
-                const value = actorThresholds[band];
-                const style = bandStyles[band];
-                const surgeCost = band === 'green' ? 0 : getSurgeCost(band);
-                const disabled = !available || (band !== 'green' && currentSurge < surgeCost);
+            {(['green', 'yellow', 'orange', 'red'] as EffortBand[]).map(band => {
+              const available = isBandAvailable(actorPoolEntry.pool, band);
+              const style = bandStyles[band];
+              const surgeCost = band === 'green' ? 0 : getSurgeCost(band);
+              const disabled = !available || (band !== 'green' && currentSurge < surgeCost);
+              
+              const preview = calculatePreviewResult({
+                attributePool: actorPoolEntry.pool,
+                band,
+                approach: band === 'green' ? 'baseline' : 'surge',
+                skillBonus: actorSkillBonus,
+                woundPenalty: actorWoundPenalty,
+                situationalModifier: actorModifier,
+              });
 
-                return (
-                  <button
-                    key={band}
-                    onClick={() => band === 'green' ? handleBaseline() : handleSurge(band)}
-                    disabled={disabled}
-                    className={`rounded px-1.5 py-2 transition-colors ${
-                      !available
-                        ? 'bg-slate-800/50 border border-slate-600 opacity-30 cursor-not-allowed'
-                        : disabled
-                          ? `${style.bg} border ${style.border} opacity-50 cursor-not-allowed`
-                          : `${style.bg} border ${style.border} hover:brightness-110`
-                    }`}
-                  >
-                    <div className={`font-bold ${style.text}`}>
-                      {style.emoji} {band.charAt(0).toUpperCase() + band.slice(1)}
-                    </div>
-                    <div className="text-lg text-slate-200">
-                      {available ? value : '—'}
-                    </div>
-                    <div className="text-slate-400">
-                      {band === 'green' ? (
-                        <>
-                          <span>Baseline</span>
-                          {available && value !== null && (
-                            <div className="text-[10px]">= {value + actorTotalModifier}</div>
-                          )}
-                        </>
-                      ) : (
-                        <span>{surgeCost}⚡ Surge</span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
+              return (
+                <button
+                  key={band}
+                  onClick={() => band === 'green' ? handleBaseline() : handleSurge(band)}
+                  disabled={disabled}
+                  className={`rounded px-1.5 py-2 transition-colors ${
+                    !available
+                      ? 'bg-slate-800/50 border border-slate-600 opacity-30 cursor-not-allowed'
+                      : disabled
+                        ? `${style.bg} border ${style.border} opacity-50 cursor-not-allowed`
+                        : `${style.bg} border ${style.border} hover:brightness-110`
+                  }`}
+                >
+                  <div className={`font-bold ${style.text}`}>
+                    {style.emoji} {band.charAt(0).toUpperCase() + band.slice(1)}
+                  </div>
+                  <div className="text-lg text-slate-200">
+                    {available && preview ? (
+                      <>
+                        {preview.result}
+                        {preview.capped && <span className="text-xs text-amber-400 ml-0.5">⬆</span>}
+                      </>
+                    ) : '—'}
+                  </div>
+                  <div className="text-slate-400">
+                    {band === 'green' ? (
+                      <span>Baseline</span>
+                    ) : (
+                      <span>{surgeCost}⚡ Surge</span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
 
               <button
                 onClick={handleRoll}
