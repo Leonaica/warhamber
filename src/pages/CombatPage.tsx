@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCharacter } from '../context/CharacterContext';
 import { useGameState, WOUND_LABELS, WOUND_PENALTIES } from '../context/GameStateContext';
-import { ASPECTS, type AspectName, type ArmorAttributeName, type WeaponAttack } from '../types/character';
+import { ASPECTS, type AspectName, type WeaponAttack, type ArmorAspect } from '../types/character';
 import { DAMAGE_MAGNITUDE_TABLE, type DamageMagnitudeEntry } from '../data/damageTable';
 import { calculateDamage, getResistanceAttribute, calculateStacking } from '../utils/damage';
 import type { DamageResult, WoundLevel } from '../utils/damage';
@@ -14,6 +14,7 @@ interface CombatPageState {
   weaponId?: string;
   attackIndex?: number;
   defenderAspect?: AspectName;
+  armorId?: string;
 }
 
 function DamageSpread({ probabilities }: { probabilities: WoundProbabilities }) {
@@ -139,6 +140,12 @@ export function CombatPage() {
     return selectedWeapon.attacks[selectedAttackIndex] || selectedWeapon.attacks[0];
   }, [selectedWeapon, selectedAttackIndex]);
 
+  // Get selected armor piece
+  const selectedArmorPiece = useMemo(() => {
+    if (!state?.armorId) return null;
+    return character.armor.find(a => a.id === state.armorId) || null;
+  }, [state?.armorId, character.armor]);
+
   const isPlayerDefender = combatMode === 'defender';
   const resistanceAttr = getResistanceAttribute(attackedAspect);
   
@@ -163,10 +170,12 @@ export function CombatPage() {
   const isPhysicalAspect = attackedAspect === 'Form' || attackedAspect === 'Flesh';
   const effectiveSize = isPhysicalAspect ? materialSize : immaterialSize;
 
-  // Armor
+  // Armor - from selected piece, opponent data, or manual entry
   const baseArmorValue = isPlayerDefender
-    ? character.armor[resistanceAttr as ArmorAttributeName]
-    : gameState.opponentCombatData.armor[resistanceAttr as keyof typeof gameState.opponentCombatData.armor];
+  ? (selectedArmorPiece && selectedArmorPiece.aspects.includes(attackedAspect as ArmorAspect)
+      ? selectedArmorPiece.armor
+      : 0)
+  : gameState.opponentCombatData.armor[resistanceAttr as keyof typeof gameState.opponentCombatData.armor];
   const armorValue = customArmor !== null ? customArmor : baseArmorValue;
 
   // Total resistance
@@ -650,7 +659,7 @@ export function CombatPage() {
                       }
                     }}
                     min={0}
-                    max={20}
+                    max={224}
                     className="text-white"
                     toggle={
                       isPlayerDefender
@@ -691,6 +700,28 @@ export function CombatPage() {
                 </div>
               </div>
             </div>
+
+            {/* Selected Armor Piece */}
+            {isPlayerDefender && selectedArmorPiece && (
+              <div className="bg-cyan-900/20 border border-cyan-500/30 rounded p-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs">
+                    <span className="text-cyan-400 font-medium">🛡️ {selectedArmorPiece.name}</span>
+                    <span className="text-slate-400 ml-1">
+                      ({selectedArmorPiece.aspects.join(', ')} • Armor {selectedArmorPiece.armor})
+                    </span>
+                  </div>
+                  {selectedArmorPiece.aspects.includes(attackedAspect as ArmorAspect) ? (
+                    <span className="text-[10px] text-green-400">✓ Applies</span>
+                  ) : (
+                    <span className="text-[10px] text-red-400">✗ Doesn't protect {attackedAspect}</span>
+                  )}
+                </div>
+                {selectedArmorPiece.location && (
+                  <div className="text-[10px] text-slate-500 mt-0.5">{selectedArmorPiece.location}</div>
+                )}
+              </div>
+            )}
 
             {/* Size & Armor */}
             <div className="grid grid-cols-2 gap-2">
@@ -743,11 +774,16 @@ export function CombatPage() {
 
               {/* Armor */}
               <div className="bg-slate-700/50 rounded p-2 space-y-1">
-                <div className="text-[10px] text-slate-400 font-medium">Armor vs {attackedAspect}</div>
+              <div className="text-[10px] text-slate-400 font-medium">
+                Armor vs {attackedAspect}
+                {isPlayerDefender && selectedArmorPiece && selectedArmorPiece.aspects.includes(attackedAspect as ArmorAspect) && (
+                  <span className="text-cyan-400 ml-1">({selectedArmorPiece.name})</span>
+                )}
+              </div>
                 <StepperInput
                   value={armorValue}
                   onChange={(delta) => {
-                    const newVal = Math.min(Math.max(armorValue + delta, 0), 20);
+                    const newVal = Math.min(Math.max(armorValue + delta, 0), 224);
                     setCustomArmor(newVal);
                     if (!isPlayerDefender) {
                       gameState.updateOpponentCombatData({
@@ -759,7 +795,7 @@ export function CombatPage() {
                     }
                   }}
                   min={0}
-                  max={20}
+                  max={224}
                   className="text-white"
                   toggle={
                     isPlayerDefender

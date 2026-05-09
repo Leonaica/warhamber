@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useCharacter } from '../context/CharacterContext';
-import type { RatingValue, CharacterSkill, Artifact, Ally, PersonalShadow } from '../types/character';
+import type { RatingValue, CharacterSkill, Artifact, Ally, PersonalShadow, ArmorAspect, CharacterArmor } from '../types/character';
 import { ASPECTS, FUNCTIONS, ATTRIBUTES, RATING_SCALE, RATING_LABELS, SKILL_RATINGS, SIZE_OPTIONS } from '../types/character';
 import { SKILLS } from '../data/skills';
 import { POWERS } from '../data/powers';
@@ -237,6 +237,9 @@ export function AvatarBuilderPage() {
   // State for editing weapons 
   const [editingWeapon, setEditingWeapon] = useState<CharacterWeapon | null>(null);
   const [showWeaponEditor, setShowWeaponEditor] = useState(false);
+    // State for editing armor 
+  const [editingArmor, setEditingArmor] = useState<CharacterArmor | null>(null);
+  const [showArmorEditor, setShowArmorEditor] = useState(false);
 
   return (
     <>
@@ -1237,10 +1240,110 @@ export function AvatarBuilderPage() {
             </div>
 
             {/* Armor */}
-            <ArmorEditor
-              armor={character.armor}
-              setArmor={character.setArmor}
-            />
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-bold text-white">🛡️ Armor</h3>
+                <button
+                  onClick={() => {
+                    setEditingArmor(null);
+                    setShowArmorEditor(true);
+                  }}
+                  className="bg-amber-500 hover:bg-amber-400 text-slate-900 px-4 py-2 rounded font-medium text-sm"
+                >
+                  + Add Armor
+                </button>
+              </div>
+
+              {/* Summary of total armor per aspect */}
+              {character.armor.length > 0 && (
+                <div className="mb-4 flex flex-wrap gap-3">
+                  {(['Form', 'Flesh', 'Mind', 'Spirit'] as ArmorAspect[]).map(aspect => {
+                    const total = character.armor.reduce((sum, a) => 
+                      a.aspects.includes(aspect) ? sum + a.armor : sum, 0
+                    );
+                    const emojis: Record<ArmorAspect, string> = {
+                      Form: '🧱', Flesh: '🧬', Mind: '🧠', Spirit: '🔥'
+                    };
+                    return (
+                      <div key={aspect} className="bg-slate-700/50 rounded px-3 py-1.5 text-sm">
+                        <span className="text-slate-400">{emojis[aspect]} {aspect}:</span>
+                        <span className="ml-1.5 font-bold text-cyan-400">{total}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {character.armor.length === 0 && !showArmorEditor && (
+                <div className="text-center py-8 bg-slate-700/30 rounded">
+                  <div className="text-slate-500 text-sm">No armor added yet.</div>
+                  <div className="text-slate-600 text-xs mt-1">Add armor to reduce damage from attacks.</div>
+                </div>
+              )}
+
+              {character.armor.map(piece => (
+                <div key={piece.id} className="bg-slate-700/50 rounded p-3 mb-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-white font-medium">{piece.name}</div>
+                      <div className="text-xs text-slate-400">
+                        {piece.aspects.map(a => {
+                          const emojis: Record<ArmorAspect, string> = {
+                            Form: '🧱', Flesh: '🧬', Mind: '🧠', Spirit: '🔥'
+                          };
+                          return `${emojis[a]} ${a}`;
+                        }).join(' • ')}
+                        {' • '}Armor {piece.armor}
+                        {piece.location && ` • ${piece.location}`}
+                      </div>
+                      {piece.notes && piece.notes.length > 0 && (
+                        <div className="text-xs text-slate-500 mt-1">
+                          {piece.notes.join(' • ')}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setEditingArmor(piece);
+                          setShowArmorEditor(true);
+                        }}
+                        className="text-amber-400 hover:text-amber-300 text-sm"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => character.removeArmor(piece.id)}
+                        className="text-red-400 hover:text-red-300 text-sm"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {showArmorEditor && (
+                <div className="mt-4">
+                  <ArmorEditor
+                    armor={editingArmor || undefined}
+                    onSave={(armorData) => {
+                      if (editingArmor) {
+                        character.updateArmor(editingArmor.id, armorData);
+                      } else {
+                        character.addArmor(armorData);
+                      }
+                      setShowArmorEditor(false);
+                      setEditingArmor(null);
+                    }}
+                    onCancel={() => {
+                      setShowArmorEditor(false);
+                      setEditingArmor(null);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </section>
 

@@ -9,8 +9,7 @@ import type {
   CharacterFunctionRatings,
   AttributeName,
   CharacterWeapon,
-  ArmorValues,
-  ArmorAttributeName,
+  CharacterArmor,
   RatingValue,
 } from '../types/character';
 import { ATTRIBUTES } from '../types/character';
@@ -48,7 +47,7 @@ interface CharacterState {
   allies: Ally[];
   personalShadows: PersonalShadow[];
   weapons: CharacterWeapon[];
-  armor: ArmorValues;
+  armor: CharacterArmor[];
   size: number;
   paceMultiplier: number;
 }
@@ -77,7 +76,9 @@ interface CharacterContextValue extends CharacterState {
   addWeapon: (weapon: Omit<CharacterWeapon, 'id'>) => void;
   updateWeapon: (id: string, updates: Partial<CharacterWeapon>) => void;
   removeWeapon: (id: string) => void;
-  setArmor: (defense: ArmorAttributeName, value: number) => void;
+  addArmor: (armorData: Omit<CharacterArmor, 'id'>) => void;
+  updateArmor: (id: string, updates: Partial<CharacterArmor>) => void;
+  removeArmor: (id: string) => void;
   setSize: (size: number | ((prev: number) => number)) => void;
   setPaceMultiplier: (value: number | ((prev: number) => number)) => void;
   
@@ -101,12 +102,6 @@ const defaultFunctions: CharacterFunctionRatings = {
   Force: 0,
 };
 
-const defaultArmor: ArmorValues = {
-  Toughness: 0,
-  Endurance: 0,
-  Willpower: 0,
-  Resilience: 0,
-};
 
 const CharacterContext = createContext<CharacterContextValue | null>(null);
 
@@ -124,7 +119,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
   const [alliesState, setAlliesState] = useState<Ally[]>([]);
   const [personalShadowsState, setPersonalShadowsState] = useState<PersonalShadow[]>([]);
   const [weapons, setWeapons] = useState<CharacterWeapon[]>([]);
-  const [armorState, setArmorState] = useState<ArmorValues>(defaultArmor);
+  const [armorState, setArmorState] = useState<CharacterArmor[]>([]);
   const [sizeState, setSizeState] = useState(0);
   const [paceMultiplierState, setPaceMultiplierState] = useState(1);
 
@@ -237,9 +232,18 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
     setWeapons(prev => prev.filter(w => w.id !== id));
   }, []);
 
-  const setArmor = useCallback((defense: ArmorAttributeName, value: number) => {
-    setArmorState(prev => ({ ...prev, [defense]: Math.max(0, value) }));
-  }, []);
+const addArmor = useCallback((armorData: Omit<CharacterArmor, 'id'>) => {
+  const id = crypto.randomUUID();
+  setArmorState(prev => [...prev, { ...armorData, id }]);
+}, []);
+
+const updateArmor = useCallback((id: string, updates: Partial<CharacterArmor>) => {
+  setArmorState(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+}, []);
+
+const removeArmor = useCallback((id: string) => {
+  setArmorState(prev => prev.filter(a => a.id !== id));
+}, []);
   
   const setSize = useCallback((value: number | ((prev: number) => number)) => {
     setSizeState(prev => typeof value === 'function' ? value(prev) : value);
@@ -398,7 +402,9 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
     addWeapon,
     updateWeapon,
     removeWeapon,
-    setArmor,
+    addArmor,
+    updateArmor,
+    removeArmor,
     setSize,
     setPaceMultiplier,
     setName,

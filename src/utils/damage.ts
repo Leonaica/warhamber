@@ -1,4 +1,4 @@
-import type { AspectName, ArmorAttributeName } from '../types/character';
+import type { AspectName, AttributeName } from '../types/character';
 import { DAMAGE_MAGNITUDE_TABLE } from '../data/damageTable';
 import { getWoundLevelInfo, type WoundLevel } from '../data/wounds';
 
@@ -41,8 +41,8 @@ export interface DamageCalculationParams {
 }
 
 // Map aspect to its resistance attribute
-export function getResistanceAttribute(aspect: AspectName): ArmorAttributeName {
-  const map: Record<AspectName, ArmorAttributeName> = {
+export function getResistanceAttribute(aspect: AspectName): AttributeName {
+  const map: Record<AspectName, AttributeName> = {
     Form: 'Toughness',
     Flesh: 'Endurance',
     Mind: 'Willpower',
@@ -52,7 +52,7 @@ export function getResistanceAttribute(aspect: AspectName): ArmorAttributeName {
 }
 
 // Map aspect to armor attribute
-export function getArmorAttribute(aspect: AspectName): ArmorAttributeName {
+export function getArmorAttribute(aspect: AspectName): AttributeName {
   return getResistanceAttribute(aspect);
 }
 

@@ -332,14 +332,16 @@ export interface CharacterWeapon {
   notes?: string[];
 }
 
-export interface ArmorValues {
-  Toughness: number;
-  Endurance: number;
-  Willpower: number;
-  Resilience: number;
+export interface CharacterArmor {
+  id: string;
+  name: string;
+  aspects: ArmorAspect[];
+  armor: number;
+  location: string;
+  notes?: string[];
 }
 
-export type ArmorAttributeName = 'Toughness' | 'Endurance' | 'Willpower' | 'Resilience';
+export type ArmorAspect = 'Form' | 'Flesh' | 'Mind' | 'Spirit';
 
 export interface Character {
   name: string;
@@ -362,7 +364,7 @@ export interface Character {
   
   // Step 5: Equipment
   weapons: CharacterWeapon[];
-  armor: ArmorValues;
+  armor: CharacterArmor[];
   size: number;
   
   // Derived values (computed)
