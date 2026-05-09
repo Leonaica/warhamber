@@ -9,7 +9,8 @@ import {
   resolveContest, 
   isForegoneConclusion,
   getSurgeCost,
-  calculatePreviewResult
+  calculatePreviewResult,
+  type PreviewResult
 } from '../utils/resolution';
 import { isBandAvailable, resultToScale } from '../data/actionEffortTable';
 import type { EffortBand, ActionResult, ContestResult } from '../types/resolution';
@@ -138,41 +139,89 @@ export function ResolverPage() {
     return isForegoneConclusion(actorPoolEntry.rank, opponentPoolEntry.rank);
   }, [testType, actorPoolEntry.rank, opponentPoolRank]);
 
-    // When user manually changes pool rank, clear playsheet indicator
-    const handlePoolRankChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-      setActorPoolRank(parseInt(e.target.value));
-      setHasPlaysheetData(false);
-    };
-  
-    const handleSkillBonusChange = (delta: number) => {
-      setActorSkillBonus(prev => prev + delta);
-      setHasPlaysheetData(false);
-    };
-    
-    const handleWoundPenaltyChange = (delta: number) => {
-      setActorWoundPenalty(prev => prev + delta);
-      setHasPlaysheetData(false);
-    };
-    
-    const handleActorModifierChange = (delta: number) => {
-      setActorModifier(prev => prev + delta);
-    };
-    
-    const handleOpponentSkillBonusChange = (delta: number) => {
-      setOpponentSkillBonus(prev => prev + delta);
-    };
-    
-    const handleOpponentWoundPenaltyChange = (delta: number) => {
-      setOpponentWoundPenalty(prev => prev + delta);
-    };
-    
-    const handleOpponentModifierChange = (delta: number) => {
-      setOpponentModifier(prev => prev + delta);
-    };
+  // When user manually changes pool rank, clear playsheet indicator
+  const handlePoolRankChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setActorPoolRank(parseInt(e.target.value));
+    setHasPlaysheetData(false);
+  };
 
-    const handleTargetNumberChange = (delta: number) => {
-      setTargetNumber(prev => Math.max(1, Math.min(224, prev + delta)));
+  const handleSkillBonusChange = (delta: number) => {
+    setActorSkillBonus(prev => prev + delta);
+    setHasPlaysheetData(false);
+  };
+  
+  const handleWoundPenaltyChange = (delta: number) => {
+    setActorWoundPenalty(prev => prev + delta);
+    setHasPlaysheetData(false);
+  };
+  
+  const handleActorModifierChange = (delta: number) => {
+    setActorModifier(prev => prev + delta);
+  };
+  
+  const handleOpponentSkillBonusChange = (delta: number) => {
+    setOpponentSkillBonus(prev => prev + delta);
+  };
+  
+  const handleOpponentWoundPenaltyChange = (delta: number) => {
+    setOpponentWoundPenalty(prev => prev + delta);
+  };
+  
+  const handleOpponentModifierChange = (delta: number) => {
+    setOpponentModifier(prev => prev + delta);
+  };
+
+  const handleTargetNumberChange = (delta: number) => {
+    setTargetNumber(prev => Math.max(1, Math.min(224, prev + delta)));
+  };
+
+  // Before the button grid, compute previews for all bands
+  const previews = useMemo(() => {
+    const result: Record<EffortBand, PreviewResult | null> = {
+      green: null,
+      yellow: null,
+      orange: null,
+      red: null,
     };
+    
+    for (const band of ['green', 'yellow', 'orange', 'red'] as EffortBand[]) {
+      result[band] = calculatePreviewResult({
+        attributePool: actorPoolEntry.pool,
+        band,
+        approach: band === 'green' ? 'baseline' : 'surge',
+        skillBonus: actorSkillBonus,
+        woundPenalty: actorWoundPenalty,
+        situationalModifier: actorModifier,
+      });
+    }
+    
+    return result;
+  }, [actorPoolEntry, actorSkillBonus, actorWoundPenalty, actorModifier]);
+
+  // Returns true if this band's result is strictly better than all cheaper available bands
+  const isSurgeWorthIt = (band: EffortBand): boolean => {
+    if (band === 'green') return true;
+    
+    const bandPreview = previews[band];
+    if (!bandPreview) return false;
+    
+    const cheaperBands: EffortBand[] = 
+      band === 'yellow' ? ['green'] :
+      band === 'orange' ? ['green', 'yellow'] :
+      ['green', 'yellow', 'orange'];
+    
+    // Check if any cheaper available band gives same or better result
+    for (const cheaper of cheaperBands) {
+      if (isBandAvailable(actorPoolEntry.pool, cheaper)) {
+        const cheaperPreview = previews[cheaper];
+        if (cheaperPreview && cheaperPreview.result >= bandPreview.result) {
+          return false;
+        }
+      }
+    }
+    
+    return true;
+  };
 
   // Handle resolution
   const handleBaseline = () => {
@@ -763,7 +812,9 @@ export function ResolverPage() {
               const available = isBandAvailable(actorPoolEntry.pool, band);
               const style = bandStyles[band];
               const surgeCost = band === 'green' ? 0 : getSurgeCost(band);
-              const disabled = !available || (band !== 'green' && currentSurge < surgeCost);
+              const disabled = !available 
+                || (band !== 'green' && currentSurge < surgeCost)
+                || !isSurgeWorthIt(band);
               
               const preview = calculatePreviewResult({
                 attributePool: actorPoolEntry.pool,
