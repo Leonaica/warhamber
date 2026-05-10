@@ -1,4 +1,4 @@
-import type { CharacterAspectRatings, CharacterFunctionRatings, CharacterSkill, CharacterPower, Artifact, Ally, PersonalShadow, CharacterWeapon, ArmorValues, DiePool } from '../types/character';
+import type { CharacterAspectRatings, CharacterFunctionRatings, CharacterSkill, CharacterPower, Artifact, Ally, PersonalShadow, CharacterWeapon, CharacterArmor, DiePool } from '../types/character';
 import { ASPECTS, FUNCTIONS, ATTRIBUTES, SKILL_RATINGS, SIZE_OPTIONS, WEAPON_RANGES } from '../types/character';
 import { SKILLS } from '../data/skills';
 import { POWERS } from '../data/powers';
@@ -84,7 +84,7 @@ export function generateHomebreweryMarkdown(
   allies: Ally[],
   personalShadows: PersonalShadow[],
   weapons: CharacterWeapon[],
-  armor: ArmorValues,
+  armor: CharacterArmor[],
   size: number,
   pace: PaceValues,
   stuff: number,
@@ -201,36 +201,40 @@ export function generateHomebreweryMarkdown(
     lines.push(`#### Weapons`);
     weapons.forEach(weapon => {
       const attackTexts = weapon.attacks.map(attack => {
-        const aspectEmoji = ASPECTS.find(a => a.id === attack.aspect)?.emoji || '';
-        const penValue = typeof attack.penetration === 'number' 
-          ? attack.penetration 
-          : Array.isArray(attack.penetration) ? attack.penetration[0] : 0;
-        const penText = penValue > 0 ? ` Pen ${formatPenetration(attack.penetration)}` : '';
+        const aspectName = ASPECTS.find(a => a.id === attack.aspect)?.name || attack.aspect;
+        const penFormatted = formatPenetration(attack.penetration);
+        const penText = penFormatted ? ` Pen ${penFormatted}` : '';
         const rangeLabel = WEAPON_RANGES.find(r => r.value === attack.range)?.label || attack.range;
-        const conditionalText = attack.isConditional ? ` *${attack.condition}*` : '';
-        return `${aspectEmoji}${attack.magnitude} ${formatAttackType(attack.type)}${penText} (${rangeLabel})${conditionalText}`;
+        const conditionalText = attack.isConditional ? ` ⚠️${attack.condition ? ` (${attack.condition})` : ''}` : '';
+        return `${aspectName}-${formatAttackType(attack.type)} ${attack.magnitude}${penText} ${rangeLabel}${conditionalText}`;
       });
       
-      const notesText = weapon.notes && weapon.notes.length > 0 
-        ? `. ${weapon.notes.join('. ')}` 
-        : '';
-      const ammoText = weapon.ammo ? ` [${weapon.ammo}]` : '';
+      const parenthetical = attackTexts.join('; ');
+      const categoryText = `${weapon.category}, ${weapon.handedness}`;
+      const parts = [categoryText];
+      if (weapon.ammo) parts.push(weapon.ammo);
+      if (weapon.notes && weapon.notes.length > 0) parts.push(weapon.notes.join('. '));
       
-      lines.push(`**${weapon.name}** *[${weapon.category}, ${weapon.handedness}${ammoText}]* :: ${attackTexts.join(', ')}${notesText}`);
+      lines.push(`**${weapon.name}** (${parenthetical}). ${parts.join('. ')}`);
     });
   }
   
   // Armor
-  const hasArmor = armor.Toughness > 0 || armor.Endurance > 0 || armor.Willpower > 0 || armor.Resilience > 0;
-  if (hasArmor) {
+  if (armor.length > 0) {
     lines.push(``);
     lines.push(`#### Armor`);
-    const armorParts: string[] = [];
-    if (armor.Toughness > 0) armorParts.push(`Toughness +${armor.Toughness}`);
-    if (armor.Endurance > 0) armorParts.push(`Endurance +${armor.Endurance}`);
-    if (armor.Willpower > 0) armorParts.push(`Willpower +${armor.Willpower}`);
-    if (armor.Resilience > 0) armorParts.push(`Resilience +${armor.Resilience}`);
-    lines.push(armorParts.join(', '));
+    armor.forEach(piece => {
+      const aspectNames = piece.aspects.map(a => {
+        const aspect = ASPECTS.find(aspect => aspect.id === a);
+        return aspect ? aspect.name : a;
+      }).join('/');
+      const locationText = piece.location ? ` ${piece.location}` : '';
+      const notesText = piece.notes && piece.notes.length > 0 
+        ? `. ${piece.notes.join('. ')}` 
+        : '';
+      
+      lines.push(`**${piece.name}** (${aspectNames} ${piece.armor}${locationText})${notesText}`);
+    });
   }
   
   // Artifacts and Constructs
