@@ -278,21 +278,129 @@ export const SIZE_OPTIONS: { value: SizeValue; label: string; description: strin
   { value: 6, label: 'Titanic', description: 'to 100k tons' },
 ];
 
-export type FormAttackType = 'Impact' | 'Slashing' | 'Piercing' | 'Energy' | 'Corrosive' | 'Freeze' | 'Explosive';
-export type FleshAttackType = 'Asphyxiation' | 'Poison' | 'Disease' | 'Drain' | 'DeathMagic' | 'Hemorrhage';
-export type MindAttackType = 'Pain' | 'Fatigue' | 'Domination' | 'Intrusion' | 'Hallucination' | 'Torture';
-export type SpiritAttackType = 'NegativeEnergy' | 'SoulBlade' | 'ExistentialHorror' | 'EmpathicOverload' | 'Possession';
+// === MECHANISMS ===
+
+export type FormMechanism = 
+  | 'Removal' | 'Severance' | 'Distortion' | 'Fragmentation' 
+  | 'StateDisruption' | 'Resonance';
+
+export type FleshMechanism = 
+  | 'ChemicalDisruption' | 'BiologicalInvasion' | 'FluidDisruption' 
+  | 'RespirationDisruption' | 'EnergyDisruption' | 'SystemFailure' | 'Degeneration';
+
+export type MindMechanism = 
+  | 'MemoryDamage' | 'ReasoningDamage' | 'PerceptionDamage' 
+  | 'WillDamage' | 'FocusDamage' | 'IdentityDamage';
+
+export type SpiritMechanism = 
+  | 'HopeDamage' | 'ConnectionDamage' | 'IdentityCorruption' 
+  | 'EnergyDrain' | 'Burden' | 'Violation' | 'FaithDamage';
+
+// === ATTACK TYPES ===
+
+export type FormAttackType = 
+  | 'Acid' | 'Fire' | 'Erosion' | 'Disintegration' | 'Burning' | 'Ablation'
+  | 'Slashing' | 'Piercing' | 'Shearing' | 'Tension'
+  | 'Bludgeoning' | 'Deformation' | 'Compression' | 'Enlargement'
+  | 'Shattering' | 'Fracturing' | 'Splintering'
+  | 'Cold' | 'Transmutation' | 'Phasing' | 'Crystallization' | 'Stasis'
+  | 'Thunder' | 'Vibration' | 'Explosive';
+
+export type FleshAttackType =
+  | 'Poison' | 'Toxin' | 'DrugEffect' | 'AllergicReaction'
+  | 'Disease' | 'Infection' | 'Parasitism' | 'FungalColonization'
+  | 'Bleeding' | 'Hemorrhage' | 'Desiccation' | 'BloodCorruption'
+  | 'Suffocation' | 'Drowning' | 'ToxicAtmosphere'
+  | 'Electricity' | 'Radiation' | 'Hypothermia' | 'Hyperthermia'
+  | 'Paralysis' | 'OrganFailure' | 'SensoryOverload' | 'SensoryDeprivation' | 'Necrosis'
+  | 'Atrophy' | 'Aging' | 'Putrefaction' | 'Mutation' | 'Assimilation';
+
+export type MindAttackType =
+  | 'Amnesia' | 'MemoryAlteration' | 'FalseMemoryImplantation'
+  | 'Confusion' | 'Paradox' | 'LogicCorruption'
+  | 'Illusion' | 'Delusion' | 'Hallucination' | 'SensoryDeprivation'
+  | 'Domination' | 'Compulsion' | 'WillBreaking'
+  | 'Overload' | 'Obsession' | 'Fatigue' | 'Stress' | 'MindFog' | 'Glitching'
+  | 'IdentityLoss' | 'EgoDissolution' | 'PersonalityAlteration' | 'ConceptErasure';
+
+export type SpiritAttackType =
+  | 'Despair' | 'Apathy' | 'ExistentialDread' | 'ExistentialHorror'
+  | 'Severing' | 'Alienation' | 'Isolation' | 'EmpathyDestruction'
+  | 'Corruption' | 'Possession' | 'Fragmentation' | 'Taint' | 'Distortion'
+  | 'SoulDrain' | 'PassionDrain' | 'NegativeEnergy' | 'DeathMagic'
+  | 'Curse' | 'Guilt' | 'Karma' | 'Binding' | 'Geas'
+  | 'Desecration' | 'SpiritualPollution' | 'Unmaking'
+  | 'Doubt' | 'FaithBreaking' | 'Betrayal' | 'EmpathicOverload';
 
 export type AttackType = FormAttackType | FleshAttackType | MindAttackType | SpiritAttackType;
 
-export const ATTACK_TYPES_BY_ASPECT: Record<AspectName, AttackType[]> = {
-  Form: ['Impact', 'Slashing', 'Piercing', 'Energy', 'Corrosive', 'Freeze', 'Explosive'],
-  Flesh: ['Asphyxiation', 'Poison', 'Disease', 'Drain', 'DeathMagic', 'Hemorrhage'],
-  Mind: ['Pain', 'Fatigue', 'Domination', 'Intrusion', 'Hallucination', 'Torture'],
-  Spirit: ['NegativeEnergy', 'SoulBlade', 'ExistentialHorror', 'EmpathicOverload', 'Possession'],
+// === MECHANISM-TO-TYPE MAPPINGS ===
+
+export const FORM_ATTACK_TYPES: Record<FormMechanism, FormAttackType[]> = {
+  Removal: ['Acid', 'Fire', 'Erosion', 'Disintegration', 'Burning', 'Ablation'],
+  Severance: ['Slashing', 'Piercing', 'Shearing', 'Tension'],
+  Distortion: ['Bludgeoning', 'Deformation', 'Compression', 'Enlargement'],
+  Fragmentation: ['Shattering', 'Fracturing', 'Splintering'],
+  StateDisruption: ['Cold', 'Transmutation', 'Phasing', 'Crystallization', 'Stasis'],
+  Resonance: ['Thunder', 'Vibration', 'Explosive'],
 };
 
-export type WeaponCategory = 'Melee' | 'Pistol' | 'Gun' | 'Heavy' | 'Mounted' | 'Thrown';
+export const FLESH_ATTACK_TYPES: Record<FleshMechanism, FleshAttackType[]> = {
+  ChemicalDisruption: ['Poison', 'Toxin', 'DrugEffect', 'AllergicReaction'],
+  BiologicalInvasion: ['Disease', 'Infection', 'Parasitism', 'FungalColonization'],
+  FluidDisruption: ['Bleeding', 'Hemorrhage', 'Desiccation', 'BloodCorruption'],
+  RespirationDisruption: ['Suffocation', 'Drowning', 'ToxicAtmosphere'],
+  EnergyDisruption: ['Electricity', 'Radiation', 'Hypothermia', 'Hyperthermia'],
+  SystemFailure: ['Paralysis', 'OrganFailure', 'SensoryOverload', 'SensoryDeprivation', 'Necrosis'],
+  Degeneration: ['Atrophy', 'Aging', 'Putrefaction', 'Mutation', 'Assimilation'],
+};
+
+export const MIND_ATTACK_TYPES: Record<MindMechanism, MindAttackType[]> = {
+  MemoryDamage: ['Amnesia', 'MemoryAlteration', 'FalseMemoryImplantation'],
+  ReasoningDamage: ['Confusion', 'Paradox', 'LogicCorruption'],
+  PerceptionDamage: ['Illusion', 'Delusion', 'Hallucination', 'SensoryDeprivation'],
+  WillDamage: ['Domination', 'Compulsion', 'WillBreaking'],
+  FocusDamage: ['Overload', 'Obsession', 'Fatigue', 'Stress', 'MindFog', 'Glitching'],
+  IdentityDamage: ['IdentityLoss', 'EgoDissolution', 'PersonalityAlteration', 'ConceptErasure'],
+};
+
+export const SPIRIT_ATTACK_TYPES: Record<SpiritMechanism, SpiritAttackType[]> = {
+  HopeDamage: ['Despair', 'Apathy', 'ExistentialDread', 'ExistentialHorror'],
+  ConnectionDamage: ['Severing', 'Alienation', 'Isolation', 'EmpathyDestruction'],
+  IdentityCorruption: ['Corruption', 'Possession', 'Fragmentation', 'Taint', 'Distortion'],
+  EnergyDrain: ['SoulDrain', 'PassionDrain', 'NegativeEnergy', 'DeathMagic'],
+  Burden: ['Curse', 'Guilt', 'Karma', 'Binding', 'Geas'],
+  Violation: ['Desecration', 'SpiritualPollution', 'Unmaking'],
+  FaithDamage: ['Doubt', 'FaithBreaking', 'Betrayal', 'EmpathicOverload'],
+};
+
+export const ATTACK_TYPES_BY_ASPECT: Record<AspectName, AttackType[]> = {
+  Form: Object.values(FORM_ATTACK_TYPES).flat(),
+  Flesh: Object.values(FLESH_ATTACK_TYPES).flat(),
+  Mind: Object.values(MIND_ATTACK_TYPES).flat(),
+  Spirit: Object.values(SPIRIT_ATTACK_TYPES).flat(),
+};
+
+// === WEAPON CATEGORIES ===
+
+export type WeaponCategory = 
+  | 'Melee' | 'Pistol' | 'Gun' | 'Heavy' | 'Mounted' | 'Thrown'
+  | 'Natural' | 'Unarmed'
+  | 'Spell' | 'Innate' | 'Pact' | 'PrimeMagic'
+  | 'Biokinesis' | 'Telekinesis' | 'Telepathy' | 'Divination' | 'Pyrokinesis'
+  | 'Pattern' | 'Logrus' | 'Tarot' | 'Shapeshifting' | 'BrokenPattern'
+  | 'Psychomancy' | 'Plasmancy' | 'Chronomancy' | 'Ethermancy' | 'Alchemancy' | 'Technomancy';
+
+// === UTILITY ===
+
+export function getMechanismGroupsForAspect(aspect: AspectName): Record<string, string[]> {
+  switch (aspect) {
+    case 'Form': return FORM_ATTACK_TYPES;
+    case 'Flesh': return FLESH_ATTACK_TYPES;
+    case 'Mind': return MIND_ATTACK_TYPES;
+    case 'Spirit': return SPIRIT_ATTACK_TYPES;
+  }
+}
 
 export type WeaponHandedness = 'One-handed' | 'Two-handed';
 
