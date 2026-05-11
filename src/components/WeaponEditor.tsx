@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { AspectName, AttackType, WeaponAttack, CharacterWeapon, WeaponCategory, WeaponHandedness, WeaponRange } from '../types/character';
-import { ASPECTS, ATTACK_TYPES_BY_ASPECT, WEAPON_RANGES } from '../types/character';
+import { ASPECTS, ATTACK_TYPES_BY_ASPECT, WEAPON_RANGES, getMechanismGroupsForAspect } from '../types/character';
 import { DAMAGE_MAGNITUDE_TABLE, type DamageMagnitudeEntry } from '../data/damageTable';
+import { WEAPON_CATEGORY_GROUPS, DEFAULT_ATTACK_BY_CATEGORY, MECHANISM_LABELS } from '../data/weaponData';
 import StepperInput from './StepperInput';
 
 interface WeaponEditorProps {
@@ -21,11 +22,13 @@ export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
 
   const addAttack = () => {
     const id = crypto.randomUUID();
-    const defaultRange: WeaponRange = category === 'Melee' || category === 'Thrown' ? 'Close' : 'Short';
+    const defaultRange: WeaponRange = ['Melee', 'Thrown', 'Unarmed', 'Natural'].includes(category) 
+      ? 'Close' : 'Short';
+    const defaults = DEFAULT_ATTACK_BY_CATEGORY[category];
     const newAttack: WeaponAttack = {
       id,
-      aspect: 'Form',
-      type: 'Impact',
+      aspect: defaults.aspect,
+      type: defaults.type,
       magnitude: 3,
       penetration: 0,
       range: defaultRange,
@@ -78,7 +81,7 @@ export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white"
-          placeholder="e.g., Longsword, .38 Special"
+          placeholder="e.g., Longsword, .38 Special, Mind Blast"
         />
       </div>
 
@@ -91,12 +94,13 @@ export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
             onChange={(e) => setCategory(e.target.value as WeaponCategory)}
             className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white"
           >
-            <option value="Melee">Melee</option>
-            <option value="Pistol">Pistol</option>
-            <option value="Gun">Gun</option>
-            <option value="Heavy">Heavy</option>
-            <option value="Mounted">Mounted</option>
-            <option value="Thrown">Thrown</option>
+            {Object.entries(WEAPON_CATEGORY_GROUPS).map(([group, cats]) => (
+              <optgroup key={group} label={group}>
+                {cats.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </optgroup>
+            ))}
           </select>
         </div>
         <div>
@@ -120,7 +124,7 @@ export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
           value={ammo}
           onChange={(e) => setAmmo(e.target.value)}
           className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white"
-          placeholder="e.g., 6 rounds, magazine, infinite"
+          placeholder="e.g., 6 rounds, magazine, infinite, psi points"
         />
       </div>
 
@@ -177,16 +181,20 @@ export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
                 </select>
               </div>
 
-              {/* Attack Type */}
-              <div className="min-w-[130px] flex-1">
+              {/* Attack Type - Grouped by Mechanism */}
+              <div className="min-w-[160px] flex-1">
                 <label className="block text-xs text-slate-400 mb-1">Type</label>
                 <select
                   value={attack.type}
                   onChange={(e) => updateAttack(attack.id, { type: e.target.value as AttackType })}
                   className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm"
                 >
-                  {ATTACK_TYPES_BY_ASPECT[attack.aspect].map(t => (
-                    <option key={t} value={t}>{t}</option>
+                  {Object.entries(getMechanismGroupsForAspect(attack.aspect)).map(([mechanism, types]) => (
+                    <optgroup key={mechanism} label={MECHANISM_LABELS[mechanism]}>
+                      {(types as string[]).map(t => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               </div>
