@@ -582,6 +582,10 @@ export function ResolverPage() {
     </div>
   );
 
+  // Determine skill restrictions for available resolution options
+  const isPoorSkill = actorSkillBonus === -1;
+  const isTerribleSkill = actorSkillBonus === -2;
+
   return (
     <div className="max-w-6xl mx-auto px-2 py-2 space-y-2">
       {/* Compact Header */}
@@ -652,7 +656,7 @@ export function ResolverPage() {
                   <StepperInput
                     value={actorSkillBonus}
                     onChange={handleSkillBonusChange}
-                    min={-1}
+                    min={-2}
                     max={4}
                     className={actorSkillBonus >= 0 ? 'text-green-400' : 'text-red-400'}
                     displayFn={(v) => `${v >= 0 ? '+' : ''}${v}`}
@@ -806,13 +810,20 @@ export function ResolverPage() {
                 </button>
               </div>
             </div>
-
+            
             <div className="grid grid-cols-5 gap-1.5 text-center text-xs">
             {(['green', 'yellow', 'orange', 'red'] as EffortBand[]).map(band => {
               const available = isBandAvailable(actorPoolEntry.pool, band);
               const style = bandStyles[band];
               const surgeCost = band === 'green' ? 0 : getSurgeCost(band);
+              
+              // Determine if this specific option is restricted by skill rank
+              const isSkillRestricted = 
+                (isPoorSkill && band === 'green') || 
+                isTerribleSkill; // Terrible restricts both baseline (green) and all surges
+              
               const disabled = !available 
+                || isSkillRestricted
                 || (band !== 'green' && currentSurge < surgeCost)
                 || !isSurgeWorthIt(band);
               
@@ -831,7 +842,7 @@ export function ResolverPage() {
                   onClick={() => band === 'green' ? handleBaseline() : handleSurge(band)}
                   disabled={disabled}
                   className={`rounded px-1.5 py-2 transition-colors ${
-                    !available
+                    !available || isSkillRestricted
                       ? 'bg-slate-800/50 border border-slate-600 opacity-30 cursor-not-allowed'
                       : disabled
                         ? `${style.bg} border ${style.border} opacity-50 cursor-not-allowed`
@@ -842,7 +853,7 @@ export function ResolverPage() {
                     {style.emoji} {band.charAt(0).toUpperCase() + band.slice(1)}
                   </div>
                   <div className="text-lg text-slate-200">
-                    {available && preview ? (
+                    {available && preview && !isSkillRestricted ? (
                       <>
                         {preview.result}
                         {preview.capped && <span className="text-xs text-amber-400 ml-0.5">⬆</span>}

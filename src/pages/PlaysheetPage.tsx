@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCharacter } from '../context/CharacterContext';
 import { useGameState, WOUND_LABELS, WOUND_PENALTIES, type WoundLevel } from '../context/GameStateContext';
-import { ASPECTS, FUNCTIONS, ATTRIBUTES, SIZE_OPTIONS, type AspectName, type AttributeName, type ArmorAspect } from '../types/character';
+import { ASPECTS, FUNCTIONS, ATTRIBUTES, SIZE_OPTIONS, SKILL_RATINGS, type AspectName, type AttributeName, type ArmorAspect } from '../types/character';
 import { ICONS, DEFAULT_ICON, type IconEntry } from '../data/icons';
 import { DIE_POOL_TABLE } from '../data/diePoolTable';
 import type { DiePoolEntry } from '../data/diePoolTable';
@@ -27,14 +27,15 @@ const HEALING_ATTRIBUTES: Record<AspectName, AttributeName> = {
   Spirit: 'Resilience',
 };
 
-const SKILL_RATING_TO_BONUS: Record<string, number> = {
-  'Poor': -1,
-  'Average': 0,
-  'Good': 1,
-  'Great': 2,
-  'Exceptional': 3,
-  'Extraordinary': 4,
-};
+// Create a quick lookup map from the source of truth
+const SKILL_MODIFIER_MAP = new Map<string, number>(
+  SKILL_RATINGS.map(r => [r.rating, r.modifier])
+);
+
+// Helper function
+function getSkillModifier(rating: string): number {
+  return SKILL_MODIFIER_MAP.get(rating) ?? 0;
+}
 
 export interface CombatPageState {
   mode?: 'attacker' | 'defender';
@@ -160,7 +161,7 @@ export function PlaysheetPage() {
     
     const attrEntry = character.attributeDiePools[selectedAttribute];
     const skillBonus = selectedSkill 
-      ? SKILL_RATING_TO_BONUS[character.skills.find(s => s.skillId === selectedSkill)?.rating || 'Average'] ?? 0
+      ? getSkillModifier(character.skills.find(s => s.skillId === selectedSkill)?.rating || 'Average')
       : 0;
     
     navigate('/resolver', {
@@ -177,7 +178,7 @@ export function PlaysheetPage() {
   const getSelectedSkillBonus = () => {
     if (!selectedSkill) return 0;
     const skill = character.skills.find(s => s.skillId === selectedSkill);
-    return skill ? SKILL_RATING_TO_BONUS[skill.rating] ?? 0 : 0;
+    return skill ? getSkillModifier(skill.rating) : 0;
   };
 
   const goToCombatAsAttacker = (weaponId: string, attackIndex: number = 0) => {
@@ -545,7 +546,7 @@ export function PlaysheetPage() {
                 <div className="grid grid-cols-2 gap-1.5">
                   {character.skills.map(skillEntry => {
                     const isSelected = selectedSkill === skillEntry.skillId;
-                    const bonus = SKILL_RATING_TO_BONUS[skillEntry.rating] ?? 0;
+                    const bonus = getSkillModifier(skillEntry.rating) ?? 0;
                     const skill = SKILLS.find(s => s.id === skillEntry.skillId);
                     const displayName = skillEntry.specialty || skill?.name || skillEntry.skillId;
                     const hasSpecialty = Boolean(skillEntry.specialty);
@@ -884,7 +885,7 @@ export function PlaysheetPage() {
               <div className="grid md:grid-cols-2 gap-2">
                 {character.skills.map(skillEntry => {
                   const skill = SKILLS.find(s => s.id === skillEntry.skillId);
-                  const bonus = SKILL_RATING_TO_BONUS[skillEntry.rating] ?? 0;
+                  const bonus = getSkillModifier(skillEntry.rating) ?? 0;
                   return (
                     <div key={skillEntry.skillId} className="bg-slate-700/50 rounded p-2">
                       <div className="font-medium text-sm">

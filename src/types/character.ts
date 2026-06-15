@@ -140,9 +140,10 @@ export interface DiePool {
 }
 
 // Skill ratings
-export type SkillRating = 'Poor' | 'Average' | 'Good' | 'Great' | 'Exceptional' | 'Extraordinary';
+export type SkillRating = 'Terrible' | 'Poor' | 'Average' | 'Good' | 'Great' | 'Exceptional' | 'Extraordinary';
 
 export const SKILL_RATINGS: { rating: SkillRating; modifier: number; cost: number }[] = [
+  { rating: 'Terrible', modifier: -2, cost: -10 },
   { rating: 'Poor', modifier: -1, cost: -5 },
   { rating: 'Average', modifier: 0, cost: 0 },
   { rating: 'Good', modifier: 1, cost: 0 },

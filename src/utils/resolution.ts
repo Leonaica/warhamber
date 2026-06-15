@@ -98,12 +98,12 @@ function rollWithAdvantage(pool: DiePool, advantageDice: number): {
   };
 }
 
-export function checkCriticalFailure(rolls: number[], hasPoorSkill: boolean): {
+export function checkCriticalFailure(rolls: number[], isLowSkill: boolean): {
   isCriticalFailure: boolean;
   allMinimum: boolean;
   confirmationRoll?: number;
 } {
-  const threshold = hasPoorSkill ? 2 : 1;
+  const threshold = isLowSkill ? 2 : 1;
   const allMinimum = rolls.every(r => r <= threshold);
   
   if (allMinimum) {
@@ -308,7 +308,9 @@ export function resolveTest(context: ResolutionContext): ActionResult {
     explosions = rollResult.explosions;
   }
   
-  const criticalFailureResult = checkCriticalFailure(rolls, skillBonus < 0);
+  // Both Poor (-1) and Terrible (-1) skills expand the critical failure threshold to 2
+  const isLowSkill = skillBonus < 0;
+  const criticalFailureResult = checkCriticalFailure(rolls, isLowSkill);
   const criticalFailure = criticalFailureResult.isCriticalFailure;
   
   let result = rollTotal + totalModifier;
