@@ -9,8 +9,8 @@ export const SKILLS: Skill[] = [
     description: 'Direct, personal mastery of rhetoric, empathy, and social cues to influence individuals.',
   },
   {
-    id: 'WayOfTheWhisperer',
-    name: 'The Way of the Whisperer',
+    id: 'WhisperersWeb',
+    name: 'The Whisperers Web',
     emoji: '🕸️',
     category: 'Social',
     description: 'Understanding and navigation of complex social networks as systems.',
@@ -58,9 +58,9 @@ export const SKILLS: Skill[] = [
     description: 'Resilience, adaptability, and practical knowledge to survive hostile environments.',
   },
   {
-    id: 'HeartsMotion',
-    name: "The Heart's Motion",
-    emoji: '💃🏽',
+    id: 'HeartsFire',
+    name: "The Heart's Fire",
+    emoji: '❤️‍🔥',
     category: 'Abstract',
     description: 'Creation of profound emotional connection through performance and presence.',
   },

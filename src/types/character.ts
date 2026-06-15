@@ -154,9 +154,9 @@ export const SKILL_RATINGS: { rating: SkillRating; modifier: number; cost: numbe
 
 // Skills
 export type SkillName =
-  | 'SilverTongue' | 'WayOfTheWhisperer' | 'LeadersMantle' | 'UnseenHand'
+  | 'SilverTongue' | 'WhisperersWeb' | 'LeadersMantle' | 'UnseenHand'
   | 'WayOfTheWarrior' | 'WayOfTheRogue' | 'EngineersPen' | 'WayOfTheExplorer'
-  | 'HeartsMotion' | 'ArtisansCraft' | 'MachinesMind' | 'ScholarsMind';
+  | 'HeartsFire' | 'ArtisansCraft' | 'MachinesMind' | 'ScholarsMind';
 
 export interface Skill {
   id: SkillName;

@@ -102,12 +102,11 @@ const defaultFunctions: CharacterFunctionRatings = {
   Force: 0,
 };
 
-
 const CharacterContext = createContext<CharacterContextValue | null>(null);
 
 export function CharacterProvider({ children }: { children: ReactNode }) {
   const [nameState, setNameState] = useState('');
-  const [campaignLimitState, setCampaignLimitState] = useState(100);
+  const [campaignLimitState, setCampaignLimitState] = useState(-100);
   const [avatarIconState, setAvatarIconState] = useState<string>(DEFAULT_ICON.code);
   const [aspectsState, setAspectsState] = useState<CharacterAspectRatings>(defaultAspects);
   const [functionsState, setFunctionsState] = useState<CharacterFunctionRatings>(defaultFunctions);
