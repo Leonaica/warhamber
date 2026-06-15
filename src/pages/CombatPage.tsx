@@ -169,7 +169,10 @@ export function CombatPage() {
 
   const isPhysicalAspect = attackedAspect === 'Form' || attackedAspect === 'Flesh';
   const effectiveSize = isPhysicalAspect ? materialSize : immaterialSize;
-
+  
+  // Size modifier for resistance calculations
+  const effectiveSizeModifier = effectiveSize * 4;
+  
   // Armor - from selected piece, opponent data, or manual entry
   const baseArmorValue = isPlayerDefender
   ? (selectedArmorPiece && selectedArmorPiece.aspects.includes(attackedAspect as ArmorAspect)
@@ -179,7 +182,7 @@ export function CombatPage() {
   const armorValue = customArmor !== null ? customArmor : baseArmorValue;
 
   // Total resistance
-  const totalResistance = resistanceRank + effectiveSize + resistanceModifier;
+  const totalResistance = resistanceRank + effectiveSizeModifier + resistanceModifier;
 
   // Effective armor
   const effectiveArmor = Math.max(0, armorValue - attackPenetration);
@@ -189,11 +192,11 @@ export function CombatPage() {
     return calculateWoundProbabilities({
       weaponMagnitude: attackMagnitude,
       damageModifier,
-      resistance: resistanceRank + effectiveSize + resistanceModifier,
+      resistance: totalResistance,
       armor: armorValue,
       penetration: attackPenetration,
     });
-  }, [attackMagnitude, damageModifier, resistanceRank, effectiveSize, resistanceModifier, armorValue, attackPenetration]);
+  }, [attackMagnitude, damageModifier, totalResistance, armorValue, attackPenetration]);
 
   // Handlers
   const handleAspectChange = (aspect: AspectName) => {
@@ -239,7 +242,7 @@ export function CombatPage() {
       weaponPenetration: attackPenetration,
       attackedAspect,
       resistanceRank: resistanceRank,
-      sizeModifier: effectiveSize,
+      sizeModifier: effectiveSizeModifier,
       armorValue,
       damageModifier,
       resistanceModifier,
@@ -675,14 +678,14 @@ export function CombatPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">
-                    {isPhysicalAspect ? 'Mat' : 'Imm'} Size
+                    {isPhysicalAspect ? 'Mat.' : 'Imm.'} Size Resistance.
                   </span>
                   <span className={`font-medium ${effectiveSize > 0 ? 'text-green-400' : effectiveSize < 0 ? 'text-red-400' : 'text-white'}`}>
-                    {effectiveSize > 0 ? '+' : ''}{effectiveSize}
+                    {effectiveSize > 0 ? '+' : ''}{effectiveSizeModifier}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Mod</span>
+                  <span className="text-slate-500">Custom Mod.</span>
                   <StepperInput
                     value={resistanceModifier}
                     onChange={(delta) => {

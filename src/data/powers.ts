@@ -69,6 +69,9 @@ export const POWERS: Power[] = [
       { name: 'Metamorph', cost: 65 },
       { name: 'Protean', cost: 85 },
     ],
+    prerequisites: [
+      { type: 'attribute', attribute: 'Resilience', minimum: -10 },
+    ],
   },
   {
     id: 'brokenPattern',
