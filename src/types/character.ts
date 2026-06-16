@@ -57,7 +57,7 @@ export const ASPECTS: Aspect[] = [
 ];
 
 // Functions (What you do)
-export type FunctionName = 'Resist' | 'Adapt' | 'Perceive' | 'Force';
+export type FunctionName = 'Resist' | 'Finesse' | 'Perceive' | 'Force';
 
 export interface Function {
   id: FunctionName;
@@ -74,8 +74,8 @@ export const FUNCTIONS: Function[] = [
     description: 'The ability to withstand hardship, damage, and pressure.',
   },
   {
-    id: 'Adapt',
-    name: 'Adapt',
+    id: 'Finesse',
+    name: 'Finesse',
     emoji: '🎯',
     description: 'The capacity to move, change, and respond with speed and precision.',
   },
@@ -114,11 +114,11 @@ export const ATTRIBUTES: Attribute[] = [
   { id: 'Endurance', name: 'Endurance', func: 'Resist', aspect: 'Flesh', description: 'Biological stamina, fatigue resistance, healing' },
   { id: 'Willpower', name: 'Willpower', func: 'Resist', aspect: 'Mind', description: 'Mental discipline, focus, and resistance to control' },
   { id: 'Resilience', name: 'Resilience', func: 'Resist', aspect: 'Spirit', description: 'Spiritual strength and emotional resilience' },
-  // Adapt
-  { id: 'Agility', name: 'Agility', func: 'Adapt', aspect: 'Form', description: 'Mechanical movement, speed, and balance' },
-  { id: 'Reflexes', name: 'Reflexes', func: 'Adapt', aspect: 'Flesh', description: 'Instinctive reaction, evasion, bodily coordination' },
-  { id: 'Intelligence', name: 'Intelligence', func: 'Adapt', aspect: 'Mind', description: 'Problem-solving, logic, processing speed' },
-  { id: 'Creativity', name: 'Creativity', func: 'Adapt', aspect: 'Spirit', description: 'Spontaneity, artistic improvisation, spiritual flow' },
+  // Finesse
+  { id: 'Agility', name: 'Agility', func: 'Finesse', aspect: 'Form', description: 'Mechanical movement, speed, and balance' },
+  { id: 'Reflexes', name: 'Reflexes', func: 'Finesse', aspect: 'Flesh', description: 'Instinctive reaction, evasion, bodily coordination' },
+  { id: 'Intelligence', name: 'Intelligence', func: 'Finesse', aspect: 'Mind', description: 'Problem-solving, logic, processing speed' },
+  { id: 'Creativity', name: 'Creativity', func: 'Finesse', aspect: 'Spirit', description: 'Spontaneity, artistic improvisation, spiritual flow' },
   // Perceive
   { id: 'Perception', name: 'Perception', func: 'Perceive', aspect: 'Form', description: 'Accuracy of external physical senses' },
   { id: 'Intuition', name: 'Intuition', func: 'Perceive', aspect: 'Flesh', description: 'Subconscious awareness of danger or emotional states' },
@@ -219,7 +219,7 @@ export interface CharacterAspectRatings {
 
 export interface CharacterFunctionRatings {
   Resist: RatingValue;
-  Adapt: RatingValue;
+  Finesse: RatingValue;
   Perceive: RatingValue;
   Force: RatingValue;
 }

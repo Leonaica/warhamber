@@ -97,7 +97,7 @@ const defaultAspects: CharacterAspectRatings = {
 
 const defaultFunctions: CharacterFunctionRatings = {
   Resist: 0,
-  Adapt: 0,
+  Finesse: 0,
   Perceive: 0,
   Force: 0,
 };

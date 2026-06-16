@@ -78,7 +78,7 @@ export function checkPowerPrerequisites(
   power: Power,
   attributes: Record<AttributeName, number>,
   aspects: { Form: number; Flesh: number; Mind: number; Spirit: number },
-  functions: { Resist: number; Adapt: number; Perceive: number; Force: number },
+  functions: { Resist: number; Finesse: number; Perceive: number; Force: number },
   ownedPowers: CharacterPower[],
   currentPowerPoints?: number
 ): { met: boolean; unmet: string[] } {
@@ -135,7 +135,7 @@ export function calculateSurge(
   // Calculate total dice count for each Function
   const functionDice: Record<FunctionName, number> = {
     Resist: 0,
-    Adapt: 0,
+    Finesse: 0,
     Perceive: 0,
     Force: 0,
   };
@@ -150,7 +150,7 @@ export function calculateSurge(
   // Find highest function's dice count (base surge)
   const baseSurge = Math.max(
     functionDice['Resist'],
-    functionDice['Adapt'],
+    functionDice['Finesse'],
     functionDice['Perceive'],
     functionDice['Force']
   );
@@ -223,7 +223,7 @@ export function computeCharacter(
   
   // Functions
   totalPointsSpent += functions.Resist;
-  totalPointsSpent += functions.Adapt;
+  totalPointsSpent += functions.Finesse;
   totalPointsSpent += functions.Perceive;
   totalPointsSpent += functions.Force;
   
