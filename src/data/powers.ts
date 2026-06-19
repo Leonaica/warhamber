@@ -25,7 +25,7 @@ export const POWERS: Power[] = [
     emoji: '🐉',
     category: 'Substance',
     description: 'Summoning the ghost of the Logrus to shape possibility into reality',
-    requirements: 'Shape Shifting, Amber-level Spirit (Resilience)',
+    requirements: 'Shape shifting, Amber-level Spirit',
     keyAttributes: ['Resilience', 'Creativity', 'Wisdom', 'Presence'],
     levels: [
       { name: 'Initiate', cost: 45 },
@@ -52,8 +52,7 @@ export const POWERS: Power[] = [
       { name: 'Virtuoso', cost: 100 },
     ],
     prerequisites: [
-      { type: 'attribute', attribute: 'Willpower', minimum: 0 },
-      { type: 'attribute', attribute: 'Endurance', minimum: 0 },
+      { type: 'attribute', attribute: 'Creativity', minimum: 0 },
     ],
   },
   {
@@ -168,7 +167,7 @@ export const POWERS: Power[] = [
     keyAttributes: ['Endurance', 'Creativity', 'Intuition', 'Presence'],
     levels: [
       { name: 'Awakened', cost: 15 },
-      { name: 'Ascendent', cost: 25 },
+      { name: 'Ascendant', cost: 25 },
       { name: 'Transcendent', cost: 40 },
     ],
   },
