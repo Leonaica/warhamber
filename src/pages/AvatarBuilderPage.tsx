@@ -636,12 +636,12 @@ export function AvatarBuilderPage() {
                         }
                       </select>
                     </div>
-                    <input
-                      type="text"
+                    <textarea
                       value={skillEntry.specialty}
                       onChange={(e) => updateSkill(skillEntry.skillId, { specialty: e.target.value })}
                       placeholder="Specialty..."
                       className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      rows={2}
                     />
                   </div>
                 );
