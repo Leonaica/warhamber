@@ -185,6 +185,7 @@ export function CharacterSheet({
                       <span className="rating"> {skillEntry.rating}</span>
                       {rating && <span className="modifier"> ({rating.modifier >= 0 ? '+' : ''}{rating.modifier})</span>}
                       {skillEntry.specialty && <span className="specialty"> — {skillEntry.specialty}</span>}
+                      {skillEntry.specialtyExplanation && <span className="specialtydescription"> — {skillEntry.specialtyExplanation}</span>}
                     </li>
                   );
                 })}

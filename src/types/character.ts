@@ -228,6 +228,7 @@ export interface CharacterSkill {
   skillId: SkillName;
   rating: SkillRating;
   specialty: string;
+  specialtyExplanation: string; // Detailed description of how the skill is used for the avatar
 }
 
 export interface CharacterPower {

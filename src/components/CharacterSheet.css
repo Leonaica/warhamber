@@ -215,6 +215,13 @@
       color: #666;
       font-style: italic;
     }
+
+    .specialtydescription,
+    .desc,
+    .label {
+      color: #666;
+      font-style: italic;
+    }
   
     /* Ally styling */
     .ally-list li.ally {

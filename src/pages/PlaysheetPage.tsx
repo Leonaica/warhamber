@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCharacter } from '../context/CharacterContext';
 import { useGameState, WOUND_LABELS, WOUND_PENALTIES, type WoundLevel } from '../context/GameStateContext';
-import { ASPECTS, FUNCTIONS, ATTRIBUTES, SIZE_OPTIONS, SKILL_RATINGS, type AspectName, type AttributeName, type ArmorAspect } from '../types/character';
+import { ASPECTS, FUNCTIONS, ATTRIBUTES, SIZE_OPTIONS, SKILL_RATINGS, RATING_SCALE, RATING_LABELS, type AspectName, type AttributeName, type ArmorAspect, type PowerCategory } from '../types/character';
 import { ICONS, DEFAULT_ICON, type IconEntry } from '../data/icons';
 import { DIE_POOL_TABLE } from '../data/diePoolTable';
 import type { DiePoolEntry } from '../data/diePoolTable';
@@ -72,6 +72,58 @@ export function PlaysheetPage() {
 
   const currentSurge = character.computedCharacter.surge - gameState.surgeSpent;
 
+  // Map the rating scale into PowerLevels so getPowerDisplay can resolve the level name (e.g., "Incarnation")
+  const mythicLevels = RATING_SCALE.map(cost => ({
+    cost,
+    name: RATING_LABELS[cost].split(' ').slice(1).join(' ') // "🔥 Incarnation" -> "Incarnation"
+  }));
+
+  // Compute mythic aspects and functions that should appear as Powers
+  const mythicPowers = [
+    ...ASPECTS.filter(aspect => character.aspects[aspect.id] >= 20).map(aspect => ({
+      powerDef: {
+        id: `mythic-aspect-${aspect.id}`,
+        name: aspect.name, // e.g., "Spirit" - used in the system reference
+        emoji: aspect.emoji,
+        category: 'Substance' as PowerCategory,
+        levels: mythicLevels, // Feed the rating scale as levels
+        description: '',
+        repeatable: false,
+        requirements: '',
+        keyAttributes: [] as AttributeName[],
+      },
+      powerEntry: {
+        id: `mythic-aspect-${aspect.id}`,
+        powerId: `mythic-aspect-${aspect.id}`,
+        points: character.aspects[aspect.id],
+        label: undefined,
+        customTitle: `Mythic ${aspect.name}`, // Forces the header to be "Mythic Spirit"
+        description: character.aspectExplanations[aspect.id] || '',
+      }
+    })),
+    ...FUNCTIONS.filter(func => character.functions[func.id] >= 20).map(func => ({
+      powerDef: {
+        id: `mythic-function-${func.id}`,
+        name: func.name, // e.g., "Regeneration"
+        emoji: func.emoji,
+        category: 'Substance' as PowerCategory,
+        levels: mythicLevels,
+        description: '',
+        repeatable: false,
+        requirements: '',
+        keyAttributes: [] as AttributeName[],
+      },
+      powerEntry: {
+        id: `mythic-function-${func.id}`,
+        powerId: `mythic-function-${func.id}`,
+        points: character.functions[func.id],
+        label: undefined,
+        customTitle: `Mythic ${func.name}`,
+        description: character.functionExplanations[func.id] || '',
+      }
+    }))
+  ];
+  
   const wouldHeal = (aspect: AspectName) => {
     const currentLevel = gameState.wounds[aspect];
     if (currentLevel <= 0) return false;
@@ -573,6 +625,9 @@ export function PlaysheetPage() {
                         <div className={`text-xs mt-1 ${isSelected ? 'text-amber-400' : 'text-slate-500'}`}>
                           {skillEntry.rating} ({bonus >= 0 ? '+' : ''}{bonus}/die)
                         </div>
+                        <div className={`text-xs mt-1 ${isSelected ? 'text-amber-400' : 'text-slate-200'}`}>
+                          {skillEntry.specialtyExplanation}
+                        </div>
                       </div>
                     );
                   })}
@@ -607,7 +662,7 @@ export function PlaysheetPage() {
                           <button
                             key={attack.id}
                             onClick={() => goToCombatAsAttacker(weapon.id, idx)}
-                            className="w-full flex items-center justify-between bg-red-600/50 hover:bg-red-900/30 border border-slate-600 hover:border-red-500/50 rounded px-2 py-1 text-xs transition-all group"
+                            className="w-full flex items-center justify-between bg-orange-900/50 hover:bg-orange-700/50 border border-slate-600 hover:border-red-500/50 rounded px-2 py-1 text-xs transition-all group"
                           >
                             <div className="flex items-center gap-1.5 min-w-0">
                               <span className="flex-shrink-0">{aspectInfo?.emoji}</span>
@@ -678,7 +733,7 @@ export function PlaysheetPage() {
                       </div>
                       <button
                         onClick={() => goToCombatAsDefender(aspect.id)}
-                        className="bg-blue-600/50 hover:bg-blue-900/30 text-white px-2 py-0.5 rounded text-xs font-medium"
+                        className="bg-blue-900/50 hover:bg-blue-700/50 text-white px-2 py-0.5 rounded text-xs font-medium"
                       >
                         🛡️ Defend
                       </button>
@@ -728,7 +783,7 @@ export function PlaysheetPage() {
                           <button
                             key={aspect}
                             onClick={() => goToCombatAsDefender(aspect, piece.id)}
-                            className="w-full flex items-center justify-between bg-blue-600/50 hover:bg-blue-900/30 border border-slate-600 hover:border-blue-500/50 rounded px-2 py-1 text-xs transition-all group"
+                            className="w-full flex items-center justify-between bg-blue-900/50 hover:bg-blue-700/50 border border-slate-600 hover:border-blue-500/50 rounded px-2 py-1 text-xs transition-all group"
                           >
                             <span className="text-slate-200 group-hover:text-white">
                               {aspectEmojis[aspect]} Defend {aspect}
@@ -796,7 +851,7 @@ export function PlaysheetPage() {
                     </select>
 
                     <div className="text-xs text-slate-400 mb-1.5">
-                      {diePool.pool.notation}
+                      Healing roll: {diePool.pool.notation}
                     </div>
 
                     {woundLevel > 0 && (
@@ -847,10 +902,27 @@ export function PlaysheetPage() {
       {activeTab === 'abilities' && (
         <div className="space-y-4">
           {/* Powers */}
-          {character.powers.length > 0 ? (
+          {(character.powers.length > 0 || mythicPowers.length > 0) ? (
             <div className="bg-slate-800 rounded-lg p-3">
               <h2 className="text-base font-bold text-amber-400 mb-3">✨ Powers</h2>
               <div className="grid md:grid-cols-2 gap-2">
+                {/* Mythic Aspects/Functions displayed as Powers */}
+                {mythicPowers.map(({ powerDef, powerEntry }) => {
+                  const display = getPowerDisplay(powerDef, powerEntry.points, powerEntry.label, powerEntry.customTitle);
+                  return (
+                    <div key={powerEntry.id} className="bg-slate-700/50 rounded p-2 text-sm border border-amber-500/30">
+                      <div className="font-medium">
+                        {powerDef.emoji} {display.title}
+                      </div>
+                      <div className="text-xs text-slate-400">{display.systemReference}</div>
+                      {powerEntry.description && (
+                        <div className="text-xs text-slate-500 mt-1">{powerEntry.description}</div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Regular Powers */}
                 {character.powers.map(powerEntry => {
                   const power = POWERS.find(p => p.id === powerEntry.powerId);
                   if (!power) return null;
