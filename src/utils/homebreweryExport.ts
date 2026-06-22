@@ -1,5 +1,5 @@
-import type { CharacterAspectRatings, CharacterFunctionRatings, CharacterSkill, CharacterPower, Artifact, Ally, PersonalShadow, CharacterWeapon, CharacterArmor, DiePool } from '../types/character';
-import { ASPECTS, FUNCTIONS, ATTRIBUTES, SKILL_RATINGS, SIZE_OPTIONS, WEAPON_RANGES } from '../types/character';
+import type { CharacterAspectRatings, CharacterFunctionRatings, CharacterSkill, CharacterPower, Artifact, Ally, PersonalShadow, CharacterWeapon, CharacterArmor, DiePool, Power } from '../types/character';
+import { ASPECTS, FUNCTIONS, ATTRIBUTES, SKILL_RATINGS, SIZE_OPTIONS, WEAPON_RANGES, RATING_SCALE, RATING_LABELS } from '../types/character';
 import { SKILLS } from '../data/skills';
 import { POWERS } from '../data/powers';
 import { getDiePoolEntry } from '../data/diePoolTable';
@@ -143,32 +143,107 @@ export function generateHomebreweryMarkdown(
 
   lines.push(`___`);
 
-  // Powers
-  if (powers.length > 0) {
-    lines.push(`#### Powers`);
-    powers.forEach(cp => {
-      const power = POWERS.find(p => p.id === cp.powerId);
-      if (power) {
-        const display = getPowerDisplay(power, cp.points, cp.label, cp.customTitle);
-        const description = cp.description ? ` ${cp.description}` : '';
-        lines.push(`**${power.emoji} ${display.title}** *[${display.systemReference}]* :: ${description}`);
-      } 
-    });
+  // Build mythic levels from rating scale for getPowerDisplay
+  const mythicLevels = RATING_SCALE.map(cost => ({
+    cost,
+    name: RATING_LABELS[cost].split(' ').slice(1).join(' ')
+  }));
+
+  // Collect all powers (regular + mythic) with their display info
+  interface PowerDisplayItem {
+    emoji: string;
+    title: string;
+    systemReference: string;
+    description: string;
+    points: number;
   }
   
-  // Mythic Aspect explanations (+20 or higher)
-  ASPECTS.forEach(aspect => {
-    if (aspects[aspect.id] >= 20 && aspectExplanations[aspect.id]?.trim()) {
-      lines.push(`**${aspect.emoji} Mythic ${aspect.name}** :: ${aspectExplanations[aspect.id].trim()}`);
+  const allPowerItems: PowerDisplayItem[] = [];
+  
+  // Regular powers
+  powers.forEach(cp => {
+    const power = POWERS.find(p => p.id === cp.powerId);
+    if (power) {
+      const display = getPowerDisplay(power, cp.points, cp.label, cp.customTitle);
+      allPowerItems.push({
+        emoji: power.emoji,
+        title: display.title,
+        systemReference: display.systemReference,
+        description: cp.description || '',
+        points: cp.points,
+      });
     }
   });
   
-  // Mythic Function "Powers" (+20 or higher)
-  FUNCTIONS.forEach(func => {
-    if (functions[func.id] >= 20 && functionExplanations[func.id]?.trim()) {
-      lines.push(`**${func.emoji} Mythic ${func.name}** :: ${functionExplanations[func.id].trim()}`);
+  // Mythic aspects (20+)
+  ASPECTS.forEach(aspect => {
+    if (aspects[aspect.id] >= 20) {
+      const display = getPowerDisplay(
+        {
+          id: `mythic-aspect-${aspect.id}`,
+          name: aspect.name,
+          emoji: aspect.emoji,
+          category: 'Substance',
+          levels: mythicLevels,
+          description: '',
+          repeatable: false,
+          requirements: '',
+          keyAttributes: [],
+        } as Power,
+        aspects[aspect.id],
+        undefined,
+        `Mythic ${aspect.name}`
+      );
+      allPowerItems.push({
+        emoji: aspect.emoji,
+        title: display.title,
+        systemReference: display.systemReference,
+        description: aspectExplanations[aspect.id] || '',
+        points: aspects[aspect.id],
+      });
     }
   });
+  
+  // Mythic functions (20+)
+  FUNCTIONS.forEach(func => {
+    if (functions[func.id] >= 20) {
+      const display = getPowerDisplay(
+        {
+          id: `mythic-function-${func.id}`,
+          name: func.name,
+          emoji: func.emoji,
+          category: 'Substance',
+          levels: mythicLevels,
+          description: '',
+          repeatable: false,
+          requirements: '',
+          keyAttributes: [],
+        } as Power,
+        functions[func.id],
+        undefined,
+        `Mythic ${func.name}`
+      );
+      allPowerItems.push({
+        emoji: func.emoji,
+        title: display.title,
+        systemReference: display.systemReference,
+        description: functionExplanations[func.id] || '',
+        points: functions[func.id],
+      });
+    }
+  });
+  
+  // Sort by points descending (most significant first)
+  allPowerItems.sort((a, b) => b.points - a.points);
+  
+  // Output powers
+  if (allPowerItems.length > 0) {
+    lines.push(`#### Powers`);
+    allPowerItems.forEach(item => {
+      const description = item.description ? ` ${item.description}` : '';
+      lines.push(`**${item.emoji} ${item.title}** *[${item.systemReference}]* :: ${description}`);
+    });
+  }
 
   // Skills
   if (skills.length > 0) {
@@ -184,13 +259,18 @@ export function generateHomebreweryMarkdown(
     
     lines.push(``);
     lines.push(`#### Skills [${skillCostTotal} Points], Cap:${skillCap}, Max:${skillMax}`);
-    skills.forEach(skillEntry => {
+    [...skills].sort((a, b) => {
+      const modA = SKILL_RATINGS.find(r => r.rating === a.rating)?.modifier ?? 0;
+      const modB = SKILL_RATINGS.find(r => r.rating === b.rating)?.modifier ?? 0;
+      return modB - modA;
+    }).forEach(skillEntry => {
       const skill = SKILLS.find(s => s.id === skillEntry.skillId);
       if (skill) {
         const rating = SKILL_RATINGS.find(r => r.rating === skillEntry.rating);
         const modText = rating ? ` (${rating.modifier >= 0 ? '+' : ''}${rating.modifier})` : '';
         const specialtyText = skillEntry.specialty ? ` (${skillEntry.specialty})` : '';
-        lines.push(`**${skill.name}** :: ${skillEntry.rating}${modText}${specialtyText}`);
+        const explanationText = skillEntry.specialtyExplanation ? ` ${skillEntry.specialtyExplanation}` : '';
+        lines.push(`**${skill.name}** :: ${skillEntry.rating}${modText}${specialtyText}${explanationText}`);
       }
     });
   }
