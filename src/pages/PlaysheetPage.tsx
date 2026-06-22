@@ -596,7 +596,7 @@ export function PlaysheetPage() {
                   <span className="text-xs text-slate-500">Click to add to roll</span>
                 </div>
                 <div className="grid grid-cols-2 gap-1.5">
-                  {character.skills.map(skillEntry => {
+                  {[...character.skills].sort((a, b) => (getSkillModifier(b.rating) ?? 0) - (getSkillModifier(a.rating) ?? 0)).map(skillEntry => {
                     const isSelected = selectedSkill === skillEntry.skillId;
                     const bonus = getSkillModifier(skillEntry.rating) ?? 0;
                     const skill = SKILLS.find(s => s.id === skillEntry.skillId);
