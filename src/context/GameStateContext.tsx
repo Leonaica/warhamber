@@ -262,7 +262,8 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     setModifiers([]);
     setOpponentWounds(defaultWounds);
     setOpponentCombatData(defaultOpponentCombatData);
-  }, []);
+    resetReactionPools();
+  }, [resetReactionPools]);
 
   const value: GameStateContextValue = {
     wounds,

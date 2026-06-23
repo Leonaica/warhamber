@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCharacter } from '../context/CharacterContext';
-import { useGameState, WOUND_LABELS, WOUND_PENALTIES, type WoundLevel } from '../context/GameStateContext';
+import { useGameState, WOUND_LABELS, WOUND_PENALTIES, type WoundLevel, type ReactionPoolKey } from '../context/GameStateContext';
 import { ASPECTS, FUNCTIONS, ATTRIBUTES, SIZE_OPTIONS, SKILL_RATINGS, RATING_SCALE, RATING_LABELS, type AspectName, type AttributeName, type ArmorAspect, type PowerCategory } from '../types/character';
 import { ICONS, DEFAULT_ICON, type IconEntry } from '../data/icons';
 import { DIE_POOL_TABLE } from '../data/diePoolTable';
@@ -18,6 +18,30 @@ const DEFENSE_ATTRIBUTES: Record<AspectName, AttributeName> = {
   Flesh: 'Endurance',
   Mind: 'Willpower',
   Spirit: 'Resilience',
+};
+
+// Finesse attributes used for Dodge (null = no dodge possible)
+const DODGE_ATTRIBUTES: Record<AspectName, AttributeName | null> = {
+  Form: 'Agility',
+  Flesh: null,
+  Mind: 'Intelligence',
+  Spirit: 'Creativity',
+};
+
+// ReactionPool keys for Dodge (null = no dodge pool)
+const DODGE_POOL_KEYS: Record<AspectName, ReactionPoolKey | null> = {
+  Form: 'formDodge',
+  Flesh: null,
+  Mind: 'mindDodge',
+  Spirit: 'spiritDodge',
+};
+
+// ReactionPool keys for Parry
+const PARRY_POOL_KEYS: Record<AspectName, ReactionPoolKey> = {
+  Form: 'formParry',
+  Flesh: 'fleshParry',
+  Mind: 'mindParry',
+  Spirit: 'spiritParry',
 };
 
 const HEALING_ATTRIBUTES: Record<AspectName, AttributeName> = {
@@ -253,6 +277,40 @@ export function PlaysheetPage() {
     });
   };
 
+  const goToDefenseResolver = (
+    attribute: AttributeName,
+    poolKey: ReactionPoolKey,
+    maxPool: number
+  ) => {
+    const attrEntry = character.attributeDiePools[attribute];
+    gameState.useReactionPool(poolKey, maxPool);
+    navigate('/resolver', {
+      state: {
+        poolRank: attrEntry.rank,
+        skillBonus: 0,
+        woundPenalty: gameState.woundPenalty,
+        attributeName: attribute,
+        targetNumber: 4,
+        defenseMode: true,
+      }
+    });
+  };
+
+  const goToSurpriseRoll = (attribute: AttributeName) => {
+    const attrEntry = character.attributeDiePools[attribute];
+    navigate('/resolver', {
+      state: {
+        poolRank: attrEntry.rank,
+        skillBonus: 0,
+        woundPenalty: gameState.woundPenalty,
+        attributeName: attribute,
+        skillName: 'Surprise Roll',
+        targetNumber: 4,
+        defenseMode: true,
+      }
+    });
+  };
+
   const handleExportMarkdown = () => {
     const markdown = generateHomebreweryMarkdown(
       character.name,
@@ -353,6 +411,17 @@ export function PlaysheetPage() {
               <button onClick={handlePrint} className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-1 rounded text-xs">🖨️</button>
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-slate-950 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 shadow-lg">
                 Print Character
+              </div>
+            </div>
+            <div className="relative group">
+              <button
+                onClick={gameState.resetReactionPools}
+                className="bg-green-900/50 hover:bg-green-800/50 text-green-400 px-2 py-1 rounded text-xs"
+              >
+                ⏭️
+              </button>
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-slate-950 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 shadow-lg">
+                New Round
               </div>
             </div>
             <div className="relative group">
@@ -698,6 +767,104 @@ export function PlaysheetPage() {
 
       {activeTab === 'defense' && (
         <div className="space-y-4">
+                    {/* Reaction Pools - Dodge & Parry */}
+                    <div className="bg-slate-800 rounded-lg p-3">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-bold text-amber-400">⚡ Reactions — Dodge & Parry</h2>
+              <button
+                onClick={gameState.resetReactionPools}
+                className="bg-green-800/50 hover:bg-green-700/50 text-green-400 px-3 py-1 rounded text-sm font-medium"
+              >
+                ⏭️ New Round
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {ASPECTS.map(aspect => {
+                const dodgeAttr = DODGE_ATTRIBUTES[aspect.id];
+                const parryAttr = DEFENSE_ATTRIBUTES[aspect.id];
+                const dodgeKey = DODGE_POOL_KEYS[aspect.id];
+                const parryKey = PARRY_POOL_KEYS[aspect.id];
+
+                const parryPoolSize = character.attributeDiePools[parryAttr].pool.dice.length;
+                const parryUsed = gameState.reactionPools[parryKey];
+                const parryRemaining = parryPoolSize - parryUsed;
+
+                const dodgePoolSize = dodgeAttr ? character.attributeDiePools[dodgeAttr].pool.dice.length : 0;
+                const dodgeUsed = dodgeKey ? gameState.reactionPools[dodgeKey] : 0;
+                const dodgeRemaining = dodgePoolSize - dodgeUsed;
+
+                return (
+                  <div key={aspect.id} className="bg-slate-700/50 rounded p-2">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <span className="text-base">{aspect.emoji}</span>
+                      <span className="font-medium text-white text-sm">{aspect.name}</span>
+                    </div>
+
+                    {/* Dodge (or Surprise Roll for Flesh) */}
+                    {dodgeAttr && dodgeKey ? (
+                      <div className="mb-2">
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="text-slate-400">🎯 Dodge</span>
+                          <span className={dodgeRemaining > 0 ? 'text-cyan-400 font-bold' : 'text-slate-500'}>
+                            {dodgeRemaining}/{dodgePoolSize}
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-500 mb-1">
+                          {dodgeAttr} — {character.attributeDiePools[dodgeAttr].pool.notation}
+                        </div>
+                        <button
+                          onClick={() => goToDefenseResolver(dodgeAttr, dodgeKey, dodgePoolSize)}
+                          disabled={dodgeRemaining <= 0}
+                          className="w-full bg-cyan-900/50 hover:bg-cyan-700/50 disabled:opacity-30 disabled:cursor-not-allowed text-cyan-300 rounded px-2 py-1 text-xs font-medium transition-all"
+                        >
+                          🎯 Dodge
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="mb-2">
+                        <div className="text-xs text-slate-500 mb-1">⚠️ No Dodge (internal)</div>
+                        <div className="text-xs text-slate-500 mb-1">
+                          Reflexes — {character.attributeDiePools['Reflexes'].pool.notation}
+                        </div>
+                        <button
+                          onClick={() => goToSurpriseRoll('Reflexes')}
+                          className="w-full bg-amber-900/40 hover:bg-amber-700/40 text-amber-300 rounded px-2 py-1 text-xs font-medium transition-all"
+                        >
+                          ⚠️ Surprise Roll
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Parry */}
+                    <div>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-slate-400">🛡️ Parry</span>
+                        <span className={parryRemaining > 0 ? 'text-amber-400 font-bold' : 'text-slate-500'}>
+                          {parryRemaining}/{parryPoolSize}
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-500 mb-1">
+                        {parryAttr} — {character.attributeDiePools[parryAttr].pool.notation}
+                      </div>
+                      <button
+                        onClick={() => goToDefenseResolver(parryAttr, parryKey, parryPoolSize)}
+                        disabled={parryRemaining <= 0}
+                        className="w-full bg-amber-900/50 hover:bg-amber-700/50 disabled:opacity-30 disabled:cursor-not-allowed text-amber-300 rounded px-2 py-1 text-xs font-medium transition-all"
+                      >
+                        🛡️ Parry
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-2 text-xs text-slate-500">
+              💡 Pool size = dice in the attribute. Refill each round. You may both Dodge and Parry a single attack (uses both pools, take the better result).
+            </div>
+          </div>
+          
           {/* Defense Summary */}
           <div className="bg-slate-800 rounded-lg p-3">
             <h2 className="text-base font-bold text-amber-400 mb-3">🛡️ Defense</h2>
@@ -801,11 +968,6 @@ export function PlaysheetPage() {
                 })}
               </div>
             )}
-          </div>
-
-          {/* Reaction Pools */}
-          <div className="bg-slate-800 rounded-lg p-3">
-            {/* ... reaction pools section unchanged ... */}
           </div>
 
           {/* Wounds */}

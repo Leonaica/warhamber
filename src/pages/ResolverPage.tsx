@@ -23,6 +23,8 @@ interface PlaysheetState {
   woundPenalty: number;
   attributeName?: string;
   skillName?: string;
+  targetNumber?: number;
+  defenseMode?: boolean;
 }
 
 export function ResolverPage() {
@@ -45,6 +47,7 @@ export function ResolverPage() {
   
   // Track if values came from playsheet
   const [hasPlaysheetData, setHasPlaysheetData] = useState(!!playsheetState);
+  const [isDefenseMode, setIsDefenseMode] = useState(!!playsheetState?.defenseMode);
   
   // Clear playsheet indicator when user manually changes values
   useEffect(() => {
@@ -59,6 +62,10 @@ export function ResolverPage() {
       setActorPoolRank(playsheetState.poolRank);
       setActorSkillBonus(playsheetState.skillBonus);
       setActorWoundPenalty(playsheetState.woundPenalty);
+      if (playsheetState.targetNumber !== undefined) {
+        setTargetNumber(playsheetState.targetNumber);
+      }
+      setIsDefenseMode(!!playsheetState.defenseMode);
       setHasPlaysheetData(true);
     }
   }, [playsheetState]);
@@ -590,7 +597,9 @@ export function ResolverPage() {
     <div className="max-w-6xl mx-auto px-2 py-2 space-y-2">
       {/* Compact Header */}
       <div className="bg-slate-800 rounded px-3 py-1.5 flex items-center justify-between">
-        <h1 className="text-base font-bold text-amber-400">🎲 Attribute Test Resolver</h1>
+        <h1 className="text-base font-bold text-amber-400">
+          {isDefenseMode ? '🛡️ Defense Roll Resolver' : '🎲 Attribute Test Resolver'}
+        </h1>
         {hasPlaysheetData && playsheetState && (
           <div className="flex items-center gap-2">
             <span className="text-xs text-amber-400">📋 {playsheetState.attributeName}{playsheetState.skillName && ` + ${playsheetState.skillName}`}</span>
@@ -968,9 +977,13 @@ export function ResolverPage() {
                     result.successes > 0 ? 'bg-green-900/30' : 'bg-red-900/30'
                   }`}>
                     <div className="text-sm font-bold">
-                      {result.successes > 0 
-                        ? `✓ Success! Beat TN ${targetNumber} by ${result.result - targetNumber}` 
-                        : `✗ Failed by ${targetNumber - result.result}`}
+                      {isDefenseMode
+                        ? (result.result > 4
+                          ? `🛡️ Defense ${result.result} — New TN: ${result.result}`
+                          : `🛡️ Defense ${result.result} — TN remains 4`)
+                        : (result.successes > 0
+                          ? `✓ Success! Beat TN ${targetNumber} by ${result.result - targetNumber}`
+                          : `✗ Failed by ${targetNumber - result.result}`)}
                     </div>
                   </div>
                 </div>
