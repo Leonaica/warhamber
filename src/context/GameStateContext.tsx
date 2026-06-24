@@ -26,6 +26,11 @@ export interface TemporaryModifier {
   value: number;
 }
 
+export interface InitiativeState {
+  physical: number | null;
+  mental: number | null;
+}
+
 export type ReactionPoolKey = 'formDodge' | 'formParry' | 'fleshParry' | 'mindDodge' | 'mindParry' | 'spiritDodge' | 'spiritParry';
 
 export interface ReactionPools {
@@ -95,6 +100,11 @@ interface GameStateContextValue {
   addRestorationPoints: (aspect: AspectName, points: number) => void;
   clearRestorationPoints: (aspect: AspectName) => void;
   
+  // Initiative
+  initiative: InitiativeState;
+  setInitiative: (values: InitiativeState) => void;
+  clearInitiative: () => void;
+  
   // Surge
   surgeSpent: number;
   spendSurge: (amount: number) => void;
@@ -163,6 +173,11 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     );
   }, [wounds]);
 
+  const [initiative, setInitiativeState] = useState<InitiativeState>({
+    physical: null,
+    mental: null,
+  });
+
   const [reactionPools, setReactionPools] = useState<ReactionPools>({
     formDodge: 0,
     formParry: 0,
@@ -201,6 +216,14 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
       ...prev,
       [aspect]: prev[aspect] + points,
     }));
+  }, []);
+
+  const setInitiative = useCallback((values: InitiativeState) => {
+    setInitiativeState(values);
+  }, []);
+
+  const clearInitiative = useCallback(() => {
+    setInitiativeState({ physical: null, mental: null });
   }, []);
 
   const clearRestorationPoints = useCallback((aspect: AspectName) => {
@@ -252,8 +275,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   const resetOpponent = useCallback(() => {
     setOpponentWounds({ Form: 0, Flesh: 0, Mind: 0, Spirit: 0 });
     setOpponentCombatData(defaultOpponentCombatData);
-    resetReactionPools();
-  }, [resetReactionPools]);
+  }, []);
 
   const resetAll = useCallback(() => {
     setWounds(defaultWounds);
@@ -263,7 +285,8 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     setOpponentWounds(defaultWounds);
     setOpponentCombatData(defaultOpponentCombatData);
     resetReactionPools();
-  }, [resetReactionPools]);
+    clearInitiative();
+  }, [resetReactionPools, clearInitiative]);
 
   const value: GameStateContextValue = {
     wounds,
@@ -272,6 +295,9 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     restorationPoints,
     addRestorationPoints,
     clearRestorationPoints,
+    initiative,
+    setInitiative,
+    clearInitiative,
     surgeSpent,
     spendSurge,
     resetSurge,

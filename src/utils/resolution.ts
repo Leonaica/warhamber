@@ -21,6 +21,17 @@ function rollDie(size: number): { total: number; exploded: boolean; rolls: numbe
   return { total, exploded, rolls };
 }
 
+export function rollSimplePool(pool: DiePool): number {
+  let total = 0;
+  for (const size of pool.dice) {
+    total += Math.floor(Math.random() * size) + 1;
+  }
+  if (pool.divisor) {
+    total = Math.ceil(total / pool.divisor);
+  }
+  return total;
+}
+
 export function rollPool(pool: DiePool): { total: number; rolls: number[]; explosions: { dieIndex: number; rolls: number[] }[] } {
   let total = 0;
   const rolls: number[] = [];

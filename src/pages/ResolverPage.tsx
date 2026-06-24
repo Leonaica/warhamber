@@ -502,7 +502,7 @@ export function ResolverPage() {
               }`}>
                 {ar.band?.toUpperCase() ?? 'NONE'}
               </div>
-              <div className="text-xs text-slate-400">
+              <div className="text-xs">
                 {ar.successes} {ar.successes === 1 ? 'success' : 'successes'}
               </div>
             </div>

@@ -6,7 +6,7 @@ import { ASPECTS, FUNCTIONS, ATTRIBUTES, SIZE_OPTIONS, SKILL_RATINGS, RATING_SCA
 import { ICONS, DEFAULT_ICON, type IconEntry } from '../data/icons';
 import { DIE_POOL_TABLE } from '../data/diePoolTable';
 import type { DiePoolEntry } from '../data/diePoolTable';
-import { resolveTest } from '../utils/resolution';
+import { rollSimplePool, resolveTest } from '../utils/resolution';
 import { getScaleForPool } from '../data/actionEffortTable';
 import { POWERS } from '../data/powers';
 import { SKILLS } from '../data/skills';
@@ -232,6 +232,27 @@ export function PlaysheetPage() {
     return Math.round(value / 1000000000) + 'B';
   }
 
+  const handleNewRound = () => {
+    gameState.resetReactionPools();
+
+    if (character.hasCharacter) {
+      const reflexes = character.attributeDiePools['Reflexes'];
+      const agility = character.attributeDiePools['Agility'];
+      const physicalPool = reflexes.rank <= agility.rank ? reflexes.pool : agility.pool;
+
+      const creativity = character.attributeDiePools['Creativity'];
+      const intelligence = character.attributeDiePools['Intelligence'];
+      const mentalPool = creativity.rank <= intelligence.rank ? creativity.pool : intelligence.pool;
+
+      gameState.setInitiative({
+        physical: rollSimplePool(physicalPool),
+        mental: rollSimplePool(mentalPool),
+      });
+    } else {
+      gameState.clearInitiative();
+    }
+  };
+
   const goToResolver = () => {
     if (!selectedAttribute) return;
     
@@ -415,17 +436,6 @@ export function PlaysheetPage() {
             </div>
             <div className="relative group">
               <button
-                onClick={gameState.resetReactionPools}
-                className="bg-green-900/50 hover:bg-green-800/50 text-green-400 px-2 py-1 rounded text-xs"
-              >
-                ⏭️
-              </button>
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-slate-950 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 shadow-lg">
-                New Round
-              </div>
-            </div>
-            <div className="relative group">
-              <button
                 onClick={gameState.resetAll}
                 className="bg-red-900/50 hover:bg-red-800/50 text-red-400 px-2 py-1 rounded text-xs"
               >
@@ -467,7 +477,43 @@ export function PlaysheetPage() {
             <span className="text-sm font-bold text-cyan-400">{character.pace.walking.mph}/{character.pace.sprinting.mph} mph</span>
             <span className="text-sm text-slate-500 hidden sm:inline">({character.pace.walking.kph}/{character.pace.sprinting.kph} kph)</span>
           </div>
+          <div className="flex items-center gap-2">
+            <span>
+              <button
+                onClick={handleNewRound}
+                className="bg-green-800/50 hover:bg-green-700/50 text-green-400 px-3 py-1 rounded text-sm font-medium"
+                title="Reset reaction pools and roll initiative"
+                >          
+                ⏭️ New Round
+              </button>
+            </span>
+            {gameState.initiative.physical !== null && (
+            <span
+                className="text-sm text-slate-400 font-medium"
+              >
+                Initiative:
+              </span>
+            )}
+            {gameState.initiative.physical !== null && (
+
+              <span
+                className="text-sm text-cyan-400 font-medium"
+                title={`Physical Initiative (lower of Reflexes/Agility)`}
+              >
+                🏃 {gameState.initiative.physical}
+              </span>
+            )}
+            {gameState.initiative.mental !== null && (
+              <span
+                className="text-sm text-purple-400 font-medium"
+                title={`Mental Initiative (lower of Creativity/Intelligence)`}
+              >
+                🧠 {gameState.initiative.mental}
+              </span>
+            )}
+          </div>
         </div>
+
 
         {/* Expandable Surge Controls */}
         {surgeExpanded && (
@@ -694,9 +740,6 @@ export function PlaysheetPage() {
                         <div className={`text-xs mt-1 ${isSelected ? 'text-amber-400' : 'text-slate-500'}`}>
                           {skillEntry.rating} ({bonus >= 0 ? '+' : ''}{bonus}/die)
                         </div>
-                        <div className={`text-xs mt-1 ${isSelected ? 'text-amber-400' : 'text-slate-200'}`}>
-                          {skillEntry.specialtyExplanation}
-                        </div>
                       </div>
                     );
                   })}
@@ -767,18 +810,9 @@ export function PlaysheetPage() {
 
       {activeTab === 'defense' && (
         <div className="space-y-4">
-                    {/* Reaction Pools - Dodge & Parry */}
-                    <div className="bg-slate-800 rounded-lg p-3">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-base font-bold text-amber-400">⚡ Reactions — Dodge & Parry</h2>
-              <button
-                onClick={gameState.resetReactionPools}
-                className="bg-green-800/50 hover:bg-green-700/50 text-green-400 px-3 py-1 rounded text-sm font-medium"
-              >
-                ⏭️ New Round
-              </button>
-            </div>
-
+          {/* Reaction Pools - Surprise, Dodge, Parry */}
+          <div className="bg-slate-800 rounded-lg p-3">
+            <h2 className="text-base font-bold text-amber-400">⚡ Reactions — Surprise, Dodge & Parry</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {ASPECTS.map(aspect => {
                 const dodgeAttr = DODGE_ATTRIBUTES[aspect.id];
@@ -1076,9 +1110,9 @@ export function PlaysheetPage() {
                       <div className="font-medium">
                         {powerDef.emoji} {display.title}
                       </div>
-                      <div className="text-xs text-slate-400">{display.systemReference}</div>
+                      <div className="text-xs text-amber-400">{display.systemReference}</div>
                       {powerEntry.description && (
-                        <div className="text-xs text-slate-500 mt-1">{powerEntry.description}</div>
+                        <div className="text-xs mt-1 text-slate-200">{powerEntry.description}</div>
                       )}
                     </div>
                   );
@@ -1094,9 +1128,9 @@ export function PlaysheetPage() {
                       <div className="font-medium">
                         {power.emoji} {display.title}
                       </div>
-                      <div className="text-xs text-slate-400">{display.systemReference}</div>
+                      <div className="text-xs text-amber-400">{display.systemReference}</div>
                       {powerEntry.description && (
-                        <div className="text-xs text-slate-500 mt-1">{powerEntry.description}</div>
+                        <div className="text-xs mt-1 text-slate-200">{powerEntry.description}</div>
                       )}
                     </div>
                   );
@@ -1112,7 +1146,7 @@ export function PlaysheetPage() {
             </div>
           )}
 
-          {/* Skills Detail View (if needed) */}
+          {/* Skills Detail View */}
           {character.skills.length > 0 && (
             <div className="bg-slate-800 rounded-lg p-3">
               <h2 className="text-base font-bold text-amber-400 mb-3">📚 Skills Detail</h2>
@@ -1129,6 +1163,9 @@ export function PlaysheetPage() {
                       {skill?.description && (
                         <div className="text-xs text-slate-400 mt-1">{skill.description}</div>
                       )}
+                      <div className="text-xs mt-1 text-slate-200">
+                          {skillEntry.specialtyExplanation}
+                      </div>
                     </div>
                   );
                 })}
