@@ -4,6 +4,7 @@ import {
   type AspectName, type FunctionName, type AttributeName,
   type SkillName, type SkillRating,
 } from '../types/character';
+import { getDiePoolEntry } from '../data/diePoolTable';
 
 const SKILL_MODIFIERS: Record<SkillRating, number> = Object.fromEntries(
   SKILL_RATINGS.map(s => [s.rating, s.modifier])
@@ -24,8 +25,16 @@ const SKILL_NAMES: Record<SkillName, string> = {
   ScholarsMind: "Scholar's Mind",
 };
 
+// Attributes used for Soak keyed by Aspect
+const SOAK_ATTRIBUTES: Record<AspectName, AttributeName> = {
+  Form: 'Toughness',
+  Flesh: 'Endurance',
+  Mind: 'Willpower',
+  Spirit: 'Resilience',
+};
+
 // Attributes used for Parry/Dodge keyed by Aspect
-const DEFENSE_ATTRIBUTES: Record<AspectName, AttributeName> = {
+const PARRY_ATTRIBUTES: Record<AspectName, AttributeName> = {
   Form: 'Agility',
   Flesh: 'Reflexes',
   Mind: 'Intelligence',
@@ -273,12 +282,24 @@ export function PrintableSheet() {
       <div>
         <h2 className="font-bold text-sm border-b border-gray-400 mb-1">Aspects State</h2>
         {ASPECTS.map(a => {
-          const parryAttr = DEFENSE_ATTRIBUTES[a.id];
+          const parryAttr = PARRY_ATTRIBUTES[a.id];
           const dodgeAttr = DODGE_ATTRIBUTES[a.id];
           const parryNotation = getDieNotation(parryAttr);
           const dodgeNotation = dodgeAttr ? getDieNotation(dodgeAttr) : null;
           const parryDiceCount = c.diePools[parryAttr]?.dice.length ?? 0;
           const dodgeDiceCount = dodgeAttr ? (c.diePools[dodgeAttr]?.dice.length ?? 0) : 0;
+
+          // Soak calculation (Resist attribute rank + Size modifier)
+          // Find the attribute definition to get its constituent Function and Aspect
+          const soakAttr = SOAK_ATTRIBUTES[a.id];
+          const soakAttrDef = ATTRIBUTES.find(attr => attr.name === soakAttr);
+          const soakValue = soakAttrDef ? c.functions[soakAttrDef.func] + c.aspects[soakAttrDef.aspect] : 0;
+          const soakRank = getDiePoolEntry(soakValue).rank;
+          const sizeMod = (a.id === 'Form' || a.id === 'Flesh') ? character.size : character.immaterialSize;
+          const finalSoak = soakRank + sizeMod;
+
+          // Get the size modifier string (e.g., "+1" or "-2")
+          const sizeModStr = sizeMod >= 0 ? `+${sizeMod}` : `${sizeMod}`;
 
           return (
             <div key={a.id} className="mb-1">
@@ -298,6 +319,9 @@ export function PrintableSheet() {
                   Surprise Roll ({getDieNotation('Reflexes')})
                 </div>
               )}
+              <div className="ml-3 text-gray-700">
+                Soak: <span className="font-bold">{finalSoak}</span>
+              </div>
             </div>
           );
         })}
