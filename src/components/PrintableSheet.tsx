@@ -24,6 +24,21 @@ const SKILL_NAMES: Record<SkillName, string> = {
   ScholarsMind: "Scholar's Mind",
 };
 
+// Attributes used for Parry/Dodge keyed by Aspect
+const DEFENSE_ATTRIBUTES: Record<AspectName, AttributeName> = {
+  Form: 'Agility',
+  Flesh: 'Reflexes',
+  Mind: 'Intelligence',
+  Spirit: 'Creativity',
+};
+
+const DODGE_ATTRIBUTES: Record<AspectName, AttributeName | null> = {
+  Form: 'Agility',
+  Flesh: null,
+  Mind: 'Intelligence',
+  Spirit: 'Creativity',
+};
+
 export function PrintableSheet() {
   const character = useCharacter();
 
@@ -36,7 +51,17 @@ export function PrintableSheet() {
   const getAttr = (aspectId: AspectName, funcId: FunctionName) =>
     ATTRIBUTES.find(a => a.aspect === aspectId && a.func === funcId)!;
 
-  const sizeLabel = SIZE_OPTIONS.find(s => s.value === c.size)?.label ?? 'Average';
+  const sizeLabel = SIZE_OPTIONS.find(s => s.value === character.size)?.label ?? 'Average';
+  const immaterialSizeLabel = SIZE_OPTIONS.find(s => s.value === character.immaterialSize)?.label ?? 'Average';
+
+  // Render a row of empty boxes for ticking during play
+  const renderTickBoxes = (count: number) => (
+    <span className="inline-flex gap-0.5 ml-1">
+      {Array.from({ length: count }).map((_, i) => (
+        <span key={i} className="inline-block w-3 h-3 border border-black"></span>
+      ))}
+    </span>
+  );
 
   return (
     <div className="hidden print:block text-black bg-white p-6 text-xs leading-tight">
@@ -46,7 +71,7 @@ export function PrintableSheet() {
         <div className="text-sm">
           Campaign Limit: {c.campaignLimit} | Spent: {c.totalPointsSpent} |{' '}
           Stuff: {c.stuff > 0 ? `Good ${c.stuff}` : c.stuff < 0 ? `Bad ${Math.abs(c.stuff)}` : 'Neutral'} |{' '}
-          Surge: {c.surge} | Size: {sizeLabel}
+          Surge: {c.surge} | Material Size: {sizeLabel} | Immaterial Size: {immaterialSizeLabel}
         </div>
       </div>
 
@@ -222,8 +247,63 @@ export function PrintableSheet() {
           ))}
         </div>
       )}
+      {/* Play State: Surge, Initiative, Wounds, Reactions */}
+      <div className="grid grid-cols-2 gap-4 mb-3 break-inside-avoid">
+      {/* Surge & Initiative */}
+      <div>
+        <h2 className="font-bold text-sm border-b border-gray-400 mb-1">Vitals</h2>
+        <div className="mb-1">
+          <span className="font-medium">Surge:</span> {renderTickBoxes(c.surge)}
+        </div>
+        <div className="mb-1">
+          <span className="font-medium">Physical Init:</span>{' '}
+          <span className="text-gray-700">
+            {getDieNotation('Reflexes')} / {getDieNotation('Agility')} (lower)
+          </span>
+        </div>
+        <div>
+          <span className="font-medium">Mental Init:</span>{' '}
+          <span className="text-gray-700">
+            {getDieNotation('Creativity')} / {getDieNotation('Intelligence')} (lower)
+          </span>
+        </div>
+      </div>
 
-      {/* Current Status */}
+      {/* Wounds & Reactions */}
+      <div>
+        <h2 className="font-bold text-sm border-b border-gray-400 mb-1">Aspects State</h2>
+        {ASPECTS.map(a => {
+          const parryAttr = DEFENSE_ATTRIBUTES[a.id];
+          const dodgeAttr = DODGE_ATTRIBUTES[a.id];
+          const parryNotation = getDieNotation(parryAttr);
+          const dodgeNotation = dodgeAttr ? getDieNotation(dodgeAttr) : null;
+          const parryDiceCount = c.diePools[parryAttr]?.dice.length ?? 0;
+          const dodgeDiceCount = dodgeAttr ? (c.diePools[dodgeAttr]?.dice.length ?? 0) : 0;
+
+          return (
+            <div key={a.id} className="mb-1">
+              <div className="font-medium">{a.name}</div>
+              <div className="ml-3 text-gray-700">
+                Wounds: {renderTickBoxes(8)}
+              </div>
+              <div className="ml-3 text-gray-700">
+                Parry ({parryAttr} {parryNotation}): {renderTickBoxes(parryDiceCount)}
+              </div>
+              {dodgeAttr ? (
+                <div className="ml-3 text-gray-700">
+                  Dodge ({dodgeAttr} {dodgeNotation}): {renderTickBoxes(dodgeDiceCount)}
+                </div>
+              ) : (
+                <div className="ml-3 text-gray-700 italic">
+                  Surprise Roll ({getDieNotation('Reflexes')})
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
+  </div>
   );
+
 }

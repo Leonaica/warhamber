@@ -350,6 +350,7 @@ export function PlaysheetPage() {
       character.weapons,
       character.armor,
       character.size,
+      character.immaterialSize,
       character.pace,
       character.computedCharacter.stuff,
       character.computedCharacter.surge

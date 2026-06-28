@@ -86,6 +86,7 @@ export function generateHomebreweryMarkdown(
   weapons: CharacterWeapon[],
   armor: CharacterArmor[],
   size: number,
+  immaterialSize: number,
   pace: PaceValues,
   stuff: number,
   surge: number
@@ -129,17 +130,97 @@ export function generateHomebreweryMarkdown(
   
   // Surge and Stuff
   const stuffText = stuff >= 0 ? `+${stuff} Good Stuff` : `${stuff} Bad Stuff`;
-  lines.push(`***${surge} Surge Points*** (${stuffText})`);
-  lines.push(``);
-  // Size (only show if not Average)
+  lines.push(`***${surge} Surge Points*** (${stuffText})  `);
+  
+  // Sizes (Material and Immaterial)
   const sizeOption = SIZE_OPTIONS.find(s => s.value === size);
   if (sizeOption && sizeOption.value !== 0) {
-    lines.push(`**Size:** ${sizeOption.label} (${sizeOption.value >= 0 ? '+' : ''}${sizeOption.value})`);
+    lines.push(`**Material Size:** ${sizeOption.label} (${sizeOption.value >= 0 ? '+' : ''}${sizeOption.value})`);
+  }
+  
+  const immaterialSizeOption = SIZE_OPTIONS.find(s => s.value === immaterialSize);
+  if (immaterialSizeOption && immaterialSizeOption.value !== 0) {
+    lines.push(`**Immaterial Size:** ${immaterialSizeOption.label} (${immaterialSizeOption.value >= 0 ? '+' : ''}${immaterialSizeOption.value})  `);
   }
   
   // Pace (mph only)
   const paceMultiplierText = pace.multiplier !== 1 ? ` (${pace.multiplier}x)` : '';
-  lines.push(`**Pace:** ${pace.walking.mph}/${pace.sprinting.mph} mph${paceMultiplierText}`);
+  lines.push(`**Pace:** ${pace.walking.mph}/${pace.sprinting.mph} mph${paceMultiplierText}  `);
+  
+  // Finesse attributes used for Parry (pool size = number of dice)
+  const parryAttributes: Record<string, string> = {
+    Form: 'Agility',
+    Flesh: 'Reflexes',
+    Mind: 'Intelligence',
+    Spirit: 'Creativity',
+  };
+  
+  // Finesse attributes used for Dodge (pool size = number of dice, null = no dodge)
+  const dodgeAttributes: Record<string, string | null> = {
+    Form: 'Agility',
+    Flesh: null,
+    Mind: 'Intelligence',
+    Spirit: 'Creativity',
+  };
+  
+  // Resist attributes used for Soak (damage reduction = die pool rank)
+  const resistAttributes: Record<string, string> = {
+    Form: 'Toughness',
+    Flesh: 'Endurance',
+    Mind: 'Willpower',
+    Spirit: 'Resilience',
+  };
+
+  ASPECTS.forEach(aspect => {
+    const parryAttrName = parryAttributes[aspect.id];
+    const dodgeAttrName = dodgeAttributes[aspect.id];
+    const soakAttrName = resistAttributes[aspect.id];
+    const sizeValue = SIZE_OPTIONS.find(s => s.value === size)?.value ?? 0;
+    const immaterialSizeValue = SIZE_OPTIONS.find(s => s.value === immaterialSize)?.value ?? 0;
+
+    // Parry (Finesse)
+    let parryText = 'No Parry';
+    if (parryAttrName) {
+      const parryAttr = ATTRIBUTES.find(a => a.name === parryAttrName);
+      if (parryAttr) {
+        const parryValue = functions[parryAttr.func] + aspects[parryAttr.aspect];
+        const parryPool = getDiePoolEntry(parryValue).pool;
+        const parryDice = parryPool.dice.length;
+        parryText = `Parry: ${parryDice}`;
+      }
+    }
+    
+    // Dodge (Finesse)
+    let dodgeText = 'No Dodge';
+    if (dodgeAttrName) {
+      const dodgeAttr = ATTRIBUTES.find(a => a.name === dodgeAttrName);
+      if (dodgeAttr) {
+        const dodgeValue = functions[dodgeAttr.func] + aspects[dodgeAttr.aspect];
+        const dodgePool = getDiePoolEntry(dodgeValue).pool;
+        const dodgeDice = dodgePool.dice.length;
+        dodgeText = `Dodge: ${dodgeDice}`;
+      }
+    }
+    
+    // Soak (Resist + Size)
+    let soakText = 'No Soak';
+    const soakAttr = ATTRIBUTES.find(a => a.name === soakAttrName);
+    if (soakAttr) {
+      const soakValue = functions[soakAttr.func] + aspects[soakAttr.aspect];
+      const soakPoolEntry = getDiePoolEntry(soakValue);
+      
+      // Add Material Size to Form/Flesh, Immaterial Size to Mind/Spirit
+      const sizeModifier = (aspect.id === 'Form' || aspect.id === 'Flesh') 
+        ? sizeValue 
+        : immaterialSizeValue;
+        
+      const finalSoak = soakPoolEntry.rank + sizeModifier;
+      soakText = `Soak: ${finalSoak}`;
+    }
+    
+    lines.push(`**${aspect.name}:** ${parryText} | ${dodgeText} | ${soakText}  `);
+  });
+  lines.push(``);
 
   lines.push(`___`);
 
