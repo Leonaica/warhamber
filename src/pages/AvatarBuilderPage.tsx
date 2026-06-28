@@ -13,6 +13,7 @@ import { WeaponEditor } from '../components/WeaponEditor';
 import { ArmorEditor } from '../components/ArmorEditor';
 import type { CharacterWeapon } from '../types/character';
 import StepperInput from '../components/StepperInput';
+import AutoTextarea from '../components/AutoTextarea'
 
 export function AvatarBuilderPage() {
   const character = useCharacter();
@@ -262,8 +263,7 @@ export function AvatarBuilderPage() {
                 >
                   {renderIcon(ICONS.find(i => i.code === character.avatarIcon) || DEFAULT_ICON)}
                 </button>
-                <input
-                  type="text"
+                <AutoTextarea
                   value={character.name}
                   onChange={(e) => character.setName(e.target.value)}
                   className="h-8 flex-1 bg-slate-700 border border-slate-600 rounded px-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
@@ -411,12 +411,11 @@ export function AvatarBuilderPage() {
                       <label className="block text-xs text-amber-400 mb-1">
                         ⚠️ {RATING_LABELS[character.aspects[aspect.id]]} Explanation Required
                       </label>
-                      <textarea
+                      <AutoTextarea
                         value={character.aspectExplanations[aspect.id] || ''}
                         onChange={(e) => handleAspectExplanationChange(aspect.id, e.target.value)}
                         placeholder={`Mythic ${aspect.name} rating! Describe how it manifests.`}
                         className="w-full bg-slate-700/50 border border-amber-500/50 rounded px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 min-h-[60px]"
-                        rows={2}
                       />
                     </div>
                   )}
@@ -466,12 +465,11 @@ export function AvatarBuilderPage() {
                       <label className="block text-xs text-amber-400 mb-1">
                         ⚠️ {RATING_LABELS[character.functions[func.id]]} Explanation Required
                       </label>
-                      <textarea
+                      <AutoTextarea
                         value={character.functionExplanations[func.id] || ''}
                         onChange={(e) => handleFunctionExplanationChange(func.id, e.target.value)}
                         placeholder={`Mythic ${func.name} rating! Describe how it manifests.`}
                         className="w-full bg-slate-700/50 border border-amber-500/50 rounded px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 min-h-[60px]"
-                        rows={2}
                       />
                     </div>
                   )}
@@ -636,19 +634,17 @@ export function AvatarBuilderPage() {
                         }
                       </select>
                     </div>
-                    <textarea
+                    <AutoTextarea
                       value={skillEntry.specialty}
                       onChange={(e) => updateSkill(skillEntry.skillId, { specialty: e.target.value })}
                       placeholder="Specialty..."
                       className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      rows={1}
                     />
-                    <textarea
+                    <AutoTextarea
                       value={skillEntry.specialtyExplanation}
                       onChange={(e) => updateSkill(skillEntry.skillId, { specialtyExplanation: e.target.value })}
                       placeholder="Description..."
                       className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      rows={2}
                     />
                   </div>
                 );
@@ -874,8 +870,7 @@ export function AvatarBuilderPage() {
                           <label className="block text-xs text-slate-400 mb-1">
                             {'Title'}
                           </label>
-                          <input
-                            type="text"
+                          <AutoTextarea
                             value={powerEntry.customTitle || ''}
                             onChange={(e) => updatePowerCustomTitle(powerEntry.id, e.target.value)}
                             placeholder={(() => {
@@ -893,8 +888,7 @@ export function AvatarBuilderPage() {
                           />
                         </div>
                       ) : (
-                        <input
-                          type="text"
+                        <AutoTextarea
                           value={powerEntry.label || ''}
                           onChange={(e) => updatePowerLabel(powerEntry.id, e.target.value)}
                           placeholder={(() => {
@@ -914,12 +908,11 @@ export function AvatarBuilderPage() {
                     {/* Description of how this power manifests */}
                     <div className="mt-2">
                       <label className="block text-xs text-slate-400 mb-1">Description</label>
-                      <textarea
+                      <AutoTextarea
                         value={powerEntry.description || ''}
                         onChange={(e) => updatePowerDescription(powerEntry.id, e.target.value)}
                         placeholder="How does this power manifest for your avatar?"
-                        rows={2}
-                        className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+                        className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                       />
                     </div>
                   </div>
@@ -948,8 +941,7 @@ export function AvatarBuilderPage() {
               {character.artifacts.map(artifact => (
                 <div key={artifact.id} className="bg-slate-700/50 rounded p-2">
                   <div className="flex gap-2 mb-2">
-                    <input
-                      type="text"
+                    <AutoTextarea
                       value={artifact.name}
                       onChange={(e) => updateArtifact(artifact.id, { name: e.target.value })}
                       className="flex-1 bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
@@ -980,12 +972,11 @@ export function AvatarBuilderPage() {
                     />
                     <span>= {artifact.cost * artifact.quantity} pts</span>
                   </div>
-                  <textarea
+                  <AutoTextarea
                     value={artifact.description}
                     onChange={(e) => updateArtifact(artifact.id, { description: e.target.value })}
                     className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="Description..."
-                    rows={2}
                   />
                 </div>
               ))}
@@ -1018,8 +1009,7 @@ export function AvatarBuilderPage() {
               {character.allies.map(ally => (
                 <div key={ally.id} className="bg-slate-700/50 rounded p-2">
                   <div className="flex gap-2 mb-2">
-                    <input
-                      type="text"
+                    <AutoTextarea
                       value={ally.name}
                       onChange={(e) => updateAlly(ally.id, { name: e.target.value })}
                       className="flex-1 bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
@@ -1053,12 +1043,11 @@ export function AvatarBuilderPage() {
                       ✕
                     </button>
                   </div>
-                  <textarea
+                  <AutoTextarea
                     value={ally.description}
                     onChange={(e) => updateAlly(ally.id, { description: e.target.value })}
                     className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="Description..."
-                    rows={2}
                   />
                 </div>
               ))}
@@ -1091,8 +1080,7 @@ export function AvatarBuilderPage() {
             {character.personalShadows.map(shadow => (
                 <div key={shadow.id} className="bg-slate-700/50 rounded p-2">
                   <div className="flex gap-2 mb-2">
-                    <input
-                      type="text"
+                    <AutoTextarea
                       value={shadow.name}
                       onChange={(e) => updateShadow(shadow.id, { name: e.target.value })}
                       className="flex-1 bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
@@ -1113,12 +1101,11 @@ export function AvatarBuilderPage() {
                       ✕
                     </button>
                   </div>
-                  <textarea
+                  <AutoTextarea
                     value={shadow.description}
                     onChange={(e) => updateShadow(shadow.id, { description: e.target.value })}
                     className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="Description..."
-                    rows={2}
                   />
                 </div>
               ))}
