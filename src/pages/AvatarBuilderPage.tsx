@@ -266,6 +266,7 @@ export function AvatarBuilderPage() {
                 <AutoTextarea
                   value={character.name}
                   onChange={(e) => character.setName(e.target.value)}
+                  rows={1}
                   className="h-8 flex-1 bg-slate-700 border border-slate-600 rounded px-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
                   placeholder="Enter name..."
                 />
@@ -414,8 +415,9 @@ export function AvatarBuilderPage() {
                       <AutoTextarea
                         value={character.aspectExplanations[aspect.id] || ''}
                         onChange={(e) => handleAspectExplanationChange(aspect.id, e.target.value)}
+                        rows={3}
                         placeholder={`Mythic ${aspect.name} rating! Describe how it manifests.`}
-                        className="w-full bg-slate-700/50 border border-amber-500/50 rounded px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 min-h-[60px]"
+                        className="w-full bg-slate-700/50 border border-amber-500/50 rounded px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
                       />
                     </div>
                   )}
@@ -468,8 +470,9 @@ export function AvatarBuilderPage() {
                       <AutoTextarea
                         value={character.functionExplanations[func.id] || ''}
                         onChange={(e) => handleFunctionExplanationChange(func.id, e.target.value)}
+                        rows={3}
                         placeholder={`Mythic ${func.name} rating! Describe how it manifests.`}
-                        className="w-full bg-slate-700/50 border border-amber-500/50 rounded px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 min-h-[60px]"
+                        className="w-full bg-slate-700/50 border border-amber-500/50 rounded px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
                       />
                     </div>
                   )}
@@ -637,12 +640,14 @@ export function AvatarBuilderPage() {
                     <AutoTextarea
                       value={skillEntry.specialty}
                       onChange={(e) => updateSkill(skillEntry.skillId, { specialty: e.target.value })}
+                      rows={1}
                       placeholder="Specialty..."
                       className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                     <AutoTextarea
                       value={skillEntry.specialtyExplanation}
                       onChange={(e) => updateSkill(skillEntry.skillId, { specialtyExplanation: e.target.value })}
+                      rows={2}
                       placeholder="Description..."
                       className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
@@ -873,6 +878,7 @@ export function AvatarBuilderPage() {
                           <AutoTextarea
                             value={powerEntry.customTitle || ''}
                             onChange={(e) => updatePowerCustomTitle(powerEntry.id, e.target.value)}
+                            rows={1}
                             placeholder={(() => {
                               const adjective = power.subPowerAdjectives?.[powerEntry.label || ''] || '';
                               const rank = power.levels.find(l => powerEntry.points >= l.cost)?.name || '';
@@ -891,6 +897,7 @@ export function AvatarBuilderPage() {
                         <AutoTextarea
                           value={powerEntry.label || ''}
                           onChange={(e) => updatePowerLabel(powerEntry.id, e.target.value)}
+                          rows={1}
                           placeholder={(() => {
                             if (power.id === 'minorPower') {
                               if (powerEntry.points < 0) return 'Limitation';
@@ -911,6 +918,7 @@ export function AvatarBuilderPage() {
                       <AutoTextarea
                         value={powerEntry.description || ''}
                         onChange={(e) => updatePowerDescription(powerEntry.id, e.target.value)}
+                        rows={2}
                         placeholder="How does this power manifest for your avatar?"
                         className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                       />
@@ -944,6 +952,7 @@ export function AvatarBuilderPage() {
                     <AutoTextarea
                       value={artifact.name}
                       onChange={(e) => updateArtifact(artifact.id, { name: e.target.value })}
+                      rows={1}
                       className="flex-1 bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                       placeholder="Artifact name"
                     />
@@ -975,6 +984,7 @@ export function AvatarBuilderPage() {
                   <AutoTextarea
                     value={artifact.description}
                     onChange={(e) => updateArtifact(artifact.id, { description: e.target.value })}
+                    rows={2}
                     className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="Description..."
                   />
@@ -1014,6 +1024,7 @@ export function AvatarBuilderPage() {
                       onChange={(e) => updateAlly(ally.id, { name: e.target.value })}
                       className="flex-1 bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                       placeholder="Name"
+                      rows={1}
                     />
                     <select
                       value={ally.loyalty}
@@ -1048,6 +1059,7 @@ export function AvatarBuilderPage() {
                     onChange={(e) => updateAlly(ally.id, { description: e.target.value })}
                     className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="Description..."
+                    rows={2}
                   />
                 </div>
               ))}
@@ -1085,6 +1097,7 @@ export function AvatarBuilderPage() {
                       onChange={(e) => updateShadow(shadow.id, { name: e.target.value })}
                       className="flex-1 bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                       placeholder="Shadow name"
+                      rows={1}
                     />
                     <div className="flex items-center gap-1">
                       <span className="text-xs text-slate-400">Cost:</span>
@@ -1106,6 +1119,7 @@ export function AvatarBuilderPage() {
                     onChange={(e) => updateShadow(shadow.id, { description: e.target.value })}
                     className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="Description..."
+                    rows={2}
                   />
                 </div>
               ))}
