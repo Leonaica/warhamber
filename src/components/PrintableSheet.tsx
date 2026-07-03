@@ -298,9 +298,6 @@ export function PrintableSheet() {
           const sizeMod = (a.id === 'Form' || a.id === 'Flesh') ? character.size : character.immaterialSize;
           const finalSoak = soakRank + sizeMod;
 
-          // Get the size modifier string (e.g., "+1" or "-2")
-          const sizeModStr = sizeMod >= 0 ? `+${sizeMod}` : `${sizeMod}`;
-
           return (
             <div key={a.id} className="mb-1">
               <div className="font-medium">{a.name}</div>

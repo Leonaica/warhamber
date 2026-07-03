@@ -689,7 +689,9 @@ export function PlaysheetPage() {
                                       {'/'}
                                       {yscale !== null && yscale !== undefined ? `${formatMultiplier(yscale)}` : `R${entry.rank}`}
                                       {'/'}
-                                      {scale !== null && scale !== undefined ? `${formatMultiplier(scale)}` : `R${entry.rank}`}
+                                      <span className="text-slate-200">
+                                        {scale !== null && scale !== undefined ? `${formatMultiplier(scale)}` : `R${entry.rank}`}
+                                      </span>
                                       {'/'}
                                       {rscale !== null && rscale !== undefined ? `${formatMultiplier(rscale)}` : `R${entry.rank}`}
                                     </div>

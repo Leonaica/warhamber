@@ -376,7 +376,7 @@ export function generateHomebreweryMarkdown(
       if (weapon.ammo) parts.push(weapon.ammo);
       if (weapon.notes && weapon.notes.length > 0) parts.push(weapon.notes.join('. '));
       
-      lines.push(`**${weapon.name}** (${parenthetical}). ${parts.join('. ')}`);
+      lines.push(`**${weapon.name}** :: (${parenthetical}). ${parts.join('. ')}`);
     });
   }
   
