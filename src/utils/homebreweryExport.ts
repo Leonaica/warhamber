@@ -36,13 +36,13 @@ function attrAbbr(name: string): string {
     'Agility': 'Agi',
     'Reflexes': 'Rct',
     'Intelligence': 'Int',
-    'Creativity': 'Cre',
+    'Inspiration': 'Ins',
     'Perception': 'Per',
     'Intuition': 'Itn',
     'Memory': 'Mem',
     'Wisdom': 'Wis',
     'Strength': 'Str',
-    'Allure': 'All',
+    'Magnetism': 'Mag',
     'Charisma': 'Cha',
     'Presence': 'Pre',
   };
@@ -153,7 +153,7 @@ export function generateHomebreweryMarkdown(
     Form: 'Agility',
     Flesh: 'Reflexes',
     Mind: 'Intelligence',
-    Spirit: 'Creativity',
+    Spirit: 'Inspiration',
   };
   
   // Finesse attributes used for Dodge (pool size = number of dice, null = no dodge)
@@ -161,7 +161,7 @@ export function generateHomebreweryMarkdown(
     Form: 'Agility',
     Flesh: null,
     Mind: 'Intelligence',
-    Spirit: 'Creativity',
+    Spirit: 'Inspiration',
   };
   
   // Resist attributes used for Soak (damage reduction = die pool rank)

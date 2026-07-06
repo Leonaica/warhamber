@@ -39,14 +39,14 @@ const PARRY_ATTRIBUTES: Record<AspectName, AttributeName> = {
   Form: 'Agility',
   Flesh: 'Reflexes',
   Mind: 'Intelligence',
-  Spirit: 'Creativity',
+  Spirit: 'Inspiration',
 };
 
 const DODGE_ATTRIBUTES: Record<AspectName, AttributeName | null> = {
   Form: 'Agility',
   Flesh: null,
   Mind: 'Intelligence',
-  Spirit: 'Creativity',
+  Spirit: 'Inspiration',
 };
 
 export function PrintableSheet() {
@@ -277,7 +277,7 @@ export function PrintableSheet() {
         <div>
           <span className="font-medium">Mental Init:</span>{' '}
           <span className="text-gray-700">
-            {getDieNotation('Creativity')} / {getDieNotation('Intelligence')} (lower)
+            {getDieNotation('Inspiration')} / {getDieNotation('Intelligence')} (lower)
           </span>
         </div>
       </div>

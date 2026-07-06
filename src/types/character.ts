@@ -96,9 +96,9 @@ export const FUNCTIONS: Function[] = [
 // Attributes (derived from Function + Aspect)
 export type AttributeName =
   | 'Toughness' | 'Endurance' | 'Willpower' | 'Resilience'
-  | 'Agility' | 'Reflexes' | 'Intelligence' | 'Creativity'
+  | 'Agility' | 'Reflexes' | 'Intelligence' | 'Inspiration'
   | 'Perception' | 'Intuition' | 'Memory' | 'Wisdom'
-  | 'Strength' | 'Allure' | 'Charisma' | 'Presence';
+  | 'Strength' | 'Magnetism' | 'Charisma' | 'Presence';
 
 export interface Attribute {
   id: AttributeName;
@@ -118,7 +118,7 @@ export const ATTRIBUTES: Attribute[] = [
   { id: 'Agility', name: 'Agility', func: 'Finesse', aspect: 'Form', description: 'Mechanical movement, speed, and balance' },
   { id: 'Reflexes', name: 'Reflexes', func: 'Finesse', aspect: 'Flesh', description: 'Instinctive reaction, evasion, bodily coordination' },
   { id: 'Intelligence', name: 'Intelligence', func: 'Finesse', aspect: 'Mind', description: 'Problem-solving, logic, processing speed' },
-  { id: 'Creativity', name: 'Creativity', func: 'Finesse', aspect: 'Spirit', description: 'Spontaneity, artistic improvisation, spiritual flow' },
+  { id: 'Inspiration', name: 'Inspiration', func: 'Finesse', aspect: 'Spirit', description: 'Spontaneity, artistic improvisation, spiritual flow' },
   // Perceive
   { id: 'Perception', name: 'Perception', func: 'Perceive', aspect: 'Form', description: 'Accuracy of external physical senses' },
   { id: 'Intuition', name: 'Intuition', func: 'Perceive', aspect: 'Flesh', description: 'Subconscious awareness of danger or emotional states' },
@@ -126,7 +126,7 @@ export const ATTRIBUTES: Attribute[] = [
   { id: 'Wisdom', name: 'Wisdom', func: 'Perceive', aspect: 'Spirit', description: 'Moral understanding, spiritual insight' },
   // Force
   { id: 'Strength', name: 'Strength', func: 'Force', aspect: 'Form', description: 'Capacity to exert physical power on the world' },
-  { id: 'Allure', name: 'Allure', func: 'Force', aspect: 'Flesh', description: 'Physical attractiveness, magnetism, biological influence' },
+  { id: 'Magnetism', name: 'Magnetism', func: 'Force', aspect: 'Flesh', description: 'Physical attractiveness, magnetism, biological influence' },
   { id: 'Charisma', name: 'Charisma', func: 'Force', aspect: 'Mind', description: 'Mental persuasion, rhetoric, leadership' },
   { id: 'Presence', name: 'Presence', func: 'Force', aspect: 'Spirit', description: 'Spiritual gravitas, emotional impact on others' },
 ];

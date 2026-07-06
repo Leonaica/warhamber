@@ -27,7 +27,7 @@ const DODGE_ATTRIBUTES: Record<AspectName, AttributeName | null> = {
   Form: 'Agility',
   Flesh: null,
   Mind: 'Intelligence',
-  Spirit: 'Creativity',
+  Spirit: 'Inspiration',
 };
 
 // ReactionPool keys for Dodge (null = no dodge pool)
@@ -242,9 +242,9 @@ export function PlaysheetPage() {
       const agility = character.attributeDiePools['Agility'];
       const physicalPool = reflexes.rank <= agility.rank ? reflexes.pool : agility.pool;
 
-      const creativity = character.attributeDiePools['Creativity'];
+      const inspiration = character.attributeDiePools['Inspiration'];
       const intelligence = character.attributeDiePools['Intelligence'];
-      const mentalPool = creativity.rank <= intelligence.rank ? creativity.pool : intelligence.pool;
+      const mentalPool = inspiration.rank <= intelligence.rank ? inspiration.pool : intelligence.pool;
 
       gameState.setInitiative({
         physical: rollSimplePool(physicalPool),
@@ -511,7 +511,7 @@ export function PlaysheetPage() {
                 {gameState.initiative.mental !== null && (
                   <span
                     className="text-sm text-purple-400 font-medium"
-                    title={`Mental Initiative (lower of Creativity/Intelligence)`}
+                    title={`Mental Initiative (lower of Inspiration/Intelligence)`}
                   >
                     🧠 {gameState.initiative.mental}
                   </span>

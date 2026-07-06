@@ -26,7 +26,7 @@ export const POWERS: Power[] = [
     category: 'Substance',
     description: 'Summoning the ghost of the Logrus to shape possibility into reality',
     requirements: 'Shape shifting, Amber-level Spirit',
-    keyAttributes: ['Resilience', 'Creativity', 'Wisdom', 'Presence'],
+    keyAttributes: ['Resilience', 'Inspiration', 'Wisdom', 'Presence'],
     levels: [
       { name: 'Initiate', cost: 45 },
       { name: 'Wyrm Rider', cost: 70 },
@@ -45,14 +45,14 @@ export const POWERS: Power[] = [
     category: 'Substance',
     description: 'Connection made manifest through symbolism',
     requirements: 'Amber-level Resilience',
-    keyAttributes: ['Willpower', 'Creativity', 'Memory', 'Presence'],
+    keyAttributes: ['Willpower', 'Inspiration', 'Memory', 'Presence'],
     levels: [
       { name: 'Journeyman', cost: 40 },
       { name: 'Maestro', cost: 60 },
       { name: 'Virtuoso', cost: 100 },
     ],
     prerequisites: [
-      { type: 'attribute', attribute: 'Creativity', minimum: 0 },
+      { type: 'attribute', attribute: 'Inspiration', minimum: 0 },
     ],
   },
   {
@@ -62,7 +62,7 @@ export const POWERS: Power[] = [
     category: 'Substance',
     description: 'Mastery over the Chaos manifest in oneself',
     requirements: 'Inborn power (must be taken at avatar creation)',
-    keyAttributes: ['Endurance', 'Reflexes', 'Intuition', 'Allure'],
+    keyAttributes: ['Endurance', 'Reflexes', 'Intuition', 'Magnetism'],
     levels: [
       { name: 'Changeling', cost: 35 },
       { name: 'Metamorph', cost: 65 },
@@ -79,7 +79,7 @@ export const POWERS: Power[] = [
     category: 'Semi-Substance',
     description: 'Reality seen through a shattered mirror',
     requirements: 'None (survival not guaranteed)',
-    keyAttributes: ['Willpower', 'Creativity', 'Intuition', 'Presence'],
+    keyAttributes: ['Willpower', 'Inspiration', 'Intuition', 'Presence'],
     levels: [
       { name: 'Tainted Walker', cost: 10 },
       { name: 'Corrupted Walker', cost: 25 },
@@ -112,7 +112,7 @@ export const POWERS: Power[] = [
     category: 'Semi-Substance',
     description: 'The living soul reaching out to act directly upon the world',
     requirements: 'None',
-    keyAttributes: ['Resilience', 'Creativity', 'Wisdom', 'Presence'],
+    keyAttributes: ['Resilience', 'Inspiration', 'Wisdom', 'Presence'],
     practitioner: 'Psion',
     levels: [
       { name: 'Adept', cost: 5 },
@@ -164,7 +164,7 @@ export const POWERS: Power[] = [
     category: 'Shadow',
     description: 'The spirit as a living lens to focus ambient Essence',
     requirements: 'An inherent magical source',
-    keyAttributes: ['Endurance', 'Creativity', 'Intuition', 'Presence'],
+    keyAttributes: ['Endurance', 'Inspiration', 'Intuition', 'Presence'],
     levels: [
       { name: 'Awakened', cost: 15 },
       { name: 'Ascendant', cost: 25 },
