@@ -1,12 +1,40 @@
-import type { AspectName, AttackType, WeaponCategory } from '../types/character';
+import type { AspectName, AttackType, WeaponCapacity, WeaponCategory, WeaponHandedness, WeaponReloadTime } from '../types/character';
 
 export const WEAPON_CATEGORY_GROUPS: Record<string, WeaponCategory[]> = {
-  'Physical Weapons': ['Melee', 'Pistol', 'Gun', 'Heavy', 'Mounted', 'Thrown'],
+  'Physical Weapons': ['Melee', 'Pistol', 'Gun', 'Primitive', 'Heavy', 'Mounted', 'Thrown'],
   'Natural Attacks': ['Natural', 'Unarmed'],
-  'Magic': ['Spell', 'Innate', 'Pact', 'PrimeMagic'],
-  'Psionics': ['Biokinesis', 'Telekinesis', 'Telepathy', 'Divination', 'Pyrokinesis'],
-  'Powers': ['Pattern', 'Logrus', 'Tarot', 'Shapeshifting', 'BrokenPattern'],
-  'Artifice': ['Psychomancy', 'Plasmancy', 'Chronomancy', 'Ethermancy', 'Alchemancy', 'Technomancy'],
+  'Powers': ['Spell', 'Innate', 'Psionics'],
+};
+
+export const WEAPON_CAPACITY_OPTIONS: { value: WeaponCapacity; label: string; description: string }[] = [
+  { value: 'Single-shot', label: 'Single-shot', description: 'Reloads after each use' },
+  { value: 'Limited', label: 'Limited', description: '2–4 actions; frequent reloads' },
+  { value: 'Standard', label: 'Standard', description: '5–10 actions; occasional reloads' },
+  { value: 'Extended', label: 'Extended', description: '11–30 actions; rare reloads' },
+  { value: 'Continuous', label: 'Continuous', description: '31+ actions; usually lasts all scene' },
+];
+
+export const WEAPON_RELOAD_TIME_OPTIONS: { value: WeaponReloadTime; label: string; description: string }[] = [
+  { value: 'Reflexive', label: 'Reflexive', description: 'Part of firing, if skilled' },
+  { value: 'Quick', label: 'Quick', description: 'One action' },
+  { value: 'Standard', label: 'Standard', description: 'All actions for one round' },
+  { value: 'Slow', label: 'Slow', description: 'Two rounds (three if unfamiliar)' },
+  { value: 'Extended', label: 'Extended', description: 'Half a minute or longer' },
+];
+
+export const DEFAULT_HANDEDNESS_BY_CATEGORY: Record<WeaponCategory, WeaponHandedness> = {
+  Melee: 'One-handed',
+  Pistol: 'One-handed',
+  Gun: 'Two-handed',
+  Primitive: 'One-handed',
+  Heavy: 'Two-handed',
+  Mounted: 'Two-handed',
+  Thrown: 'One-handed',
+  Natural: 'Hands free',
+  Unarmed: 'One-handed',
+  Spell: 'One-handed',
+  Innate: 'Hands free',
+  Psionics: 'Hands free',
 };
 
 export const DEFAULT_ATTACK_BY_CATEGORY: Record<WeaponCategory, { aspect: AspectName; type: AttackType }> = {
@@ -14,6 +42,7 @@ export const DEFAULT_ATTACK_BY_CATEGORY: Record<WeaponCategory, { aspect: Aspect
   Melee: { aspect: 'Form', type: 'Slashing' },
   Pistol: { aspect: 'Form', type: 'Piercing' },
   Gun: { aspect: 'Form', type: 'Piercing' },
+  Primitive: { aspect: 'Form', type: 'Bludgeoning' },
   Heavy: { aspect: 'Form', type: 'Explosive' },
   Mounted: { aspect: 'Form', type: 'Piercing' },
   Thrown: { aspect: 'Form', type: 'Piercing' },
@@ -23,27 +52,7 @@ export const DEFAULT_ATTACK_BY_CATEGORY: Record<WeaponCategory, { aspect: Aspect
   // Magic
   Spell: { aspect: 'Form', type: 'Fire' },
   Innate: { aspect: 'Form', type: 'Fire' },
-  Pact: { aspect: 'Spirit', type: 'Curse' },
-  PrimeMagic: { aspect: 'Form', type: 'Fire' },
-  // Psionics
-  Biokinesis: { aspect: 'Flesh', type: 'Necrosis' },
-  Telekinesis: { aspect: 'Form', type: 'Bludgeoning' },
-  Telepathy: { aspect: 'Mind', type: 'Overload' },
-  Divination: { aspect: 'Mind', type: 'MemoryAlteration' },
-  Pyrokinesis: { aspect: 'Form', type: 'Fire' },
-  // Powers
-  Pattern: { aspect: 'Spirit', type: 'Stasis' },
-  Logrus: { aspect: 'Spirit', type: 'Distortion' },
-  Tarot: { aspect: 'Spirit', type: 'Curse' },
-  Shapeshifting: { aspect: 'Flesh', type: 'Mutation' },
-  BrokenPattern: { aspect: 'Spirit', type: 'Distortion' },
-  // Artifice
-  Psychomancy: { aspect: 'Mind', type: 'Overload' },
-  Plasmancy: { aspect: 'Form', type: 'Fire' },
-  Chronomancy: { aspect: 'Form', type: 'Stasis' },
-  Ethermancy: { aspect: 'Spirit', type: 'SoulDrain' },
-  Alchemancy: { aspect: 'Flesh', type: 'Poison' },
-  Technomancy: { aspect: 'Form', type: 'Piercing' },
+  Psionics: { aspect: 'Mind', type: 'Overload' },
 };
 
 export const MECHANISM_LABELS: Record<string, string> = {
@@ -78,3 +87,20 @@ export const MECHANISM_LABELS: Record<string, string> = {
   Violation: 'Violation — Defiling, profaning',
   FaithDamage: 'Faith Damage — Belief, conviction',
 };
+
+export function formatCapacity(capacity?: { min: WeaponCapacity; max?: WeaponCapacity }): string {
+  if (!capacity) return '';
+  const max = capacity.max && capacity.max !== capacity.min ? `/${capacity.max}` : '';
+  return `${capacity.min}${max}`;
+}
+
+export function formatWeaponLogistics(
+  capacity?: { min: WeaponCapacity; max?: WeaponCapacity },
+  reloadTime?: WeaponReloadTime
+): string {
+  const parts: string[] = [];
+  const capStr = formatCapacity(capacity);
+  if (capStr) parts.push(`${capStr} capacity`);
+  if (reloadTime) parts.push(`${reloadTime} reload`);
+  return parts.join(', ');
+}

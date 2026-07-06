@@ -13,6 +13,7 @@ import { SKILLS } from '../data/skills';
 import { getPowerDisplay } from '../utils/powerDisplay';
 import { generateHomebreweryMarkdown } from '../utils/homebreweryExport';
 import { PrintableSheet } from '../components/PrintableSheet';
+import { formatWeaponLogistics } from '../data/weaponData';
 
 const DEFENSE_ATTRIBUTES: Record<AspectName, AttributeName> = {
   Form: 'Toughness',
@@ -764,50 +765,53 @@ export function PlaysheetPage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-                    {character.weapons.map(weapon => (
-                      <div key={weapon.id} className="bg-slate-700/50 rounded p-2">
-                        <div className="font-medium text-sm text-white mb-1.5">{weapon.name}</div>
-                        <div className="text-xs text-slate-400 mb-2">
-                          {weapon.category}{weapon.handedness && ` • ${weapon.handedness}`}{weapon.ammo && ` • ${weapon.ammo}`}
-                        </div>
-                        
-                        <div className="space-y-1">
-                          {weapon.attacks.map((attack, idx) => {
-                            const aspectInfo = ASPECTS.find(a => a.id === attack.aspect);
-                            const pen = typeof attack.penetration === 'number' ? attack.penetration : attack.penetration[0];
-                            
-                            return (
-                              <button
-                                key={attack.id}
-                                onClick={() => goToCombatAsAttacker(weapon.id, idx)}
-                                className="w-full flex items-center justify-between bg-orange-900/50 hover:bg-orange-700/50 border border-slate-600 hover:border-red-500/50 rounded px-2 py-1 text-xs transition-all group"
-                              >
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <span className="flex-shrink-0">{aspectInfo?.emoji}</span>
-                                  <div className="min-w-0">
-                                    <div className="text-slate-200 group-hover:text-white truncate">
-                                      {attack.type}
-                                      {attack.isConditional && <span className="text-amber-400 ml-0.5">⚠️</span>}
-                                    </div>
-                                    <div className="text-slate-400 truncate">
-                                      {attack.range && `${attack.range} • `}
-                                      M{attack.magnitude}{pen > 0 && ` • Pen ${pen}`}
+                    {character.weapons.map(weapon => {
+                      const logistics = formatWeaponLogistics(weapon.capacity, weapon.reloadTime);
+                      return (
+                        <div key={weapon.id} className="bg-slate-700/50 rounded p-2">
+                          <div className="font-medium text-sm text-white mb-1.5">{weapon.name}</div>
+                          <div className="text-xs text-slate-400 mb-2">
+                            {weapon.category}{weapon.handedness && ` • ${weapon.handedness}`}{logistics && ` • ${logistics}`}
+                          </div>
+
+                          <div className="space-y-1">
+                            {weapon.attacks.map((attack, idx) => {
+                              const aspectInfo = ASPECTS.find(a => a.id === attack.aspect);
+                              const pen = typeof attack.penetration === 'number' ? attack.penetration : attack.penetration[0];
+
+                              return (
+                                <button
+                                  key={attack.id}
+                                  onClick={() => goToCombatAsAttacker(weapon.id, idx)}
+                                  className="w-full flex items-center justify-between bg-orange-900/50 hover:bg-orange-700/50 border border-slate-600 hover:border-red-500/50 rounded px-2 py-1 text-xs transition-all group"
+                                >
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className="flex-shrink-0">{aspectInfo?.emoji}</span>
+                                    <div className="min-w-0">
+                                      <div className="text-slate-200 group-hover:text-white truncate">
+                                        {attack.type}
+                                        {attack.isConditional && <span className="text-amber-400 ml-0.5">⚠️</span>}
+                                      </div>
+                                      <div className="text-slate-400 truncate">
+                                        {attack.range && `${attack.range} • `}
+                                        M{attack.magnitude}{pen > 0 && ` • Pen ${pen}`}
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                                <span className="text-slate-500 group-hover:text-red-400 flex-shrink-0 ml-1">⚔️</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                        
-                        {weapon.notes && weapon.notes.length > 0 && (
-                          <div className="mt-1.5 text-xs text-slate-500 truncate" title={weapon.notes.join(' • ')}>
-                            {weapon.notes.join(' • ')}
+                                  <span className="text-slate-500 group-hover:text-red-400 flex-shrink-0 ml-1">⚔️</span>
+                                </button>
+                              );
+                            })}
                           </div>
-                        )}
-                      </div>
-                    ))}
+
+                          {weapon.notes && weapon.notes.length > 0 && (
+                            <div className="mt-1.5 text-xs text-slate-500 truncate" title={weapon.notes.join(' • ')}>
+                              {weapon.notes.join(' • ')}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

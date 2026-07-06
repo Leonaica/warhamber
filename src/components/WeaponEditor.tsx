@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import type { AspectName, AttackType, WeaponAttack, CharacterWeapon, WeaponCategory, WeaponHandedness, WeaponRange } from '../types/character';
+import type { AspectName, AttackType, WeaponAttack, CharacterWeapon, WeaponCapacity, WeaponCategory, WeaponHandedness, WeaponRange, WeaponReloadTime } from '../types/character';
 import { ASPECTS, ATTACK_TYPES_BY_ASPECT, WEAPON_RANGES, getMechanismGroupsForAspect } from '../types/character';
 import { DAMAGE_MAGNITUDE_TABLE, type DamageMagnitudeEntry } from '../data/damageTable';
-import { WEAPON_CATEGORY_GROUPS, DEFAULT_ATTACK_BY_CATEGORY, MECHANISM_LABELS } from '../data/weaponData';
+import { WEAPON_CAPACITY_OPTIONS, WEAPON_CATEGORY_GROUPS, WEAPON_RELOAD_TIME_OPTIONS, DEFAULT_ATTACK_BY_CATEGORY, DEFAULT_HANDEDNESS_BY_CATEGORY, MECHANISM_LABELS } from '../data/weaponData';
 import StepperInput from './StepperInput';
 
 interface WeaponEditorProps {
@@ -12,17 +12,27 @@ interface WeaponEditorProps {
 }
 
 export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
+  const initialCategory = (weapon?.category as WeaponCategory) || 'Melee';
   const [name, setName] = useState(weapon?.name || '');
-  const [category, setCategory] = useState<WeaponCategory>(weapon?.category as WeaponCategory || 'Melee');
-  const [handedness, setHandedness] = useState<WeaponHandedness>(weapon?.handedness as WeaponHandedness || 'One-handed');
+  const [category, setCategory] = useState<WeaponCategory>(initialCategory);
+  const [handedness, setHandedness] = useState<WeaponHandedness>(
+    (weapon?.handedness as WeaponHandedness) || DEFAULT_HANDEDNESS_BY_CATEGORY[initialCategory]
+  );
   const [attacks, setAttacks] = useState<WeaponAttack[]>(weapon?.attacks || []);
-  const [ammo, setAmmo] = useState(weapon?.ammo || '');
+  const [capacityMin, setCapacityMin] = useState<WeaponCapacity | ''>(weapon?.capacity?.min || '');
+  const [capacityMax, setCapacityMax] = useState<WeaponCapacity | ''>(weapon?.capacity?.max || '');
+  const [reloadTime, setReloadTime] = useState<WeaponReloadTime | ''>(weapon?.reloadTime || '');
   const [notes, setNotes] = useState<string[]>(weapon?.notes || []);
   const [newNote, setNewNote] = useState('');
 
+  const handleCategoryChange = (newCategory: WeaponCategory) => {
+    setCategory(newCategory);
+    setHandedness(DEFAULT_HANDEDNESS_BY_CATEGORY[newCategory]);
+  };
+
   const addAttack = () => {
     const id = crypto.randomUUID();
-    const defaultRange: WeaponRange = ['Melee', 'Thrown', 'Unarmed', 'Natural'].includes(category) 
+    const defaultRange: WeaponRange = ['Melee', 'Thrown', 'Unarmed', 'Natural'].includes(category)
       ? 'Close' : 'Short';
     const defaults = DEFAULT_ATTACK_BY_CATEGORY[category];
     const newAttack: WeaponAttack = {
@@ -57,15 +67,27 @@ export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
 
   const handleSave = () => {
     if (!name.trim()) return;
+    const capacity = capacityMin
+      ? {
+          min: capacityMin,
+          ...(capacityMax && capacityMax !== capacityMin ? { max: capacityMax } : {})
+        }
+      : undefined;
     onSave({
       name: name.trim(),
       category,
       handedness,
       attacks,
-      ammo: ammo.trim() || undefined,
+      capacity,
+      reloadTime: reloadTime || undefined,
       notes: notes.length > 0 ? notes : undefined,
     });
   };
+
+  const capacityMinIndex = WEAPON_CAPACITY_OPTIONS.findIndex(c => c.value === capacityMin);
+  const validMaxOptions = capacityMinIndex >= 0
+    ? WEAPON_CAPACITY_OPTIONS.filter((_, i) => i > capacityMinIndex)
+    : [];
 
   return (
     <div className="bg-slate-800 rounded-lg p-4 space-y-4">
@@ -91,7 +113,7 @@ export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
           <label className="block text-sm text-slate-400 mb-1">Category</label>
           <select
             value={category}
-            onChange={(e) => setCategory(e.target.value as WeaponCategory)}
+            onChange={(e) => handleCategoryChange(e.target.value as WeaponCategory)}
             className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white"
           >
             {Object.entries(WEAPON_CATEGORY_GROUPS).map(([group, cats]) => (
@@ -112,20 +134,73 @@ export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
           >
             <option value="One-handed">One-handed</option>
             <option value="Two-handed">Two-handed</option>
+            <option value="Hands free">Hands-free</option>
           </select>
         </div>
       </div>
 
-      {/* Ammo */}
-      <div>
-        <label className="block text-sm text-slate-400 mb-1">Ammo (optional)</label>
-        <input
-          type="text"
-          value={ammo}
-          onChange={(e) => setAmmo(e.target.value)}
-          className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white"
-          placeholder="e.g., 6 rounds, magazine, infinite, psi points"
-        />
+      {/* Capacity and Reload Time */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm text-slate-400 mb-1">Capacity</label>
+          <div className="flex gap-2 items-center">
+            <select
+              value={capacityMin}
+              onChange={(e) => {
+                setCapacityMin(e.target.value as WeaponCapacity | '');
+                setCapacityMax('');
+              }}
+              className="flex-1 bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white"
+            >
+              <option value="">— None —</option>
+              {WEAPON_CAPACITY_OPTIONS.map(c => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+            {capacityMin && validMaxOptions.length > 0 && (
+              <>
+                <span className="text-slate-400 text-sm">to</span>
+                <select
+                  value={capacityMax}
+                  onChange={(e) => setCapacityMax(e.target.value as WeaponCapacity | '')}
+                  className="flex-1 bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white"
+                >
+                  <option value="">— (single) —</option>
+                  {validMaxOptions.map(c => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+              </>
+            )}
+          </div>
+          {capacityMin && (
+            <p className="text-xs text-slate-500 mt-1">
+              {WEAPON_CAPACITY_OPTIONS.find(c => c.value === capacityMin)?.description}
+              {capacityMax && (
+                <> · to {WEAPON_CAPACITY_OPTIONS.find(c => c.value === capacityMax)?.description}</>
+              )}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm text-slate-400 mb-1">Reload Time</label>
+          <select
+            value={reloadTime}
+            onChange={(e) => setReloadTime(e.target.value as WeaponReloadTime | '')}
+            className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white"
+          >
+            <option value="">— None —</option>
+            {WEAPON_RELOAD_TIME_OPTIONS.map(r => (
+              <option key={r.value} value={r.value}>{r.label}</option>
+            ))}
+          </select>
+          {reloadTime && (
+            <p className="text-xs text-slate-500 mt-1">
+              {WEAPON_RELOAD_TIME_OPTIONS.find(r => r.value === reloadTime)?.description}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Attacks */}
@@ -270,9 +345,12 @@ export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
         ))}
       </div>
 
-      {/* Notes */}
+      {/* Special Notes */}
       <div>
-        <label className="block text-sm text-slate-400 mb-1">Notes</label>
+        <label className="block text-sm text-slate-400 mb-1">Special Notes</label>
+        <p className="text-xs text-slate-500 mb-2">
+          Mechanical effects (e.g., "+2 Bonus to aim") or narrative details (e.g., "Power field: destroys parried weapon 3 times in 4")
+        </p>
         {notes.map((note, index) => (
           <div key={index} className="flex items-center gap-2 mb-1">
             <span className="text-sm text-slate-300 flex-1">• {note}</span>
@@ -291,7 +369,7 @@ export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
             onChange={(e) => setNewNote(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addNote()}
             className="flex-1 bg-slate-700 border border-slate-600 rounded px-3 py-1 text-sm text-white"
-            placeholder="Add a note..."
+            placeholder="Add a special note..."
           />
           <button
             onClick={addNote}

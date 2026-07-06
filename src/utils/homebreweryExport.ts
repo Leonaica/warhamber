@@ -4,6 +4,7 @@ import { SKILLS } from '../data/skills';
 import { POWERS } from '../data/powers';
 import { getDiePoolEntry } from '../data/diePoolTable';
 import { getPowerDisplay } from './powerDisplay';
+import { formatWeaponLogistics } from '../data/weaponData';
 
 // Convert die pool to Homebrewery die icons
 function dieIcons(pool: DiePool): string {
@@ -373,7 +374,8 @@ export function generateHomebreweryMarkdown(
       const parenthetical = attackTexts.join('; ');
       const categoryText = `${weapon.category}, ${weapon.handedness}`;
       const parts = [categoryText];
-      if (weapon.ammo) parts.push(weapon.ammo);
+      const logistics = formatWeaponLogistics(weapon.capacity, weapon.reloadTime);
+      if (logistics) parts.push(logistics);
       if (weapon.notes && weapon.notes.length > 0) parts.push(weapon.notes.join('. '));
       
       lines.push(`**${weapon.name}** :: (${parenthetical}). ${parts.join('. ')}`);

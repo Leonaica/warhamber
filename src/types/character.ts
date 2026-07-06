@@ -292,10 +292,10 @@ export type FleshMechanism =
 
 export type MindMechanism = 
   | 'MemoryDamage' | 'ReasoningDamage' | 'PerceptionDamage' 
-  | 'WillDamage' | 'FocusDamage' | 'IdentityDamage';
+  | 'WillDamage' | 'FocusDamage';
 
 export type SpiritMechanism = 
-  | 'HopeDamage' | 'ConnectionDamage' | 'IdentityCorruption' 
+  | 'HopeDamage' | 'ConnectionDamage' | 'IdentityDamage' | 'IdentityCorruption' 
   | 'EnergyDrain' | 'Burden' | 'Violation' | 'FaithDamage';
 
 // === ATTACK TYPES ===
@@ -322,12 +322,12 @@ export type MindAttackType =
   | 'Confusion' | 'Paradox' | 'LogicCorruption'
   | 'Illusion' | 'Delusion' | 'Hallucination' | 'SensoryDeprivation'
   | 'Domination' | 'Compulsion' | 'WillBreaking'
-  | 'Overload' | 'Obsession' | 'Fatigue' | 'Stress' | 'MindFog' | 'Glitching'
-  | 'IdentityLoss' | 'EgoDissolution' | 'PersonalityAlteration' | 'ConceptErasure';
+  | 'Overload' | 'Obsession' | 'Fatigue' | 'Stress' | 'MindFog' | 'Glitching';
 
 export type SpiritAttackType =
   | 'Despair' | 'Apathy' | 'ExistentialDread' | 'ExistentialHorror'
   | 'Severing' | 'Alienation' | 'Isolation' | 'EmpathyDestruction'
+  | 'IdentityLoss' | 'EgoDissolution' | 'PersonalityAlteration' | 'ConceptErasure'
   | 'Corruption' | 'Possession' | 'Fragmentation' | 'Taint' | 'Distortion'
   | 'SoulDrain' | 'PassionDrain' | 'NegativeEnergy' | 'DeathMagic'
   | 'Curse' | 'Guilt' | 'Karma' | 'Binding' | 'Geas'
@@ -363,12 +363,12 @@ export const MIND_ATTACK_TYPES: Record<MindMechanism, MindAttackType[]> = {
   PerceptionDamage: ['Illusion', 'Delusion', 'Hallucination', 'SensoryDeprivation'],
   WillDamage: ['Domination', 'Compulsion', 'WillBreaking'],
   FocusDamage: ['Overload', 'Obsession', 'Fatigue', 'Stress', 'MindFog', 'Glitching'],
-  IdentityDamage: ['IdentityLoss', 'EgoDissolution', 'PersonalityAlteration', 'ConceptErasure'],
 };
 
 export const SPIRIT_ATTACK_TYPES: Record<SpiritMechanism, SpiritAttackType[]> = {
   HopeDamage: ['Despair', 'Apathy', 'ExistentialDread', 'ExistentialHorror'],
   ConnectionDamage: ['Severing', 'Alienation', 'Isolation', 'EmpathyDestruction'],
+  IdentityDamage: ['IdentityLoss', 'EgoDissolution', 'PersonalityAlteration', 'ConceptErasure'],
   IdentityCorruption: ['Corruption', 'Possession', 'Fragmentation', 'Taint', 'Distortion'],
   EnergyDrain: ['SoulDrain', 'PassionDrain', 'NegativeEnergy', 'DeathMagic'],
   Burden: ['Curse', 'Guilt', 'Karma', 'Binding', 'Geas'],
@@ -386,12 +386,9 @@ export const ATTACK_TYPES_BY_ASPECT: Record<AspectName, AttackType[]> = {
 // === WEAPON CATEGORIES ===
 
 export type WeaponCategory = 
-  | 'Melee' | 'Pistol' | 'Gun' | 'Heavy' | 'Mounted' | 'Thrown'
+  | 'Melee' | 'Pistol' | 'Gun' | 'Primitive' | 'Heavy' | 'Mounted' | 'Thrown'
   | 'Natural' | 'Unarmed'
-  | 'Spell' | 'Innate' | 'Pact' | 'PrimeMagic'
-  | 'Biokinesis' | 'Telekinesis' | 'Telepathy' | 'Divination' | 'Pyrokinesis'
-  | 'Pattern' | 'Logrus' | 'Tarot' | 'Shapeshifting' | 'BrokenPattern'
-  | 'Psychomancy' | 'Plasmancy' | 'Chronomancy' | 'Ethermancy' | 'Alchemancy' | 'Technomancy';
+  | 'Spell' | 'Innate' | 'Psionics';
 
 // === UTILITY ===
 
@@ -404,7 +401,7 @@ export function getMechanismGroupsForAspect(aspect: AspectName): Record<string, 
   }
 }
 
-export type WeaponHandedness = 'One-handed' | 'Two-handed';
+export type WeaponHandedness = 'One-handed' | 'Two-handed' | 'Hands free';
 
 export type WeaponRange = 'Touch' | 'Close' | 'Reach' | 'Short' | 'Medium' | 'Long' | 'Far' | 'Extreme' | 'Strategic' | 'LOS';
 
@@ -432,13 +429,17 @@ export interface WeaponAttack {
   condition?: string;
 }
 
+export type WeaponCapacity = 'Single-shot' | 'Limited' | 'Standard' | 'Extended' | 'Continuous';
+export type WeaponReloadTime = 'Reflexive' | 'Quick' | 'Standard' | 'Slow' | 'Extended';
+
 export interface CharacterWeapon {
   id: string;
   name: string;
   attacks: WeaponAttack[];
   category: WeaponCategory;
   handedness: WeaponHandedness;
-  ammo?: string;
+  capacity?: { min: WeaponCapacity; max?: WeaponCapacity };
+  reloadTime?: WeaponReloadTime;
   notes?: string[];
 }
 

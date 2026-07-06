@@ -5,6 +5,7 @@ import {
   type SkillName, type SkillRating,
 } from '../types/character';
 import { getDiePoolEntry } from '../data/diePoolTable';
+import { formatWeaponLogistics } from '../data/weaponData';
 
 const SKILL_MODIFIERS: Record<SkillRating, number> = Object.fromEntries(
   SKILL_RATINGS.map(s => [s.rating, s.modifier])
@@ -218,25 +219,28 @@ export function PrintableSheet() {
       {c.weapons.length > 0 && (
         <div className="mb-3 break-inside-avoid">
           <h2 className="font-bold text-sm border-b border-gray-400 mb-1">Weapons</h2>
-          {c.weapons.map(weapon => (
-            <div key={weapon.id} className="mb-1">
-              <span className="font-medium">{weapon.name}</span>
-              <span className="text-gray-600">
-                {' '}({weapon.category}, {weapon.handedness}{weapon.ammo ? `, ${weapon.ammo}` : ''})
-              </span>
-              {weapon.attacks.map(atk => (
-                <div key={atk.id} className="ml-3 text-gray-600">
-                  {atk.aspect} {atk.type}: Mag {atk.magnitude}, Pen{' '}
-                  {Array.isArray(atk.penetration) ? `${atk.penetration[0]}-${atk.penetration[1]}` : atk.penetration},{' '}
-                  Range {atk.range}
-                  {atk.isConditional && atk.condition && <span className="italic"> ({atk.condition})</span>}
-                </div>
-              ))}
-              {weapon.notes?.map((n, i) => (
-                <div key={i} className="ml-3 text-gray-500 italic">{n}</div>
-              ))}
-            </div>
-          ))}
+          {c.weapons.map(weapon => {
+            const logistics = formatWeaponLogistics(weapon.capacity, weapon.reloadTime);
+            return (
+              <div key={weapon.id} className="mb-1">
+                <span className="font-medium">{weapon.name}</span>
+                <span className="text-gray-600">
+                  {' '}({weapon.category}, {weapon.handedness}{logistics ? `, ${logistics}` : ''})
+                </span>
+                {weapon.attacks.map(atk => (
+                  <div key={atk.id} className="ml-3 text-gray-600">
+                    {atk.aspect} {atk.type}: Mag {atk.magnitude}, Pen{' '}
+                    {Array.isArray(atk.penetration) ? `${atk.penetration[0]}-${atk.penetration[1]}` : atk.penetration},{' '}
+                    Range {atk.range}
+                    {atk.isConditional && atk.condition && <span className="italic"> ({atk.condition})</span>}
+                  </div>
+                ))}
+                {weapon.notes?.map((n, i) => (
+                  <div key={i} className="ml-3 text-gray-500 italic">{n}</div>
+                ))}
+              </div>
+            );
+          })}
         </div>
       )}
 
