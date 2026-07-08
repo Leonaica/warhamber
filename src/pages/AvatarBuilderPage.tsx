@@ -10,6 +10,8 @@ import { CharacterSheet } from '../components/CharacterSheet';
 import { IconPicker } from '../components/IconPicker';
 import { ICONS, DEFAULT_ICON, type IconEntry } from '../data/icons';
 import { WeaponEditor } from '../components/WeaponEditor';
+import { resolveWeaponTags } from '../data/weaponTags';
+import { TagChip } from '../components/TagChip';
 import { ArmorEditor } from '../components/ArmorEditor';
 import type { CharacterWeapon } from '../types/character';
 import StepperInput from '../components/StepperInput';
@@ -1214,11 +1216,11 @@ export function AvatarBuilderPage() {
                     </div>
                   )}
                   
-                  {/* Notes */}
-                  {weapon.notes && weapon.notes.length > 0 && (
-                    <div className="mt-2 text-xs text-slate-500">
-                      {weapon.notes.map((note, i) => (
-                        <div key={i}>• {note}</div>
+                  {/* Tags */}
+                  {weapon.tagIds && weapon.tagIds.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {resolveWeaponTags(weapon.tagIds, character.customTags).map(tag => (
+                        <TagChip key={tag.id} tag={tag} size="sm" />
                       ))}
                     </div>
                   )}
@@ -1229,7 +1231,13 @@ export function AvatarBuilderPage() {
                 <div className="mt-4">
                   <WeaponEditor
                     weapon={editingWeapon || undefined}
-                    onSave={(weaponData) => {
+                    customTags={character.customTags}
+                    onSave={(weaponData, newCustomTags) => {
+                      // Use functional update to safely append without overwriting
+                      if (newCustomTags.length > 0) {
+                        character.setCustomTags(prev => [...prev, ...newCustomTags]);
+                      }
+                      
                       if (editingWeapon) {
                         character.updateWeapon(editingWeapon.id, weaponData);
                       } else {
@@ -1418,6 +1426,9 @@ export function AvatarBuilderPage() {
         personalShadows={character.personalShadows}
         stuff={stuff}
         surge={character.computedCharacter.surge}
+        weapons={character.weapons}
+        armor={character.armor}
+        customTags={character.customTags}
       />
       {/* Icon Picker Modal */}
       <IconPicker

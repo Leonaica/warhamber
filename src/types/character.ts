@@ -390,8 +390,6 @@ export type WeaponCategory =
   | 'Natural' | 'Unarmed'
   | 'Spell' | 'Innate' | 'Psionics';
 
-// === UTILITY ===
-
 export function getMechanismGroupsForAspect(aspect: AspectName): Record<string, string[]> {
   switch (aspect) {
     case 'Form': return FORM_ATTACK_TYPES;
@@ -399,6 +397,14 @@ export function getMechanismGroupsForAspect(aspect: AspectName): Record<string, 
     case 'Mind': return MIND_ATTACK_TYPES;
     case 'Spirit': return SPIRIT_ATTACK_TYPES;
   }
+}
+
+export interface WeaponTagDefinition {
+  id: string;
+  label: string;
+  category: string;
+  description?: string;
+  effect?: string;
 }
 
 export type WeaponHandedness = 'One-handed' | 'Two-handed' | 'Hands free';
@@ -440,7 +446,7 @@ export interface CharacterWeapon {
   handedness: WeaponHandedness;
   capacity?: { min: WeaponCapacity; max?: WeaponCapacity };
   reloadTime?: WeaponReloadTime;
-  notes?: string[];
+  tagIds?: string[];
 }
 
 export interface CharacterArmor {
@@ -475,6 +481,7 @@ export interface Character {
   
   // Step 5: Equipment
   weapons: CharacterWeapon[];
+  customTags: WeaponTagDefinition[];
   armor: CharacterArmor[];
   size: number;
   

@@ -1,17 +1,19 @@
 import { useState } from 'react';
-import type { AspectName, AttackType, WeaponAttack, CharacterWeapon, WeaponCapacity, WeaponCategory, WeaponHandedness, WeaponRange, WeaponReloadTime } from '../types/character';
+import type { AspectName, AttackType, WeaponAttack, CharacterWeapon, WeaponCapacity, WeaponCategory, WeaponHandedness, WeaponRange, WeaponReloadTime, WeaponTagDefinition } from '../types/character';
 import { ASPECTS, ATTACK_TYPES_BY_ASPECT, WEAPON_RANGES, getMechanismGroupsForAspect } from '../types/character';
 import { DAMAGE_MAGNITUDE_TABLE, type DamageMagnitudeEntry } from '../data/damageTable';
 import { WEAPON_CAPACITY_OPTIONS, WEAPON_CATEGORY_GROUPS, WEAPON_RELOAD_TIME_OPTIONS, DEFAULT_ATTACK_BY_CATEGORY, DEFAULT_HANDEDNESS_BY_CATEGORY, MECHANISM_LABELS } from '../data/weaponData';
 import StepperInput from './StepperInput';
+import { WeaponTagEditor } from './WeaponTagEditor';
 
 interface WeaponEditorProps {
   weapon?: CharacterWeapon;
-  onSave: (weapon: Omit<CharacterWeapon, 'id'>) => void;
+  customTags: WeaponTagDefinition[];
+  onSave: (weapon: Omit<CharacterWeapon, 'id'>, newCustomTags: WeaponTagDefinition[]) => void;
   onCancel: () => void;
 }
 
-export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
+export function WeaponEditor({ weapon, customTags, onSave, onCancel }: WeaponEditorProps) {
   const initialCategory = (weapon?.category as WeaponCategory) || 'Melee';
   const [name, setName] = useState(weapon?.name || '');
   const [category, setCategory] = useState<WeaponCategory>(initialCategory);
@@ -22,8 +24,10 @@ export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
   const [capacityMin, setCapacityMin] = useState<WeaponCapacity | ''>(weapon?.capacity?.min || '');
   const [capacityMax, setCapacityMax] = useState<WeaponCapacity | ''>(weapon?.capacity?.max || '');
   const [reloadTime, setReloadTime] = useState<WeaponReloadTime | ''>(weapon?.reloadTime || '');
-  const [notes, setNotes] = useState<string[]>(weapon?.notes || []);
-  const [newNote, setNewNote] = useState('');
+  const [tagIds, setTagIds] = useState<string[]>(weapon?.tagIds || []);
+  const [newCustomTags, setNewCustomTags] = useState<WeaponTagDefinition[]>(() => 
+    (customTags || []).filter(ct => tagIds.includes(ct.id))
+  );
 
   const handleCategoryChange = (newCategory: WeaponCategory) => {
     setCategory(newCategory);
@@ -54,17 +58,6 @@ export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
     setAttacks(attacks.filter(a => a.id !== id));
   };
 
-  const addNote = () => {
-    if (newNote.trim()) {
-      setNotes([...notes, newNote.trim()]);
-      setNewNote('');
-    }
-  };
-
-  const removeNote = (index: number) => {
-    setNotes(notes.filter((_, i) => i !== index));
-  };
-
   const handleSave = () => {
     if (!name.trim()) return;
     const capacity = capacityMin
@@ -80,8 +73,8 @@ export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
       attacks,
       capacity,
       reloadTime: reloadTime || undefined,
-      notes: notes.length > 0 ? notes : undefined,
-    });
+      tagIds: tagIds.length > 0 ? tagIds : undefined,
+    }, newCustomTags);
   };
 
   const capacityMinIndex = WEAPON_CAPACITY_OPTIONS.findIndex(c => c.value === capacityMin);
@@ -142,7 +135,7 @@ export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
       {/* Capacity and Reload Time */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm text-slate-400 mb-1">Capacity</label>
+          <label className="block text-sm text-slate-400 mb-1">Ammo Capacity</label>
           <div className="flex gap-2 items-center">
             <select
               value={capacityMin}
@@ -345,40 +338,13 @@ export function WeaponEditor({ weapon, onSave, onCancel }: WeaponEditorProps) {
         ))}
       </div>
 
-      {/* Special Notes */}
-      <div>
-        <label className="block text-sm text-slate-400 mb-1">Special Notes</label>
-        <p className="text-xs text-slate-500 mb-2">
-          Mechanical effects (e.g., "+2 Bonus to aim") or narrative details (e.g., "Power field: destroys parried weapon 3 times in 4")
-        </p>
-        {notes.map((note, index) => (
-          <div key={index} className="flex items-center gap-2 mb-1">
-            <span className="text-sm text-slate-300 flex-1">• {note}</span>
-            <button
-              onClick={() => removeNote(index)}
-              className="text-red-400 hover:text-red-300 text-sm"
-            >
-              ×
-            </button>
-          </div>
-        ))}
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newNote}
-            onChange={(e) => setNewNote(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addNote()}
-            className="flex-1 bg-slate-700 border border-slate-600 rounded px-3 py-1 text-sm text-white"
-            placeholder="Add a special note..."
-          />
-          <button
-            onClick={addNote}
-            className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded text-sm"
-          >
-            Add
-          </button>
-        </div>
-      </div>
+      {/* Tags */}
+      <WeaponTagEditor
+        tagIds={tagIds}
+        customTags={customTags}
+        onChange={setTagIds}
+        onNewCustomTags={setNewCustomTags}
+      />
 
       {/* Actions */}
       <div className="flex gap-3 pt-2">

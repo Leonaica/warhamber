@@ -11,6 +11,7 @@ import type {
   CharacterWeapon,
   CharacterArmor,
   RatingValue,
+  WeaponTagDefinition,
 } from '../types/character';
 import { ATTRIBUTES } from '../types/character';
 import { getDiePoolEntry } from '../data/diePoolTable';
@@ -48,6 +49,7 @@ interface CharacterState {
   personalShadows: PersonalShadow[];
   weapons: CharacterWeapon[];
   armor: CharacterArmor[];
+  customTags: WeaponTagDefinition[];
   size: number;
   paceMultiplier: number;
 }
@@ -73,6 +75,8 @@ interface CharacterContextValue extends CharacterState {
   setArtifacts: (artifacts: Artifact[] | ((prev: Artifact[]) => Artifact[])) => void;
   setAllies: (allies: Ally[] | ((prev: Ally[]) => Ally[])) => void;
   setPersonalShadows: (shadows: PersonalShadow[] | ((prev: PersonalShadow[]) => PersonalShadow[])) => void;
+  customTags: WeaponTagDefinition[];
+  setCustomTags: (tags: WeaponTagDefinition[] | ((prev: WeaponTagDefinition[]) => WeaponTagDefinition[])) => void;
   addWeapon: (weapon: Omit<CharacterWeapon, 'id'>) => void;
   updateWeapon: (id: string, updates: Partial<CharacterWeapon>) => void;
   removeWeapon: (id: string) => void;
@@ -119,6 +123,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
   const [personalShadowsState, setPersonalShadowsState] = useState<PersonalShadow[]>([]);
   const [weapons, setWeapons] = useState<CharacterWeapon[]>([]);
   const [armorState, setArmorState] = useState<CharacterArmor[]>([]);
+  const [customTagsState, setCustomTagsState] = useState<WeaponTagDefinition[]>([]);
   const [sizeState, setSizeState] = useState(0);
   const [paceMultiplierState, setPaceMultiplierState] = useState(1);
 
@@ -216,6 +221,10 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
 
   const setPersonalShadows = useCallback((value: PersonalShadow[] | ((prev: PersonalShadow[]) => PersonalShadow[])) => {
     setPersonalShadowsState(prev => typeof value === 'function' ? value(prev) : value);
+  }, []);
+
+  const setCustomTags = useCallback((value: WeaponTagDefinition[] | ((prev: WeaponTagDefinition[]) => WeaponTagDefinition[])) => {
+    setCustomTagsState(prev => typeof value === 'function' ? value(prev) : value);
   }, []);
 
   const addWeapon = useCallback((weapon: Omit<CharacterWeapon, 'id'>) => {
@@ -348,6 +357,7 @@ const removeArmor = useCallback((id: string) => {
     if (data.personalShadows) setPersonalShadowsState(data.personalShadows);
     if (data.weapons) setWeapons(data.weapons);
     if (data.armor) setArmorState(data.armor);
+    setCustomTagsState(data.customTags ?? []);
     if (data.size !== undefined) setSizeState(data.size);
     if (data.paceMultiplier !== undefined) setPaceMultiplierState(data.paceMultiplier);
   }, []);
@@ -368,11 +378,12 @@ const removeArmor = useCallback((id: string) => {
       personalShadows: personalShadowsState,
       weapons,
       armor: armorState,
+      customTags: customTagsState,
       size: sizeState,
       paceMultiplier: paceMultiplierState,
     };
     return JSON.stringify(data, null, 2);
-  }, [nameState, avatarIconState, campaignLimitState, aspectsState, functionsState, aspectExplanationsState, functionExplanationsState, skillsState, powersState, artifactsState, alliesState, personalShadowsState, weapons, armorState, sizeState, paceMultiplierState]);
+  }, [nameState, avatarIconState, campaignLimitState, aspectsState, functionsState, aspectExplanationsState, functionExplanationsState, skillsState, powersState, artifactsState, alliesState, personalShadowsState, weapons, armorState, customTagsState, sizeState, paceMultiplierState]);
 
   const hasCharacter = nameState.trim() !== '' || skillsState.length > 0 || powersState.length > 0;
 
@@ -396,6 +407,7 @@ const removeArmor = useCallback((id: string) => {
     pace,
     weapons,
     armor: armorState,
+    customTags: customTagsState,
     size: sizeState,
     paceMultiplier: paceMultiplierState,
     addWeapon,
@@ -404,6 +416,7 @@ const removeArmor = useCallback((id: string) => {
     addArmor,
     updateArmor,
     removeArmor,
+    setCustomTags,
     setSize,
     setPaceMultiplier,
     setName,

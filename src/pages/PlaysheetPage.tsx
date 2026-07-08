@@ -14,6 +14,8 @@ import { getPowerDisplay } from '../utils/powerDisplay';
 import { generateHomebreweryMarkdown } from '../utils/homebreweryExport';
 import { PrintableSheet } from '../components/PrintableSheet';
 import { formatWeaponLogistics } from '../data/weaponData';
+import { resolveWeaponTags } from '../data/weaponTags';
+import { TagChip } from '../components/TagChip';
 
 const DEFENSE_ATTRIBUTES: Record<AspectName, AttributeName> = {
   Form: 'Toughness',
@@ -354,7 +356,8 @@ export function PlaysheetPage() {
       character.immaterialSize,
       character.pace,
       character.computedCharacter.stuff,
-      character.computedCharacter.surge
+      character.computedCharacter.surge,
+      character.customTags,
     );
     navigator.clipboard.writeText(markdown).then(() => {
       alert('Markdown copied to clipboard!');
@@ -767,6 +770,7 @@ export function PlaysheetPage() {
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                     {character.weapons.map(weapon => {
                       const logistics = formatWeaponLogistics(weapon.capacity, weapon.reloadTime);
+                      const resolvedTags = resolveWeaponTags(weapon.tagIds || [], character.customTags);
                       return (
                         <div key={weapon.id} className="bg-slate-700/50 rounded p-2">
                           <div className="font-medium text-sm text-white mb-1.5">{weapon.name}</div>
@@ -804,9 +808,12 @@ export function PlaysheetPage() {
                             })}
                           </div>
 
-                          {weapon.notes && weapon.notes.length > 0 && (
-                            <div className="mt-1.5 text-xs text-slate-500 truncate" title={weapon.notes.join(' • ')}>
-                              {weapon.notes.join(' • ')}
+                          {/* Tags */}
+                          {resolvedTags.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {resolvedTags.map(tag => (
+                                <TagChip key={tag.id} tag={tag} size="sm" />
+                              ))}
                             </div>
                           )}
                         </div>

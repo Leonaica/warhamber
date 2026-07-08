@@ -1,10 +1,11 @@
-import type { CharacterAspectRatings, CharacterFunctionRatings, CharacterSkill, CharacterPower, Artifact, Ally, PersonalShadow, CharacterWeapon, CharacterArmor, DiePool, Power } from '../types/character';
+import type { CharacterAspectRatings, CharacterFunctionRatings, CharacterSkill, CharacterPower, Artifact, Ally, PersonalShadow, CharacterWeapon, CharacterArmor, DiePool, Power, WeaponTagDefinition } from '../types/character';
 import { ASPECTS, FUNCTIONS, ATTRIBUTES, SKILL_RATINGS, SIZE_OPTIONS, WEAPON_RANGES, RATING_SCALE, RATING_LABELS } from '../types/character';
 import { SKILLS } from '../data/skills';
 import { POWERS } from '../data/powers';
 import { getDiePoolEntry } from '../data/diePoolTable';
 import { getPowerDisplay } from './powerDisplay';
 import { formatWeaponLogistics } from '../data/weaponData';
+import { resolveWeaponTags } from '../data/weaponTags';
 
 // Convert die pool to Homebrewery die icons
 function dieIcons(pool: DiePool): string {
@@ -90,7 +91,8 @@ export function generateHomebreweryMarkdown(
   immaterialSize: number,
   pace: PaceValues,
   stuff: number,
-  surge: number
+  surge: number,
+  customTags: WeaponTagDefinition[],
 ): string {
 
   const lines: string[] = [];
@@ -376,9 +378,18 @@ export function generateHomebreweryMarkdown(
       const parts = [categoryText];
       const logistics = formatWeaponLogistics(weapon.capacity, weapon.reloadTime);
       if (logistics) parts.push(logistics);
-      if (weapon.notes && weapon.notes.length > 0) parts.push(weapon.notes.join('. '));
       
-      lines.push(`**${weapon.name}** :: (${parenthetical}). ${parts.join('. ')}`);
+      // Tags
+      const resolvedTags = resolveWeaponTags(weapon.tagIds || [], customTags);
+      const tagTexts = resolvedTags.map(tag => {
+        let text = tag.label;
+        // if (tag.category) text += ` (${tag.category})`;
+        if (tag.effect) text += ` (${tag.effect})`;
+        return text;
+      });
+      const tagsSection = tagTexts.length > 0 ? `. Qualities: ${tagTexts.join(', ')}` : '';
+      
+      lines.push(`**${weapon.name}** :: (${parenthetical}). ${parts.join('. ')}${tagsSection}`);
     });
   }
   

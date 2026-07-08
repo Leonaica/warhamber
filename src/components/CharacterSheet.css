@@ -266,4 +266,41 @@
       size: letter;
       margin: 0.5in;
     }
+
+    .equipment-section {
+      margin-top: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .equipment-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+    }
+
+    .equipment-table th,
+    .equipment-table td {
+      border: 1px solid #444;
+      padding: 0.25rem 0.5rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .equipment-table th {
+      background-color: #1e293b; /* slate-800 */
+      color: #fbbf24; /* amber-400 */
+      font-weight: bold;
+    }
+
+    .tag-entry {
+      display: flex;
+      align-items: baseline;
+      gap: 0.25rem;
+    }
+
+    .tag-effect {
+      font-style: italic;
+      color: #94a3b8; /* slate-400 */
+    }
   }

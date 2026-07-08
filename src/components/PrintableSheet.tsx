@@ -6,6 +6,7 @@ import {
 } from '../types/character';
 import { getDiePoolEntry } from '../data/diePoolTable';
 import { formatWeaponLogistics } from '../data/weaponData';
+import { resolveWeaponTags } from '../data/weaponTags';
 
 const SKILL_MODIFIERS: Record<SkillRating, number> = Object.fromEntries(
   SKILL_RATINGS.map(s => [s.rating, s.modifier])
@@ -216,11 +217,12 @@ export function PrintableSheet() {
       )}
 
       {/* Weapons */}
-      {c.weapons.length > 0 && (
+      {character.weapons.length > 0 && (
         <div className="mb-3 break-inside-avoid">
           <h2 className="font-bold text-sm border-b border-gray-400 mb-1">Weapons</h2>
-          {c.weapons.map(weapon => {
+          {character.weapons.map(weapon => {
             const logistics = formatWeaponLogistics(weapon.capacity, weapon.reloadTime);
+            const resolvedTags = resolveWeaponTags(weapon.tagIds || [], character.customTags);
             return (
               <div key={weapon.id} className="mb-1">
                 <span className="font-medium">{weapon.name}</span>
@@ -235,8 +237,13 @@ export function PrintableSheet() {
                     {atk.isConditional && atk.condition && <span className="italic"> ({atk.condition})</span>}
                   </div>
                 ))}
-                {weapon.notes?.map((n, i) => (
-                  <div key={i} className="ml-3 text-gray-500 italic">{n}</div>
+                {resolvedTags.map(tag => (
+                  <div key={tag.id} className="ml-3">
+                    <span className="font-medium">{tag.label}</span>
+                    <span className="text-gray-500"> ({tag.category})</span>
+                    {tag.description && <span className="text-gray-600"> — {tag.description}</span>}
+                    {tag.effect && <span className="text-gray-600 italic"> {tag.effect}</span>}
+                  </div>
                 ))}
               </div>
             );

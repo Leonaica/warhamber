@@ -1,8 +1,9 @@
-import type { CharacterAspectRatings, CharacterFunctionRatings, CharacterSkill, CharacterPower, Artifact, Ally, PersonalShadow } from '../types/character';
+import type { CharacterAspectRatings, CharacterFunctionRatings, CharacterSkill, CharacterPower, Artifact, Ally, PersonalShadow, CharacterWeapon, CharacterArmor, WeaponTagDefinition } from '../types/character';
 import { ASPECTS, FUNCTIONS, ATTRIBUTES, SKILL_RATINGS } from '../types/character';
 import { SKILLS } from '../data/skills';
 import { POWERS } from '../data/powers';
 import { getDiePoolEntry } from '../data/diePoolTable';
+import { resolveWeaponTags } from '../data/weaponTags';
 
 interface CharacterSheetProps {
   name: string;
@@ -16,6 +17,9 @@ interface CharacterSheetProps {
   personalShadows: PersonalShadow[];
   stuff: number;
   surge: number;
+  weapons: CharacterWeapon[];
+  armor: CharacterArmor[];
+  customTags: WeaponTagDefinition[];
 }
 
 function dieNotation(dice: number[]): string {
@@ -51,6 +55,9 @@ export function CharacterSheet({
   personalShadows,
   stuff,
   surge,
+  weapons = [],
+  armor = [],
+  customTags = [],
 }: CharacterSheetProps) {
   // Calculate skill costs
   const skillCostTotal = skills.reduce((sum, skill) => {
@@ -146,6 +153,101 @@ export function CharacterSheet({
           <span className="stat-value">Cap +{skillCap}, Max {skillMax}</span>
         </div>
       </div>
+
+      {/* Equipment Section */}
+      {(weapons.length > 0 || armor.length > 0) && (
+        <div className="section equipment-section">
+          <h3>⚔️ Equipment</h3>
+          
+          {weapons.length > 0 && (
+            <div className="weapons-block">
+              <h4>Weapons</h4>
+              <table className="equipment-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Handedness</th>
+                    <th>Attack Details</th>
+                    <th>Tags</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {weapons.map(weapon => {
+                    const resolvedTags = resolveWeaponTags(weapon.tagIds || [], customTags);
+                    return (
+                      <tr key={weapon.id}>
+                        <td><strong>{weapon.name}</strong></td>
+                        <td>{weapon.category}</td>
+                        <td>{weapon.handedness}</td>
+                        <td>
+                          {weapon.attacks.map(attack => {
+                            const penValue = typeof attack.penetration === 'number' 
+                              ? attack.penetration 
+                              : Array.isArray(attack.penetration) 
+                                ? attack.penetration[0] 
+                                : 0;
+                            return (
+                              <div key={attack.id} className="attack-detail">
+                                {ASPECTS.find(a => a.id === attack.aspect)?.emoji} {attack.magnitude} {attack.type}
+                                {penValue > 0 && ` (Pen ${penValue})`}
+                                {attack.range && ` • ${attack.range}`}
+                              </div>
+                            );
+                          })}
+                        </td>
+                        <td>
+                          <div className="tag-list">
+                            {resolvedTags.map(tag => (
+                              <div key={tag.id} className="tag-entry">
+                                <strong>{tag.label}</strong>
+                                {tag.effect && <span className="tag-effect"> — {tag.effect}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {armor.length > 0 && (
+            <div className="armor-block">
+              <h4>Armor</h4>
+              <table className="equipment-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Aspects</th>
+                    <th>Armor</th>
+                    <th>Location</th>
+                    <th>Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {armor.map(piece => {
+                    const aspectEmojis: Record<string, string> = {
+                      Form: '🧱', Flesh: '🧬', Mind: '🧠', Spirit: '🔥'
+                    };
+                    return (
+                      <tr key={piece.id}>
+                        <td><strong>{piece.name}</strong></td>
+                        <td>{piece.aspects.map(a => `${aspectEmojis[a] || ''} ${a}`).join(', ')}</td>
+                        <td>{piece.armor}</td>
+                        <td>{piece.location || '—'}</td>
+                        <td>{piece.notes?.join(', ') || '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Two Column Layout */}
       <div className="two-column">
