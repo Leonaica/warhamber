@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Amber gradient -->
+  <defs>
+    <linearGradient id="amber" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFBF00"/>
+      <stop offset="50%" stop-color="#FF8C00"/>
+      <stop offset="100%" stop-color="#CC5500"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Imperial Aquila -->
+  <g fill="url(#amber)" stroke="#8B4500" stroke-width="1" filter="url(#glow)">
+    <!-- Left Wing -->
+    <path d="M100 100 C80 80, 60 60, 30 50 C40 70, 50 85, 70 95 C55 90, 40 85, 20 80 C35 100, 50 110, 75 115 C60 115, 45 115, 35 120 C55 130, 75 125, 95 120 Z"/>
+    
+    <!-- Right Wing -->
+    <path d="M100 100 C120 80, 140 60, 170 50 C160 70, 150 85, 130 95 C145 90, 160 85, 180 80 C165 100, 150 110, 125 115 C140 115, 155 115, 165 120 C145 130, 125 125, 105 120 Z"/>
+    
+    <!-- Body -->
+    <ellipse cx="100" cy="105" rx="12" ry="25"/>
+    
+    <!-- Left Head -->
+    <path d="M88 85 C85 75, 82 65, 85 55 C88 60, 90 65, 92 70 C94 65, 95 60, 93 55 C98 60, 100 70, 95 80 Z"/>
+    
+    <!-- Right Head -->
+    <path d="M112 85 C115 75, 118 65, 115 55 C112 60, 110 65, 108 70 C106 65, 105 60, 107 55 C102 60, 100 70, 105 80 Z"/>
+    
+    <!-- Tail feathers -->
+    <path d="M100 130 L95 150 L100 145 L105 150 Z"/>
+    <path d="M100 135 L92 155 L100 148 L108 155 Z"/>
+  </g>
+</svg>
