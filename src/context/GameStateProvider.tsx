@@ -1,154 +1,20 @@
-import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react';
+import { useState, useCallback, useMemo, type ReactNode } from 'react';
 import type { AspectName } from '../types/character';
 import { WOUND_PENALTIES, type WoundLevel } from '../data/wounds';
-
-// Re-export wound utilities for convenience
-export type { WoundLevel } from '../data/wounds';
-export { WOUND_LABELS, WOUND_PENALTIES, WOUND_DAMAGE_RANGES, getWoundLevel, calculateStacking } from '../data/wounds';
-
-export interface WoundState {
-  Form: WoundLevel;
-  Flesh: WoundLevel;
-  Mind: WoundLevel;
-  Spirit: WoundLevel;
-}
-
-export interface RestorationPoints {
-  Form: number;
-  Flesh: number;
-  Mind: number;
-  Spirit: number;
-}
-
-export interface TemporaryModifier {
-  id: string;
-  description: string;
-  value: number;
-}
-
-export interface InitiativeState {
-  physical: number | null;
-  mental: number | null;
-}
-
-export type ReactionPoolKey = 'formDodge' | 'formParry' | 'fleshParry' | 'mindDodge' | 'mindParry' | 'spiritDodge' | 'spiritParry';
-
-export interface ReactionPools {
-  formDodge: number;
-  formParry: number;
-  fleshParry: number;
-  mindDodge: number;
-  mindParry: number;
-  spiritDodge: number;
-  spiritParry: number;
-}
-
-export interface OpponentCombatData {
-  // Attacker info (when opponent is attacking)
-  attackAspect: AspectName;
-  attackMagnitude: number;
-  attackPenetration: number;
-  damageModifier: number;
-  // Defender info (when opponent is defending)
-  resistanceRanks: {
-    Toughness: number;
-    Endurance: number;
-    Willpower: number;
-    Resilience: number;
-  };
-  armor: {
-    Toughness: number;
-    Endurance: number;
-    Willpower: number;
-    Resilience: number;
-  };
-  materialSize: number;
-  immaterialSize: number;
-  resistanceModifier: number;
-}
-
-const defaultOpponentCombatData: OpponentCombatData = {
-  attackAspect: 'Form',
-  attackMagnitude: 3,
-  attackPenetration: 0,
-  damageModifier: 0,
-  resistanceRanks: {
-    Toughness: 2,
-    Endurance: 2,
-    Willpower: 2,
-    Resilience: 2,
-  },
-  armor: {
-    Toughness: 0,
-    Endurance: 0,
-    Willpower: 0,
-    Resilience: 0,
-  },
-  materialSize: 0,
-  immaterialSize: 0,
-  resistanceModifier: 0,
-};
-
-interface GameStateContextValue {
-  // Character wounds
-  wounds: WoundState;
-  setWound: (aspect: AspectName, level: WoundLevel) => void;
-  woundPenalty: number;
-  
-  // Restoration points (for healing)
-  restorationPoints: RestorationPoints;
-  addRestorationPoints: (aspect: AspectName, points: number) => void;
-  clearRestorationPoints: (aspect: AspectName) => void;
-  
-  // Initiative
-  initiative: InitiativeState;
-  setInitiative: (values: InitiativeState) => void;
-  clearInitiative: () => void;
-  
-  // Surge
-  surgeSpent: number;
-  spendSurge: (amount: number) => void;
-  resetSurge: () => void;
-  
-  // Temporary modifiers
-  modifiers: TemporaryModifier[];
-  addModifier: (description: string, value: number) => void;
-  removeModifier: (id: string) => void;
-  totalModifier: number;
-
-  // Dodges and Parries tracking
-  reactionPools: ReactionPools; 
-  setReactionPool: (key: ReactionPoolKey, value: number) => void;
-  useReactionPool: (key: ReactionPoolKey, max: number) => void;
-  resetReactionPools: () => void;
-  
-  // Opponent tracking
-  opponentWounds: WoundState;
-  setOpponentWound: (aspect: AspectName, level: WoundLevel) => void;
-  opponentWoundPenalty: number;
-  opponentCombatData: OpponentCombatData;
-  updateOpponentCombatData: (updates: Partial<OpponentCombatData>) => void;
-  resetOpponent: () => void;
-  
-  // Reset all
-  resetAll: () => void;
-}
-
-const defaultWounds: WoundState = {
-  Form: 0,
-  Flesh: 0,
-  Mind: 0,
-  Spirit: 0,
-};
-
-const defaultRestoration: RestorationPoints = {
-  Form: 0,
-  Flesh: 0,
-  Mind: 0,
-  Spirit: 0,
-};
-
-const GameStateContext = createContext<GameStateContextValue | null>(null);
+import {
+  GameStateContext,
+  type GameStateContextValue,
+  type WoundState,
+  type RestorationPoints,
+  type TemporaryModifier,
+  type InitiativeState,
+  type ReactionPoolKey,
+  type ReactionPools,
+  type OpponentCombatData,
+  defaultOpponentCombatData,
+  defaultWounds,
+  defaultRestoration,
+} from './GameStateContext';
 
 export function GameStateProvider({ children }: { children: ReactNode }) {
   const [wounds, setWounds] = useState<WoundState>(defaultWounds);
@@ -323,12 +189,4 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
       {children}
     </GameStateContext.Provider>
   );
-}
-
-export function useGameState() {
-  const context = useContext(GameStateContext);
-  if (!context) {
-    throw new Error('useGameState must be used within a GameStateProvider');
-  }
-  return context;
 }

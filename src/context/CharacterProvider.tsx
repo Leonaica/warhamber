@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useMemo, useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { CharacterContext, type CharacterContextValue, type CharacterState, type PaceValues } from './CharacterContext';
+import { useState, useMemo, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import type {
   CharacterSkill,
   CharacterPower,
@@ -17,8 +18,8 @@ import { ATTRIBUTES } from '../types/character';
 import { getDiePoolEntry } from '../data/diePoolTable';
 import { calculateImmaterialSize, computeCharacter } from '../utils/calculations';
 import { DEFAULT_ICON } from '../data/icons';
-export { WOUND_DAMAGE_RANGES, getWoundLevel, calculateStacking } from '../data/wounds';
-export type { WoundLevel as DamageWoundLevel } from '../data/wounds';
+// export { WOUND_DAMAGE_RANGES, getWoundLevel, calculateStacking } from '../data/wounds';
+// export type { WoundLevel as DamageWoundLevel } from '../data/wounds';
 
 // Helper function to get default rating based on campaign limit
 function getDefaultRating(campaignLimit: number): RatingValue {
@@ -26,70 +27,6 @@ function getDefaultRating(campaignLimit: number): RatingValue {
   if (campaignLimit > -41) return -5 as RatingValue;
   if (campaignLimit > -81) return -10 as RatingValue;
   return -15 as RatingValue; // campaignLimit >= -81
-}
-
-export interface PaceValues {
-  walking: { mph: number; kph: number; ms: number };
-  sprinting: { mph: number; kph: number; ms: number };
-  multiplier: number;
-}
-
-interface CharacterState {
-  name: string;
-  campaignLimit: number;
-  avatarIcon: string;
-  aspects: CharacterAspectRatings;
-  functions: CharacterFunctionRatings;
-  aspectExplanations: Record<string, string>;
-  functionExplanations: Record<string, string>;
-  skills: CharacterSkill[];
-  powers: CharacterPower[];
-  artifacts: Artifact[];
-  allies: Ally[];
-  personalShadows: PersonalShadow[];
-  weapons: CharacterWeapon[];
-  armor: CharacterArmor[];
-  customTags: WeaponTagDefinition[];
-  size: number;
-  paceMultiplier: number;
-}
-
-interface CharacterContextValue extends CharacterState {
-  // Computed values
-  computedCharacter: ReturnType<typeof computeCharacter>;
-  attributeValues: Record<AttributeName, number>;
-  attributeDiePools: Record<AttributeName, ReturnType<typeof getDiePoolEntry>>;
-  immaterialSize: number;
-  pace: PaceValues;
-  
-  // Actions
-  setName: (name: string | ((prev: string) => string)) => void;
-  setCampaignLimit: (limit: number | ((prev: number) => number)) => void;
-  setAvatarIcon: (icon: string | ((prev: string) => string)) => void;
-  setAspects: (aspects: CharacterAspectRatings | ((prev: CharacterAspectRatings) => CharacterAspectRatings)) => void;
-  setFunctions: (functions: CharacterFunctionRatings | ((prev: CharacterFunctionRatings) => CharacterFunctionRatings)) => void;
-  setAspectExplanation: (aspectId: string, explanation: string) => void;
-  setFunctionExplanation: (functionId: string, explanation: string) => void;
-  setSkills: (skills: CharacterSkill[] | ((prev: CharacterSkill[]) => CharacterSkill[])) => void;
-  setPowers: (powers: CharacterPower[] | ((prev: CharacterPower[]) => CharacterPower[])) => void;
-  setArtifacts: (artifacts: Artifact[] | ((prev: Artifact[]) => Artifact[])) => void;
-  setAllies: (allies: Ally[] | ((prev: Ally[]) => Ally[])) => void;
-  setPersonalShadows: (shadows: PersonalShadow[] | ((prev: PersonalShadow[]) => PersonalShadow[])) => void;
-  customTags: WeaponTagDefinition[];
-  setCustomTags: (tags: WeaponTagDefinition[] | ((prev: WeaponTagDefinition[]) => WeaponTagDefinition[])) => void;
-  addWeapon: (weapon: Omit<CharacterWeapon, 'id'>) => void;
-  updateWeapon: (id: string, updates: Partial<CharacterWeapon>) => void;
-  removeWeapon: (id: string) => void;
-  addArmor: (armorData: Omit<CharacterArmor, 'id'>) => void;
-  updateArmor: (id: string, updates: Partial<CharacterArmor>) => void;
-  removeArmor: (id: string) => void;
-  setSize: (size: number | ((prev: number) => number)) => void;
-  setPaceMultiplier: (value: number | ((prev: number) => number)) => void;
-  
-  // Bulk operations
-  loadCharacter: (data: Partial<CharacterState>) => void;
-  saveCharacter: () => string;
-  hasCharacter: boolean;
 }
 
 const defaultAspects: CharacterAspectRatings = {
@@ -105,8 +42,6 @@ const defaultFunctions: CharacterFunctionRatings = {
   Perceive: 0,
   Force: 0,
 };
-
-const CharacterContext = createContext<CharacterContextValue | null>(null);
 
 export function CharacterProvider({ children }: { children: ReactNode }) {
   const [nameState, setNameState] = useState('');
@@ -441,12 +376,4 @@ const removeArmor = useCallback((id: string) => {
       {children}
     </CharacterContext.Provider>
   );
-}
-
-export function useCharacter() {
-  const context = useContext(CharacterContext);
-  if (!context) {
-    throw new Error('useCharacter must be used within a CharacterProvider');
-  }
-  return context;
 }

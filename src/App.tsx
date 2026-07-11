@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { CharacterProvider } from './context/CharacterContext';
-import { GameStateProvider } from './context/GameStateContext';
+import { CharacterProvider } from './context/CharacterProvider';
+import { GameStateProvider } from './context/GameStateProvider';
 import { Layout } from './components/Layout';
 import { AvatarBuilderPage } from './pages/AvatarBuilderPage';
 import { PlaysheetPage } from './pages/PlaysheetPage';

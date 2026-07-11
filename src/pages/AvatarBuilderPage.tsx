@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useCharacter } from '../context/CharacterContext';
+import { useCharacter } from '../context/useCharacter';
 import type { RatingValue, CharacterSkill, Artifact, Ally, PersonalShadow, ArmorAspect, CharacterArmor } from '../types/character';
 import { ASPECTS, FUNCTIONS, ATTRIBUTES, RATING_SCALE, RATING_LABELS, SKILL_RATINGS, SIZE_OPTIONS } from '../types/character';
 import { SKILLS } from '../data/skills';
@@ -57,8 +57,7 @@ export function AvatarBuilderPage() {
   // Skill handlers
   const addSkill = (skillId: string) => {
     if (!character.skills.find(s => s.skillId === skillId)) {
-      character.setSkills(prev => [...prev, { skillId: skillId as any, rating: 'Average', specialty: '', specialtyExplanation: '' }]);
-    }
+      character.setSkills(prev => [...prev, { skillId: skillId as CharacterSkill['skillId'], rating: 'Average', specialty: '', specialtyExplanation: '' }]);    }
   };
 
   const updateSkill = (skillId: string, updates: Partial<CharacterSkill>) => {
@@ -213,7 +212,7 @@ export function AvatarBuilderPage() {
         const data = JSON.parse(text);
         character.loadCharacter(data);
         alert('Character loaded successfully!');
-      } catch (error) {
+      } catch {
         alert('Failed to load character file. Make sure it\'s a valid JSON save file.');
       }
     };
@@ -607,8 +606,7 @@ export function AvatarBuilderPage() {
                     <div className="flex gap-2 mb-2">
                       <select
                         value={skillEntry.rating}
-                        onChange={(e) => updateSkill(skillEntry.skillId, { rating: e.target.value as any })}
-                        className="flex-1 bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        onChange={(e) => updateSkill(skillEntry.skillId, { rating: e.target.value as CharacterSkill['rating'] })}                        className="flex-1 bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                       >
                         {SKILL_RATINGS
                           .filter(r => {

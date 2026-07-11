@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useCharacter } from '../context/CharacterContext';
-import { useGameState, WOUND_LABELS, WOUND_PENALTIES } from '../context/GameStateContext';
+import { useCharacter } from '../context/useCharacter';
+import { useGameState } from '../context/useGameState';
+import {  WOUND_LABELS, WOUND_PENALTIES } from '../data/wounds';
 import { ASPECTS, type AspectName, type WeaponAttack, type ArmorAspect } from '../types/character';
 import { DAMAGE_MAGNITUDE_TABLE, type DamageMagnitudeEntry } from '../data/damageTable';
 import { calculateDamage, getResistanceAttribute, calculateStacking } from '../utils/damage';
@@ -141,10 +142,11 @@ export function CombatPage() {
   }, [selectedWeapon, selectedAttackIndex]);
 
   // Get selected armor piece
+  const armorId = state?.armorId;
   const selectedArmorPiece = useMemo(() => {
-    if (!state?.armorId) return null;
-    return character.armor.find(a => a.id === state.armorId) || null;
-  }, [state?.armorId, character.armor]);
+    if (!armorId) return null;
+    return character.armor.find(a => a.id === armorId) ?? null;
+  }, [armorId, character.armor]);
 
   const isPlayerDefender = combatMode === 'defender';
   const resistanceAttr = getResistanceAttribute(attackedAspect);
@@ -547,16 +549,6 @@ export function CombatPage() {
               />
             </div>
           </div>
-
-          {/* Weapon Notes */}
-          {!isPlayerDefender && selectedWeapon?.notes && selectedWeapon.notes.length > 0 && (
-            <div className="bg-amber-900/20 border border-amber-500/30 rounded p-1.5">
-              <div className="text-[10px] text-amber-400 font-medium mb-0.5">Notes:</div>
-              {selectedWeapon.notes.map((note: string, idx: number) => (
-                <div key={idx} className="text-[10px] text-slate-300">• {note}</div>
-              ))}
-            </div>
-          )}
 
           {!isPlayerDefender && weaponAttack?.isConditional && (
             <div className="bg-amber-900/20 border border-amber-500/30 rounded p-1.5">

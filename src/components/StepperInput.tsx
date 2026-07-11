@@ -43,13 +43,7 @@ export default function StepperInput({
       inputRef.current.select();
     }
   }, [isEditing]);
-
-  useEffect(() => {
-    if (!isEditing) {
-      setEditValue(String(value));
-    }
-  }, [value, isEditing]);
-
+  
   const handleEditStart = () => {
     setEditValue(String(value));
     setIsEditing(true);

@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCharacter } from '../context/CharacterContext';
-import { useGameState, WOUND_LABELS, WOUND_PENALTIES, type WoundLevel, type ReactionPoolKey } from '../context/GameStateContext';
+import { useCharacter } from '../context/useCharacter';
+import { useGameState } from '../context/useGameState';
+import type { ReactionPoolKey } from '../context/GameStateContext';
+import {  WOUND_LABELS, WOUND_PENALTIES, type WoundLevel } from '../data/wounds';
 import { ASPECTS, FUNCTIONS, ATTRIBUTES, SIZE_OPTIONS, SKILL_RATINGS, RATING_SCALE, RATING_LABELS, type AspectName, type AttributeName, type ArmorAspect, type PowerCategory } from '../types/character';
 import { ICONS, DEFAULT_ICON, type IconEntry } from '../data/icons';
 import { DIE_POOL_TABLE } from '../data/diePoolTable';

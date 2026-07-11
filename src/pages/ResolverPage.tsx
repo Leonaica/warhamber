@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useGameState } from '../context/GameStateContext';
-import { useCharacter } from '../context/CharacterContext';
+import { useGameState } from '../context/useGameState';
+import { useCharacter } from '../context/useCharacter';
 import { DIE_POOL_TABLE } from '../data/diePoolTable';
 import type { DiePoolEntry } from '../data/diePoolTable';
 import { 
@@ -33,7 +33,6 @@ export function ResolverPage() {
   const gameState = useGameState();
   const character = useCharacter();
   
-  // Only enforce surge limits when a character is loaded
   const hasCharacter = character.hasCharacter;
   const currentSurge = hasCharacter 
     ? character.computedCharacter.surge - gameState.surgeSpent 
@@ -45,19 +44,18 @@ export function ResolverPage() {
   const [actorWoundPenalty, setActorWoundPenalty] = useState(playsheetState?.woundPenalty ?? 0);
   const [actorModifier, setActorModifier] = useState(0);
   
+  // Test type & target number (moved up so they're available for the sync block)
+  const [testType, setTestType] = useState<'challenge' | 'contest'>('challenge');
+  const [targetNumber, setTargetNumber] = useState(4);
+  
   // Track if values came from playsheet
   const [hasPlaysheetData, setHasPlaysheetData] = useState(!!playsheetState);
   const [isDefenseMode, setIsDefenseMode] = useState(!!playsheetState?.defenseMode);
+  const [prevPlaysheetState, setPrevPlaysheetState] = useState(playsheetState);
   
-  // Clear playsheet indicator when user manually changes values
-  useEffect(() => {
-    if (playsheetState) {
-      setHasPlaysheetData(true);
-    }
-  }, [playsheetState]);
-
   // Sync state when playsheet data arrives
-  useEffect(() => {
+  if (playsheetState !== prevPlaysheetState) {
+    setPrevPlaysheetState(playsheetState);
     if (playsheetState) {
       setActorPoolRank(playsheetState.poolRank);
       setActorSkillBonus(playsheetState.skillBonus);
@@ -68,14 +66,10 @@ export function ResolverPage() {
       setIsDefenseMode(!!playsheetState.defenseMode);
       setHasPlaysheetData(true);
     }
-  }, [playsheetState]);
-
-  // Test type
-  const [testType, setTestType] = useState<'challenge' | 'contest'>('challenge');
-  const [targetNumber, setTargetNumber] = useState(4);
+  }
   
   // Opponent configuration (for contests)
-  const [opponentPoolRank, setOpponentPoolRank] = useState(5); // Default: d12
+  const [opponentPoolRank, setOpponentPoolRank] = useState(5);
   const [opponentSkillBonus, setOpponentSkillBonus] = useState(0);
   const [opponentWoundPenalty, setOpponentWoundPenalty] = useState(0);
   const [opponentModifier, setOpponentModifier] = useState(0);
@@ -144,7 +138,7 @@ export function ResolverPage() {
   const foregoneCheck = useMemo(() => {
     if (testType !== 'contest') return null;
     return isForegoneConclusion(actorPoolEntry.rank, opponentPoolEntry.rank);
-  }, [testType, actorPoolEntry.rank, opponentPoolRank]);
+  }, [testType, actorPoolEntry.rank, opponentPoolEntry.rank]);
 
   // When user manually changes pool rank, clear playsheet indicator
   const handlePoolRankChange = (e: React.ChangeEvent<HTMLSelectElement>) => {

@@ -1,4 +1,4 @@
-import { useCharacter } from '../context/CharacterContext';
+import { useCharacter } from '../context/useCharacter';
 import {
   ASPECTS, FUNCTIONS, ATTRIBUTES, SKILL_RATINGS, SIZE_OPTIONS,
   type AspectName, type FunctionName, type AttributeName,
