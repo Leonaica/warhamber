@@ -113,35 +113,39 @@ export function PlaysheetPage() {
     ...ASPECTS.filter(aspect => character.aspects[aspect.id] >= 20).map(aspect => ({
       powerDef: {
         id: `mythic-aspect-${aspect.id}`,
-        name: aspect.name, // e.g., "Spirit" - used in the system reference
+        name: aspect.name,
         emoji: aspect.emoji,
         category: 'Substance' as PowerCategory,
-        levels: mythicLevels, // Feed the rating scale as levels
+        levels: mythicLevels,
         description: '',
         repeatable: false,
         requirements: '',
-        keyAttributes: [] as AttributeName[],
+        keyAttributes: ATTRIBUTES
+          .filter(a => a.aspect === aspect.id)
+          .map(a => a.id) as AttributeName[],
       },
       powerEntry: {
         id: `mythic-aspect-${aspect.id}`,
         powerId: `mythic-aspect-${aspect.id}`,
         points: character.aspects[aspect.id],
         label: undefined,
-        customTitle: `Mythic ${aspect.name}`, // Forces the header to be "Mythic Spirit"
+        customTitle: `Mythic ${aspect.name}`,
         description: character.aspectExplanations[aspect.id] || '',
       }
     })),
     ...FUNCTIONS.filter(func => character.functions[func.id] >= 20).map(func => ({
       powerDef: {
         id: `mythic-function-${func.id}`,
-        name: func.name, // e.g., "Regeneration"
+        name: func.name,
         emoji: func.emoji,
         category: 'Substance' as PowerCategory,
         levels: mythicLevels,
         description: '',
         repeatable: false,
         requirements: '',
-        keyAttributes: [] as AttributeName[],
+        keyAttributes: ATTRIBUTES
+          .filter(a => a.func === func.id)
+          .map(a => a.id) as AttributeName[],
       },
       powerEntry: {
         id: `mythic-function-${func.id}`,
@@ -237,6 +241,20 @@ export function PlaysheetPage() {
     if (value < 10000000000) return fmt(value / 1000000000) + 'B';
     return Math.round(value / 1000000000) + 'B';
   }
+
+  const getAttributeDisplayInfo = (attrName: AttributeName): { emoji: string; notation: string; rank: number } | null => {
+    const attrDef = ATTRIBUTES.find(a => a.id === attrName);
+    if (!attrDef) return null;
+    const aspect = ASPECTS.find(a => a.id === attrDef.aspect);
+    if (!aspect) return null;
+    const diePoolEntry = character.attributeDiePools[attrName];
+    if (!diePoolEntry) return null;
+    return {
+      emoji: aspect.emoji,
+      notation: diePoolEntry.pool.notation,
+      rank: diePoolEntry.rank,
+    };
+  };
 
   const handleNewRound = () => {
     gameState.resetReactionPools();
@@ -1130,6 +1148,31 @@ export function PlaysheetPage() {
                             {powerDef.emoji} {display.title}
                           </div>
                           <div className="text-xs text-amber-400">{display.systemReference}</div>
+                          {powerDef.keyAttributes.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {powerDef.keyAttributes.map(attrName => {
+                                const info = getAttributeDisplayInfo(attrName);
+                                if (!info) return null;
+                                const isSelected = selectedAttribute === attrName;
+                                return (
+                                  <button
+                                    key={attrName}
+                                    onClick={() => setSelectedAttribute(isSelected ? null : attrName)}
+                                    className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition-all cursor-pointer ${
+                                      isSelected
+                                        ? 'bg-amber-500/20 ring-2 ring-amber-500'
+                                        : 'bg-slate-600/50 hover:bg-slate-600'
+                                    }`}
+                                  >
+                                    <span>{info.emoji}</span>
+                                    <span className={isSelected ? 'text-amber-400' : 'text-slate-300'}>{attrName}</span>
+                                    <span className="text-cyan-400 font-medium">{info.notation}</span>
+                                    <span className="text-slate-500">({info.rank})</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
                           {powerEntry.description && (
                             <div className="text-xs mt-1 text-slate-200">{powerEntry.description}</div>
                           )}
@@ -1148,6 +1191,31 @@ export function PlaysheetPage() {
                             {power.emoji} {display.title}
                           </div>
                           <div className="text-xs text-amber-400">{display.systemReference}</div>
+                          {power.keyAttributes.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {power.keyAttributes.map(attrName => {
+                                const info = getAttributeDisplayInfo(attrName);
+                                if (!info) return null;
+                                const isSelected = selectedAttribute === attrName;
+                                return (
+                                  <button
+                                    key={attrName}
+                                    onClick={() => setSelectedAttribute(isSelected ? null : attrName)}
+                                    className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition-all cursor-pointer ${
+                                      isSelected
+                                        ? 'bg-amber-500/20 ring-2 ring-amber-500'
+                                        : 'bg-slate-600/50 hover:bg-slate-600'
+                                    }`}
+                                  >
+                                    <span>{info.emoji}</span>
+                                    <span className={isSelected ? 'text-amber-400' : 'text-slate-300'}>{attrName}</span>
+                                    <span className="text-cyan-400 font-medium">{info.notation}</span>
+                                    <span className="text-slate-500">({info.rank})</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
                           {powerEntry.description && (
                             <div className="text-xs mt-1 text-slate-200">{powerEntry.description}</div>
                           )}
@@ -1168,22 +1236,44 @@ export function PlaysheetPage() {
               {/* Skills Detail View */}
               {character.skills.length > 0 && (
                 <div className="bg-slate-800 rounded-lg p-3">
-                  <h2 className="text-base font-bold text-amber-400 mb-3">📚 Skills Detail</h2>
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-base font-bold text-amber-400">📚 Skills Detail</h2>
+                    <span className="text-xs text-slate-500">Click to add to roll</span>
+                  </div>
                   <div className="grid md:grid-cols-2 gap-2">
                     {character.skills.map(skillEntry => {
                       const skill = SKILLS.find(s => s.id === skillEntry.skillId);
                       const bonus = getSkillModifier(skillEntry.rating) ?? 0;
+                      const isSelected = selectedSkill === skillEntry.skillId;
+                      const displayName = skillEntry.specialty || skill?.name || skillEntry.skillId;
+                      const hasSpecialty = Boolean(skillEntry.specialty);
                       return (
-                        <div key={skillEntry.skillId} className="bg-slate-700/50 rounded p-2">
-                          <div className="font-medium text-sm">
-                            {skill?.emoji} {skill?.name}
+                        <div
+                          key={skillEntry.skillId}
+                          className={`rounded p-2 cursor-pointer transition-all ${
+                            isSelected
+                              ? 'bg-amber-500/20 ring-2 ring-amber-500'
+                              : 'bg-slate-700/50 hover:bg-slate-700'
+                          }`}
+                          onClick={() => setSelectedSkill(isSelected ? null : skillEntry.skillId)}
+                        >
+                          <div className={`font-medium text-sm leading-tight ${isSelected ? 'text-amber-400' : 'text-white'}`}>
+                            {skill?.emoji && <span className="mr-1">{skill.emoji}</span>}
+                            {displayName}
                           </div>
-                          <div className="text-xs text-amber-400">{skillEntry.rating} ({bonus >= 0 ? '+' : ''}{bonus}/die)</div>
+                          {hasSpecialty && skill?.name && (
+                            <div className={`text-xs mt-0.5 ${isSelected ? 'text-amber-300/70' : 'text-slate-400'}`}>
+                              {skill.name}
+                            </div>
+                          )}
+                          <div className={`text-xs mt-1 ${isSelected ? 'text-amber-400' : 'text-slate-500'}`}>
+                            {skillEntry.rating} ({bonus >= 0 ? '+' : ''}{bonus}/die)
+                          </div>
                           {skill?.description && (
                             <div className="text-xs text-slate-400 mt-1">{skill.description}</div>
                           )}
                           <div className="text-xs mt-1 text-slate-200">
-                              {skillEntry.specialtyExplanation}
+                            {skillEntry.specialtyExplanation}
                           </div>
                         </div>
                       );
