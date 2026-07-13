@@ -367,117 +367,77 @@ export function resolveContest(
   actorContext: Omit<ResolutionContext, 'isContest' | 'opponentPool' | 'opponentRank'>,
   opponentContext: Omit<ResolutionContext, 'isContest' | 'opponentPool' | 'opponentRank'>
 ): ContestResult {
-  const foregone = isForegoneConclusion(actorContext.poolRank, opponentContext.poolRank);
-  
   // Always roll both sides - we want the actual dice results
   const actorResult = resolveTest({
     ...actorContext,
     isContest: true,
     opponentRank: opponentContext.poolRank,
   });
-  
+
   const opponentResult = resolveTest({
     ...opponentContext,
     isContest: true,
     opponentRank: actorContext.poolRank,
   });
-  
-  // Helper to create enforced foregone result
-  const enforceForegoneWin = (winner: 'actor' | 'opponent'): ContestResult => {
-    if (winner === 'actor') {
-      return {
-        actor: { ...actorResult, successes: 1 },
-        opponent: { ...opponentResult, successes: 0 },
-        winner: 'actor',
-        margin: 1,
-        foregoneEnforced: true,
-      };
-    } else {
-      return {
-        actor: { ...actorResult, successes: 0 },
-        opponent: { ...opponentResult, successes: 1 },
-        winner: 'opponent',
-        margin: 1,
-        foregoneEnforced: true,
-      };
-    }
-  };
-  
-  // Handle critical failures - but foregone conclusion still wins if applicable
+
+  // Handle critical failures - dice results stand on their own
   if (actorResult.criticalFailure && opponentResult.criticalFailure) {
-    if (foregone.isForegone && foregone.winner) {
-      return enforceForegoneWin(foregone.winner);
-    }
     return {
       actor: { ...actorResult, successes: 0 },
       opponent: { ...opponentResult, successes: 0 },
       winner: 'tie',
       margin: 0,
+      foregoneEnforced: false,
     };
   }
-  
+
   if (actorResult.criticalFailure) {
-    if (foregone.isForegone && foregone.winner === 'actor') {
-      return enforceForegoneWin('actor');
-    }
     return {
       actor: { ...actorResult, successes: 0 },
       opponent: { ...opponentResult, successes: 0 },
       winner: 'opponent',
       margin: opponentResult.result,
+      foregoneEnforced: false,
     };
   }
-  
+
   if (opponentResult.criticalFailure) {
-    if (foregone.isForegone && foregone.winner === 'opponent') {
-      return enforceForegoneWin('opponent');
-    }
     return {
       actor: { ...actorResult, successes: 0 },
       opponent: { ...opponentResult, successes: 0 },
       winner: 'actor',
       margin: actorResult.result,
+      foregoneEnforced: false,
     };
   }
-  
+
   const margin = actorResult.result - opponentResult.result;
-  
+
   if (margin > 0) {
     const actorSuccesses = calculateContestSuccesses(margin);
-    
-    if (foregone.isForegone && foregone.winner === 'opponent') {
-      return enforceForegoneWin('opponent');
-    }
-    
     return {
       actor: { ...actorResult, successes: actorSuccesses },
       opponent: { ...opponentResult, successes: 0 },
       winner: 'actor',
       margin: Math.abs(margin),
+      foregoneEnforced: false,
     };
   } else if (margin < 0) {
     const opponentSuccesses = calculateContestSuccesses(Math.abs(margin));
-    
-    if (foregone.isForegone && foregone.winner === 'actor') {
-      return enforceForegoneWin('actor');
-    }
-    
     return {
       actor: { ...actorResult, successes: 0 },
       opponent: { ...opponentResult, successes: opponentSuccesses },
       winner: 'opponent',
       margin: Math.abs(margin),
+      foregoneEnforced: false,
     };
   } else {
-    if (foregone.isForegone && foregone.winner) {
-      return enforceForegoneWin(foregone.winner);
-    }
-    
     return {
       actor: { ...actorResult, successes: 0 },
       opponent: { ...opponentResult, successes: 0 },
       winner: 'tie',
       margin: 0,
+      foregoneEnforced: false,
     };
   }
 }

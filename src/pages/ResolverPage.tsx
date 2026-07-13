@@ -394,7 +394,7 @@ export function ResolverPage() {
             },
           });
         } else {
-          const foregone = isForegoneConclusion(actorPoolEntry.rank, opponentPoolEntry.rank);
+          /* const foregone = isForegoneConclusion(actorPoolEntry.rank, opponentPoolEntry.rank);
           if (foregone.isForegone) {
             setProbability({
               loading: false,
@@ -405,7 +405,7 @@ export function ResolverPage() {
               },
             });
             return;
-          }
+          } */
   
           let actorWins = 0;
           let opponentWins = 0;
