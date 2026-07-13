@@ -493,7 +493,7 @@ export function AvatarBuilderPage() {
           {/* Attributes Grid - 4x4 table */}
           <div className="bg-slate-800 rounded-lg p-4 lg:col-span-2 xl:col-span-1">
             <h2 className="text-lg font-bold text-amber-400 mb-4 flex items-center gap-2">
-              <span>📊</span> Attributes <span className="text-slate-500 text-sm font-normal">(Derived = Function + Aspect)</span>
+              <span>📊</span> Attributes <span className="text-slate-500 text-sm font-normal">= Function + Aspect</span>
             </h2>
             
             <div className="overflow-x-auto">

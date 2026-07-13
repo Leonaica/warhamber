@@ -128,6 +128,7 @@ export function WeaponEditor({ weapon, customTags, onSave, onCancel }: WeaponEdi
             <option value="One-handed">One-handed</option>
             <option value="Two-handed">Two-handed</option>
             <option value="Hands free">Hands-free</option>
+            <option value="Extra limb">Extra limb</option>
           </select>
         </div>
       </div>
@@ -290,7 +291,7 @@ export function WeaponEditor({ weapon, customTags, onSave, onCancel }: WeaponEdi
                   value={typeof attack.penetration === 'number' ? attack.penetration : attack.penetration[0]}
                   onValueChange={(val) => updateAttack(attack.id, { penetration: val })}
                   min={0}
-                  max={100}
+                  max={224}
                   className="text-sm"
                   buttonClassName="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
                 />
@@ -306,7 +307,7 @@ export function WeaponEditor({ weapon, customTags, onSave, onCancel }: WeaponEdi
                 >
                   {WEAPON_RANGES.map(r => (
                     <option key={r.value} value={r.value}>
-                      {r.label} — {r.description}
+                      {r.step} — {r.label} ({r.distance}) — {r.description}
                     </option>
                   ))}
                 </select>

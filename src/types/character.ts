@@ -407,21 +407,35 @@ export interface WeaponTagDefinition {
   effect?: string;
 }
 
-export type WeaponHandedness = 'One-handed' | 'Two-handed' | 'Hands free';
+export type WeaponHandedness = 'One-handed' | 'Two-handed' | 'Hands free' | 'Extra limb';
 
-export type WeaponRange = 'Touch' | 'Close' | 'Reach' | 'Short' | 'Medium' | 'Long' | 'Far' | 'Extreme' | 'Strategic' | 'LOS';
+export type WeaponRange = 
+  | 'Touch' | 'Close' | 'Reach' | 'PointBlank' | 'Short' 
+  | 'Medium' | 'Long' | 'Extended' | 'Extreme' | 'Strategic'
+  | 'Distant' | 'LOS' | 'Indirect' | 'Regional' | 'Orbital'
+  | 'Exoatmospheric' | 'Continental' | 'Suborbital' | 'Global' | 'Unlimited';
 
-export const WEAPON_RANGES: { value: WeaponRange; label: string; description: string }[] = [
-  { value: 'Touch', label: 'Touch', description: 'Within arm\'s reach' },
-  { value: 'Close', label: 'Close', description: 'Just outside arm\'s reach; most hand weapons' },
-  { value: 'Reach', label: 'Reach', description: '~5 meters; talking range, polearm range' },
-  { value: 'Short', label: 'Short', description: '~50 meters; normal throwing range' },
-  { value: 'Medium', label: 'Medium', description: '~100 meters; most pistols or bows' },
-  { value: 'Long', label: 'Long', description: 'Several hundred meters; most rifles' },
-  { value: 'Far', label: 'Far', description: '~1 kilometer; cannon or specialized rifles' },
-  { value: 'Extreme', label: 'Extreme', description: 'Several kilometers; light artillery' },
-  { value: 'Strategic', label: 'Strategic', description: 'Heavier artillery range' },
-  { value: 'LOS', label: 'Line of Sight', description: 'If you can see it, you can hit it; some magic and powerful lasers' },
+export const WEAPON_RANGES: { step: number; value: WeaponRange; label: string; distance: string; description: string }[] = [
+  { step: 1,  value: 'Touch',          label: 'Touch',          distance: '~1 m',      description: 'Unarmed, grappling, touch spells' },
+  { step: 2,  value: 'Close',          label: 'Close',          distance: '~2 m',      description: 'Swords, axes, maces; small blast radius' },
+  { step: 3,  value: 'Reach',          label: 'Reach',          distance: '~5 m',      description: 'Polearms, whips, spears; grenade blast radius' },
+  { step: 4,  value: 'PointBlank',     label: 'Point Blank',    distance: '~10 m',     description: 'Thrown weapons; large blast radius' },
+  { step: 5,  value: 'Short',          label: 'Short',          distance: '~20 m',     description: 'Pistols, shotguns, flamethrowers; mortar shell radius' },
+  { step: 6,  value: 'Medium',         label: 'Medium',         distance: '~50 m',     description: 'SMGs, shortbows, slings; artillery shell radius' },
+  { step: 7,  value: 'Long',           label: 'Long',           distance: '~100 m',    description: 'Crossbows, longbows; small bomb radius' },
+  { step: 8,  value: 'Extended',       label: 'Extended',       distance: '~200 m',    description: 'Marksman rifles, heavy crossbows' },
+  { step: 9,  value: 'Extreme',        label: 'Extreme',        distance: '~500 m',    description: 'Assault rifles, carbines, battle rifles, RPGs' },
+  { step: 10, value: 'Strategic',      label: 'Strategic',      distance: '~1 km',     description: 'Sniper rifles, heavy machine guns; tactical nuke radius' },
+  { step: 11, value: 'Distant',        label: 'Distant',        distance: '~2 km',     description: 'Anti-materiel rifles, heavy mortars' },
+  { step: 12, value: 'LOS',            label: 'Line of Sight',  distance: '~5 km',     description: 'Tank guns, missile launchers, direct-fire artillery' },
+  { step: 13, value: 'Indirect',       label: 'Indirect',       distance: '~10 km',    description: 'Field artillery, howitzers; needs spotters or sensors' },
+  { step: 14, value: 'Regional',       label: 'Regional',       distance: '~20 km',    description: 'Heavy artillery, MLRS, short-range missiles' },
+  { step: 15, value: 'Orbital',        label: 'Orbital',        distance: '~50 km',    description: 'Orbital strikes, medium-range missiles' },
+  { step: 16, value: 'Exoatmospheric', label: 'Exoatmospheric', distance: '~100 km',   description: 'Edge of space; anti-satellite weapons, ICBMs' },
+  { step: 17, value: 'Continental',    label: 'Continental',    distance: '~200 km',   description: 'Continental bombardment, strategic missiles' },
+  { step: 18, value: 'Suborbital',     label: 'Suborbital',     distance: '~500 km',   description: 'Suborbital weapons, fractional orbital bombardment' },
+  { step: 19, value: 'Global',         label: 'Global',         distance: 'Planetary', description: 'Anything on the planet; only question is travel time' },
+  { step: 20, value: 'Unlimited',      label: 'Unlimited',      distance: 'Any',       description: 'Range is no longer a factor; interplanetary or FTL weapons' },
 ];
 
 export interface WeaponAttack {

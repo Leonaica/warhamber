@@ -138,7 +138,7 @@ export function ArmorEditor({ armor, onSave, onCancel }: ArmorEditorProps) {
             value={armorValue}
             onValueChange={setArmorValue}
             min={0}
-            max={20}
+            max={224}
             className={`text-lg ${armorValue > 0 ? 'text-cyan-400' : 'text-slate-500'}`}
           />
         </div>

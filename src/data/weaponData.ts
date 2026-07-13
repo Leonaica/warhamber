@@ -30,7 +30,7 @@ export const DEFAULT_HANDEDNESS_BY_CATEGORY: Record<WeaponCategory, WeaponHanded
   Heavy: 'Two-handed',
   Mounted: 'Two-handed',
   Thrown: 'One-handed',
-  Natural: 'Hands free',
+  Natural: 'One-handed',
   Unarmed: 'One-handed',
   Spell: 'One-handed',
   Innate: 'Hands free',
