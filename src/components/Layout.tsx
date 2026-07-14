@@ -13,7 +13,10 @@ export function Layout({ children }: LayoutProps) {
       <header className="bg-slate-800 border-b border-slate-700 sticky top-0 z-10 print:hidden">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-amber-400 shrink-0">WarhAmber</h1>
+          <h1 className="text-xl font-bold shrink-0 inline-flex">
+            <span className="bg-amber-400 text-slate-900 pl-1.5 rounded-l">Warh</span>
+            <span className="text-amber-400 pr-1.5 rounded-r border border-amber-400">Amber</span>
+          </h1>
             
             {/* Desktop nav - hidden on mobile */}
             <nav className="hidden md:flex gap-1">
