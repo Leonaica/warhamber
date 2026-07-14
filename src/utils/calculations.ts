@@ -190,6 +190,7 @@ export function computeCharacter(
   weapons: Character['weapons'],
   armor: Character['armor'],
   size: Character['size'],
+  customTags: Character['customTags'] = [],
 ): Character {
   // Calculate all attributes
   const attributes: Record<AttributeName, number> = {} as Record<AttributeName, number>;
@@ -252,6 +253,7 @@ export function computeCharacter(
     allies,
     personalShadows,
     weapons,
+    customTags,
     armor,
     size,
     attributes,
