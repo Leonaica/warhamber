@@ -13,7 +13,7 @@ export function Layout({ children }: LayoutProps) {
       <header className="bg-slate-800 border-b border-slate-700 sticky top-0 z-10 print:hidden">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-amber-400 shrink-0">Amberesque</h1>
+            <h1 className="text-xl font-bold text-amber-400 shrink-0">WarhAmber</h1>
             
             {/* Desktop nav - hidden on mobile */}
             <nav className="hidden md:flex gap-1">
@@ -49,7 +49,7 @@ export function Layout({ children }: LayoutProps) {
 
             <div className="flex items-center gap-2 shrink-0">
               <a
-                href="https://storage.googleapis.com/amberesque/Amberesque.pdf"
+                href="https://storage.googleapis.com/warhamber/WarhAmber.pdf"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-2 rounded transition-colors"

@@ -1,6 +1,6 @@
 {
-  "name": "amberesque",
-  "homepage": "https://leonaica.github.io/amberesque",
+  "name": "warhamber",
+  "homepage": "https://leonaica.github.io/warhamber",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,7 +9,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "deploy": "vite build --base=/amberesque/ && gh-pages -d dist"
+    "deploy": "vite build --base=/warhamber/ && gh-pages -d dist"
   },
   "dependencies": {
     "react": "^19.2.0",

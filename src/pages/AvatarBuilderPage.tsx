@@ -22,8 +22,8 @@ export function AvatarBuilderPage() {
   
   useEffect(() => {
     document.title = character.name 
-      ? `${character.name} — Amberesque` 
-      : 'Amberesque';
+      ? `${character.name} — WarhAmber` 
+      : 'WarhAmber';
   }, [character.name]);
 
   // Keep only local UI state:
