@@ -487,7 +487,12 @@ export function CombatPage() {
 
                 return (
                   <div className="bg-slate-700/30 rounded p-1.5 space-y-1">
-                    <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide flex items-center gap-1">
+                    {!isPlayerDefender && weaponAttack?.isConditional && (
+                      <div className="bg-amber-900/20 border border-amber-500/30 rounded p-1.5">
+                        <div className="text-[10px] text-amber-400 font-medium">➡️ Conditional Attack</div>
+                        <div className="text-[10px] text-slate-300">{weaponAttack.condition || 'Has conditional requirements.'}</div>
+                      </div>
+                    )}<div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide flex items-center gap-1">
                       <span>Qualities</span>
                       <span className="text-amber-400/70 normal-case font-normal">(apply manually)</span>
                     </div>
@@ -613,13 +618,6 @@ export function CombatPage() {
               />
             </div>
           </div>
-
-          {!isPlayerDefender && weaponAttack?.isConditional && (
-            <div className="bg-amber-900/20 border border-amber-500/30 rounded p-1.5">
-              <div className="text-[10px] text-amber-400 font-medium">➡️ Conditional Attack</div>
-              <div className="text-[10px] text-slate-300">{weaponAttack.condition || 'Has conditional requirements.'}</div>
-            </div>
-          )}
         </div>
 
         {/* RIGHT: Defender + Probability + Results */}
