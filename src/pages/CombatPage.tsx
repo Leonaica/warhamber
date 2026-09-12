@@ -464,7 +464,7 @@ export function CombatPage() {
                           }`}
                       >
                         {ASPECTS.find(a => a.id === attack.aspect)?.emoji} {attack.magnitude}
-                        {attack.isConditional && ' ⚠️'}
+                        {attack.isConditional && ' ➡️'}
                       </button>
                     ))}
                   </div>
@@ -616,7 +616,7 @@ export function CombatPage() {
 
           {!isPlayerDefender && weaponAttack?.isConditional && (
             <div className="bg-amber-900/20 border border-amber-500/30 rounded p-1.5">
-              <div className="text-[10px] text-amber-400 font-medium">⚠️ Conditional Attack</div>
+              <div className="text-[10px] text-amber-400 font-medium">➡️ Conditional Attack</div>
               <div className="text-[10px] text-slate-300">{weaponAttack.condition || 'Has conditional requirements.'}</div>
             </div>
           )}

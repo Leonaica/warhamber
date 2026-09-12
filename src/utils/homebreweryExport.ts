@@ -370,7 +370,7 @@ export function generateHomebreweryMarkdown(
         const penFormatted = formatPenetration(attack.penetration);
         const penText = penFormatted ? ` Pen ${penFormatted}` : '';
         const rangeLabel = WEAPON_RANGES.find(r => r.value === attack.range)?.label || attack.range;
-        const conditionalText = attack.isConditional ? ` ⚠️${attack.condition ? ` (${attack.condition})` : ''}` : '';
+        const conditionalText = attack.isConditional ? ` ➡️${attack.condition ? ` (${attack.condition})` : ''}` : '';
         return `${aspectName}-${formatAttackType(attack.type)} ${attack.magnitude}${penText} ${rangeLabel}${conditionalText}`;
       });
       

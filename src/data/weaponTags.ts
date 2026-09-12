@@ -357,7 +357,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
     label: 'Haywire',
     category: 'Enchantment',
     description: 'Disrupts electronics and machines (40K)',
-    effect: 'Against technological targets: +4 Magnitude and disables target\'s tech for 1 round',
+    effect: 'Against technological targets: +4 Magnitude and disables target\'s tech for d6 rounds',
   },
   {
     id: 'tag-returning',
