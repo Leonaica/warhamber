@@ -813,8 +813,8 @@ export function PlaysheetPage() {
                                     <span className="flex-shrink-0">{aspectInfo?.emoji}</span>
                                     <div className="min-w-0">
                                       <div className="text-slate-200 group-hover:text-white truncate">
-                                        {attack.type}
-                                        {attack.isConditional && <span className="text-amber-400 ml-0.5">➡️</span>}
+                                      {attack.isConditional && <span className="text-amber-400 ml-0.5">➡️  </span>}
+                                      {attack.type}
                                       </div>
                                       <div className="text-slate-400 truncate">
                                         {attack.range && `${attack.range} • `}

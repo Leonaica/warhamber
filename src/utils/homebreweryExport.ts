@@ -371,7 +371,7 @@ export function generateHomebreweryMarkdown(
         const penText = penFormatted ? ` Pen ${penFormatted}` : '';
         const rangeLabel = WEAPON_RANGES.find(r => r.value === attack.range)?.label || attack.range;
         const conditionalText = attack.isConditional ? ` ➡️${attack.condition ? ` (${attack.condition})` : ''}` : '';
-        return `${aspectName}-${formatAttackType(attack.type)} ${attack.magnitude}${penText} ${rangeLabel}${conditionalText}`;
+        return `${conditionalText} ${aspectName}-${formatAttackType(attack.type)} ${attack.magnitude}${penText} ${rangeLabel}`;
       });
       
       const parenthetical = attackTexts.join('; ');

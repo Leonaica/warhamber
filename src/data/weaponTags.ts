@@ -438,7 +438,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
     label: 'Force',
     category: 'Supernatural',
     description: 'Psyker weapon, applies only if character possesses Psionics or any Magic Power',
-    effect: 'Adds wielder\'s Willpower rank to Damage + 1 Damage point per 5 development points spent on Psionics or Magic',
+    effect: 'If charged (1 action), next hit adds wielder\'s Willpower rank to Damage + 1 Damage point per 5 development points spent on Psionics or Magic',
   },
   {
     id: 'tag-null',
