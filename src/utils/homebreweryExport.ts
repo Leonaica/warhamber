@@ -36,7 +36,7 @@ function attrAbbr(name: string): string {
     'Willpower': 'Wil',
     'Resilience': 'Res',
     'Agility': 'Agi',
-    'Reflexes': 'Rct',
+    'Reflexes': 'Rfl',
     'Intelligence': 'Int',
     'Inspiration': 'Ins',
     'Perception': 'Per',
