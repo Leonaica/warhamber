@@ -758,8 +758,8 @@ export function ResolverPage() {
                   <StepperInput
                     value={opponentWoundPenalty}
                     onChange={handleOpponentWoundPenaltyChange}
-                    min={-4}
-                    max={0}
+                    min={-12}
+                    max={12}
                     className={opponentWoundPenalty < 0 ? 'text-red-400' : 'text-slate-300'}
                   />
                 </div>
@@ -770,8 +770,8 @@ export function ResolverPage() {
                 <StepperInput
                   value={opponentModifier}
                   onChange={handleOpponentModifierChange}
-                  min={-4}
-                  max={4}
+                  min={-100}
+                  max={100}
                   className={opponentModifier >= 0 ? 'text-green-400' : 'text-red-400'}
                   displayFn={(v) => `${v >= 0 ? '+' : ''}${v}`}
                 />

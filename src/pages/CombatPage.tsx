@@ -607,12 +607,12 @@ export function CombatPage() {
               <StepperInput
                 value={damageModifier}
                 onChange={(delta) => {
-                  const newVal = Math.min(Math.max(damageModifier + delta, -20), 20);
+                  const newVal = Math.min(Math.max(damageModifier + delta, -100), 100);
                   setDamageModifier(newVal);
                   if (isPlayerDefender) gameState.updateOpponentCombatData({ damageModifier: newVal });
                 }}
-                min={-20}
-                max={20}
+                min={-100}
+                max={100}
                 className={damageModifier >= 0 ? 'text-green-400' : 'text-red-400'}
                 displayFn={(v) => v >= 0 ? `+${v}` : String(v)}
               />
