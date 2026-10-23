@@ -8,6 +8,7 @@ import { getDiePoolEntry } from '../data/diePoolTable';
 import { formatWeaponLogistics } from '../data/weaponData';
 import { resolveTagRef, idsToRefs, formatTagEffect } from '../data/weaponTags';
 import type { WeaponTagRef } from '../types/character';
+import { useTagResolveContext } from '../context/useTagResolveContext';
 
 const SKILL_MODIFIERS: Record<SkillRating, number> = Object.fromEntries(
   SKILL_RATINGS.map(s => [s.rating, s.modifier])
@@ -53,6 +54,7 @@ const DODGE_ATTRIBUTES: Record<AspectName, AttributeName | null> = {
 
 export function PrintableSheet() {
   const character = useCharacter();
+  const tagCtx = useTagResolveContext();
 
   if (!character.hasCharacter) return null;
   const c = character.computedCharacter;
@@ -225,7 +227,7 @@ export function PrintableSheet() {
             const logistics = formatWeaponLogistics(weapon.capacity, weapon.reloadTime);
             const refs: WeaponTagRef[] = weapon.tags ?? idsToRefs(weapon.tagIds ?? []);
             const resolvedTags = refs
-              .map(ref => resolveTagRef(ref, character.customTags))
+              .map(ref => resolveTagRef(ref, character.customTags, tagCtx))
               .filter((t): t is NonNullable<typeof t> => t !== null);
             return (
               <div key={weapon.id} className="mb-1">

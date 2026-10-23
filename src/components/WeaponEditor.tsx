@@ -35,7 +35,7 @@ export function WeaponEditor({ weapon, customTags, onSave, onCancel }: WeaponEdi
     RANGED_CATEGORIES.includes(initialCategory) || !!(weapon?.capacity || weapon?.reloadTime)
   );
   const [tags, setTags] = useState<WeaponTagRef[]>(() => {
-    if (weapon?.tags) return normalizeTagRefs(weapon.tags);
+    if (weapon?.tags) return normalizeTagRefs(weapon.tags, customTags);
     if (weapon?.tagIds) return idsToRefs(weapon.tagIds);
     return [];
   });
@@ -92,7 +92,7 @@ export function WeaponEditor({ weapon, customTags, onSave, onCancel }: WeaponEdi
       attacks,
       capacity,
       reloadTime: reloadTime || undefined,
-      tags: normalizeTagRefs(tags),
+      tags: normalizeTagRefs(tags, [...customTags, ...newCustomTags]),
     }, newCustomTags);
   };
 
@@ -305,7 +305,7 @@ export function WeaponEditor({ weapon, customTags, onSave, onCancel }: WeaponEdi
                   onChange={(e) => {
                     const newAspect = e.target.value as AspectName;
                     const validTypes = ATTACK_TYPES_BY_ASPECT[newAspect];
-                    const currentTypeValid = validTypes.includes(attack.type as any);
+                    const currentTypeValid = validTypes.includes(attack.type);
                     updateAttack(attack.id, {
                       aspect: newAspect,
                       ...(currentTypeValid ? {} : { type: validTypes[0] as AttackType }),

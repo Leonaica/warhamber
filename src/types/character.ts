@@ -345,15 +345,32 @@ export type WeaponCategory =
   | 'Natural' | 'Unarmed'
   | 'Spell' | 'Innate';
 
-  export const getAttackTypesForAspect = (aspect: AspectName): AttackType[] =>
-    ATTACK_TYPES_BY_ASPECT[aspect];
+export const getAttackTypesForAspect = (aspect: AspectName): AttackType[] =>
+  ATTACK_TYPES_BY_ASPECT[aspect];
 
+export type TagValueSource =
+  | { kind: 'attributeRank'; attribute: AttributeName }
+  | { kind: 'immaterialSize' }
+  | { kind: 'size' }
+  | { kind: 'surge' }
+  | { kind: 'stuff' };
+
+export interface TagResolveContext {
+  attributeDiePools?: Partial<Record<AttributeName, { rank: number }>>;
+  immaterialSize?: number;
+  size?: number;
+  surge?: number;
+  stuff?: number;
+}
+  
 export interface WeaponTagVariable {
   min: number;
   max: number;
   default: number;
   unit?: string;          // e.g. 'd' for die-type tags, '' or omitted for plain numbers
   step?: number;          // defaults to 1; use 2 for even-only ranges, etc.
+  derivedFrom?: TagValueSource;
+  sourceLabel?: string;
 }
 
 export interface WeaponTagDefinition {

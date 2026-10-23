@@ -1,4 +1,4 @@
-import type { WeaponTagDefinition, WeaponTagRef } from '../types/character';
+import type { WeaponTagDefinition, WeaponTagRef, TagValueSource, TagResolveContext, AttributeName } from '../types/character';
 
 export const WEAPON_TAG_CATEGORIES = [
   'Inherent',
@@ -8,6 +8,60 @@ export const WEAPON_TAG_CATEGORIES = [
   'Legendary',
 ] as const;
 
+const SOURCE_LABELS: Record<Exclude<TagValueSource['kind'], 'attributeRank'>, string> = {
+  immaterialSize: 'Immaterial Size',
+  size: 'Material Size',
+  surge: 'Surge',
+  stuff: 'Stuff',
+};
+
+const ATTRIBUTE_ABBR: Record<AttributeName, string> = {
+  Toughness: 'Tgh', Endurance: 'End', Willpower: 'Wil', Resilience: 'Res',
+  Agility: 'Agi', Reflexes: 'Rfl', Intelligence: 'Int', Inspiration: 'Ins',
+  Perception: 'Per', Intuition: 'Itn', Memory: 'Mem', Wisdom: 'Wis',
+  Strength: 'Str', Magnetism: 'Mag', Charisma: 'Cha', Presence: 'Pre',
+};
+
+export function describeTagSource(src: TagValueSource): string {
+  return src.kind === 'attributeRank' ? `${src.attribute} Rank` : SOURCE_LABELS[src.kind];
+}
+
+const SOURCE_ABBR: Record<Exclude<TagValueSource['kind'], 'attributeRank'>, string> = {
+  immaterialSize: 'ImmSz',
+  size: 'Size',
+  surge: 'Surge',
+  stuff: 'Stuff',
+};
+
+export function tagSourceAbbr(src: TagValueSource): string {
+  return src.kind === 'attributeRank' ? ATTRIBUTE_ABBR[src.attribute] : SOURCE_ABBR[src.kind];
+}
+
+/** Sensible bounds + fallback for a freshly chosen source. */
+export function defaultBoundsForSource(src: TagValueSource) {
+  switch (src.kind) {
+    case 'attributeRank': return { min: 0, max: 20, default: 8 };
+    case 'immaterialSize': return { min: -2, max: 16, default: 0 };
+    case 'size': return { min: -3, max: 6, default: 0 };
+    case 'surge': return { min: 0, max: 60, default: 0 };
+    case 'stuff': return { min: -100, max: 100, default: 0 };
+  }
+}
+
+/** Encode/decode a TagValueSource for a <select> value. */
+export function sourceKey(src?: TagValueSource): string {
+  if (!src) return '';
+  return src.kind === 'attributeRank' ? `attr:${src.attribute}` : src.kind;
+}
+
+export function parseSourceKey(key: string): TagValueSource | undefined {
+  if (!key) return undefined;
+  if (key.startsWith('attr:')) {
+    return { kind: 'attributeRank', attribute: key.slice(5) as AttributeName };
+  }
+  return { kind: key as 'immaterialSize' | 'size' | 'surge' | 'stuff' };
+}
+
 export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   // === Inherent ===
   {
@@ -15,7 +69,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
     label: 'Strength Bonus',
     category: 'Inherent',
     description: 'Damage depends in part on the Strength of the user',
-    effect: 'Add the wielder\'s Strength Rank as a Damage Modifier',
+    effect: 'Add {x} (the wielder\'s Strength Rank) as a Damage Modifier',
+    variable: { min: 0, max: 20, default: 8, sourceLabel: 'Str',
+    derivedFrom: { kind: 'attributeRank', attribute: 'Strength' } },
   },
   {
     id: 'tag-defensive',
@@ -433,6 +489,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
     category: 'Supernatural',
     description: 'Psyker weapon, applies only if character possesses Psionics or any Magic Power',
     effect: 'If charged (1 action), next hit adds wielder\'s Presence rank to Damage + 1 Damage point per 5 development points spent on Psionics or Magic',
+    variable: { min: 0, max: 20, default: 8, sourceLabel: 'Pre',
+    derivedFrom: { kind: 'attributeRank', attribute: 'Presence' } },
   },
   {
     id: 'tag-intimidating',
@@ -597,6 +655,26 @@ export function resolveWeaponTags(
     .filter((t): t is WeaponTagDefinition => t !== undefined);
 }
 
+function readSource(src: TagValueSource, ctx?: TagResolveContext): number | undefined {
+  switch (src.kind) {
+    case 'attributeRank': return ctx?.attributeDiePools?.[src.attribute]?.rank;
+    case 'immaterialSize': return ctx?.immaterialSize;
+    case 'size': return ctx?.size;
+    case 'surge': return ctx?.surge;
+    case 'stuff': return ctx?.stuff;
+  }
+}
+
+export function resolveVariableDefault(def: WeaponTagDefinition, ctx?: TagResolveContext) {
+  const v = def.variable;
+  if (!v) return undefined;
+  if (v.derivedFrom) {
+    const raw = readSource(v.derivedFrom, ctx);
+    if (raw !== undefined) return Math.max(v.min, Math.min(v.max, raw));
+  }
+  return v.default;
+}
+
 // Deduplicate by label — prevents the "same tag, different ID" bug
 export function findTagByLabel(
   label: string,
@@ -687,7 +765,7 @@ export function formatTagLabel(
   x?: number
 ): string {
   if (!def.variable || x === undefined) return def.label;
-  const unit = def.variable.unit ?? '';
+  const unit = def.variable.unit ?? (def.variable.derivedFrom ? `${def.variable.sourceLabel ?? ''} ` : '');
   return `${def.label} (${unit}${x})`;
 }
 
@@ -707,15 +785,17 @@ export function formatTagEffect(
 
 /**
  * Resolve a WeaponTagRef to its definition (library or custom) plus the
- * effective x value (uses variable.default if x is undefined).
+ * effective x value. Derived variables read from `ctx`; otherwise falls
+ * back to `variable.default`.
  */
 export function resolveTagRef(
   ref: WeaponTagRef,
-  customTags: WeaponTagDefinition[]
+  customTags: WeaponTagDefinition[],
+  ctx?: TagResolveContext
 ): { def: WeaponTagDefinition; x?: number } | undefined {
   const def = resolveTag(ref.tagId, customTags);
   if (!def) return undefined;
-  const x = ref.x ?? def.variable?.default;
+  const x = ref.x ?? resolveVariableDefault(def, ctx);
   return { def, x };
 }
 
@@ -724,12 +804,16 @@ export function resolveTagRef(
  * x stripped, and tags with a variable have x defaulted if missing.
  * Useful before saving.
  */
-export function normalizeTagRefs(refs: WeaponTagRef[]): WeaponTagRef[] {
+export function normalizeTagRefs(
+    refs: WeaponTagRef[],
+    customTags: WeaponTagDefinition[]
+    ): WeaponTagRef[] {
   return refs.map(ref => {
-    const def = WEAPON_TAG_LIBRARY.find(t => t.id === ref.tagId);
+    const def = resolveTag(ref.tagId, customTags);
     if (!def?.variable) {
       return ref.x === undefined ? ref : { tagId: ref.tagId };
     }
+    if (def.variable.derivedFrom && ref.x === undefined) return ref;
     if (ref.x === undefined) {
       return { tagId: ref.tagId, x: def.variable.default };
     }

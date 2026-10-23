@@ -19,6 +19,7 @@ import { formatWeaponLogistics } from '../data/weaponData';
 import { resolveTagRef, idsToRefs } from '../data/weaponTags';
 import type { WeaponTagRef } from '../types/character';
 import { TagChip } from '../components/TagChip';
+import { useTagResolveContext } from '../context/useTagResolveContext';
 
 const DEFENSE_ATTRIBUTES: Record<AspectName, AttributeName> = {
   Form: 'Toughness',
@@ -82,6 +83,7 @@ export function PlaysheetPage() {
   const character = useCharacter();
   const gameState = useGameState();
   const navigate = useNavigate();
+  const tagCtx = useTagResolveContext();
   
   const [activeTab, setActiveTab] = useState<TabId>('actions');
   const [selectedAttribute, setSelectedAttribute] = useState<AttributeName | null>(null);
@@ -835,7 +837,7 @@ export function PlaysheetPage() {
                             return (
                               <div className="mt-2 flex flex-wrap gap-1.5">
                                 {refs.map(ref => {
-                                  const resolved = resolveTagRef(ref, character.customTags);
+                                  const resolved = resolveTagRef(ref, character.customTags, tagCtx);
                                   return resolved ? (
                                     <TagChip 
                                       key={ref.tagId} 

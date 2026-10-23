@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import type { WeaponTagDefinition, WeaponTagRef } from '../types/character';
+import { ATTRIBUTES } from '../types/character';
 import {
   WEAPON_TAG_CATEGORIES,
   WEAPON_TAG_LIBRARY,
@@ -9,9 +10,15 @@ import {
   findTagByLabel,
   resolveTagRef,
   formatTagEffect,
+  parseSourceKey,
+  defaultBoundsForSource,
+  tagSourceAbbr,
+  describeTagSource,
+  resolveVariableDefault,
 } from '../data/weaponTags';
 import { TagChip } from './TagChip';
 import StepperInput from './StepperInput';
+import { useTagResolveContext } from '../context/useTagResolveContext'
 
 interface WeaponTagEditorProps {
   tags: WeaponTagRef[];
@@ -49,6 +56,8 @@ export function WeaponTagEditor({
   const [ctVarMax, setCtVarMax] = useState(4);
   const [ctVarDefault, setCtVarDefault] = useState(1);
   const [ctVarUnit, setCtVarUnit] = useState('');
+  const [ctSource, setCtSource] = useState('');
+  const [ctSourceLabel, setCtSourceLabel] = useState('');
 
   useEffect(() => {
     if (activePanel === 'browse' && filterRef.current) {
@@ -62,13 +71,16 @@ export function WeaponTagEditor({
     return () => clearTimeout(timer);
   }, [notice]);
 
+  // Character-derived values for any tag whose variable has a `derivedFrom` source.
+  const resolveCtx = useTagResolveContext();
+
   const allCustomTags = [...customTags, ...newCustomTags];
   const allAvailableTags = mergeTags(WEAPON_TAG_LIBRARY, allCustomTags);
 
   // Resolve selected refs to { ref, def, x } for rendering
   const selected = tags
     .map((ref): ResolvedTag | null => {
-      const resolved = resolveTagRef(ref, allCustomTags);
+      const resolved = resolveTagRef(ref, allCustomTags, resolveCtx);
       if (!resolved) return null;
       return { ref, def: resolved.def, x: resolved.x };
     })
@@ -81,9 +93,9 @@ export function WeaponTagEditor({
       onChange(tags.filter(t => t.tagId !== tagId));
     } else {
       const def = allAvailableTags.find(t => t.id === tagId);
-      const newRef: WeaponTagRef = def?.variable
-        ? { tagId, x: def.variable.default }
-        : { tagId };
+      const newRef: WeaponTagRef = def?.variable && !def.variable.derivedFrom
+         ? { tagId, x: def.variable.default }
+         : { tagId };
       onChange([...tags, newRef]);
     }
   };
@@ -125,6 +137,10 @@ export function WeaponTagEditor({
           max: ctVarMax,
           default: Math.max(ctVarMin, Math.min(ctVarMax, ctVarDefault)),
           ...(ctVarUnit.trim() && { unit: ctVarUnit.trim() }),
+          ...(ctSource && {
+            derivedFrom: parseSourceKey(ctSource),
+            sourceLabel: ctSourceLabel.trim() || tagSourceAbbr(parseSourceKey(ctSource)!),
+          }),
         },
       }),
     };
@@ -133,7 +149,7 @@ export function WeaponTagEditor({
     setNewCustomTags(updated);
     onNewCustomTags(updated);
 
-    const newRef: WeaponTagRef = newTag.variable
+    const newRef: WeaponTagRef = newTag.variable && !newTag.variable.derivedFrom
       ? { tagId: newTag.id, x: newTag.variable.default }
       : { tagId: newTag.id };
     onChange([...tags, newRef]);
@@ -153,6 +169,9 @@ export function WeaponTagEditor({
     setCtVarDefault(1);
     setCtVarUnit('');
     setActivePanel('none');
+    setCtSource(''); 
+    setCtSourceLabel('');
+
   };
 
   // Filter logic
@@ -233,6 +252,10 @@ export function WeaponTagEditor({
                   className="text-xs text-white"
                 />
               )}
+              {def.variable?.derivedFrom && ref.x !== undefined && (
+                <button onClick={() => updateX(ref.tagId, undefined)}
+                  title="Reset to character value" className="text-xs text-slate-400 hover:text-white px-1">↻</button>
+              )}
             </div>
           ))
         )}
@@ -266,7 +289,7 @@ export function WeaponTagEditor({
                     {catTags.map(tag => {
                       const isSelected = selectedTagIds.has(tag.id);
                       const tagColor = getTagColor(tag.category);
-                      const tooltip = [formatTagEffect(tag, tag.variable?.default), tag.description]
+                      const tooltip = [formatTagEffect(tag, resolveVariableDefault(tag, resolveCtx)), tag.description]
                         .filter(Boolean).join(' — ') || tag.label;
                       return (
                         <button
@@ -283,7 +306,9 @@ export function WeaponTagEditor({
                           {tag.label}
                           {tag.variable && (
                             <span className="ml-1 text-xs opacity-60">
-                              ({tag.variable.unit ?? ''}{tag.variable.min}–{tag.variable.unit ?? ''}{tag.variable.max})
+                              {tag.variable.derivedFrom
+                                ? `(${tag.variable.sourceLabel ?? describeTagSource(tag.variable.derivedFrom)})`
+                                : `(${tag.variable.unit ?? ''}${tag.variable.min}–${tag.variable.unit ?? ''}${tag.variable.max})`}
                             </span>
                           )}
                         </button>
@@ -377,43 +402,101 @@ export function WeaponTagEditor({
                 Accepts a variable value (X)
               </label>
               {ctHasVariable && (
-                <div className="grid grid-cols-4 gap-2">
+                <div className="space-y-2">
+                  {/* Value source — blank means a fixed number */}
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1">Min</label>
-                    <input
-                      type="number"
-                      value={ctVarMin}
-                      onChange={e => setCtVarMin(parseInt(e.target.value) || 0)}
+                    <label className="block text-xs text-slate-400 mb-1">Value Source</label>
+                    <select
+                      value={ctSource}
+                      onChange={e => {
+                        const key = e.target.value;
+                        setCtSource(key);
+                        const src = parseSourceKey(key);
+                        if (src) {
+                          const b = defaultBoundsForSource(src);
+                          setCtVarMin(b.min);
+                          setCtVarMax(b.max);
+                          setCtVarDefault(b.default);
+                          setCtSourceLabel(tagSourceAbbr(src));
+                        } else {
+                          setCtSourceLabel('');
+                        }
+                      }}
                       className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-white"
-                    />
+                    >
+                      <option value="">Fixed value</option>
+                      <option value="immaterialSize">Immaterial Size</option>
+                      <option value="size">Material Size</option>
+                      <option value="surge">Surge</option>
+                      <option value="stuff">Stuff</option>
+                      <optgroup label="Attribute Rank">
+                        {ATTRIBUTES.map(a => (
+                          <option key={a.id} value={`attr:${a.id}`}>{a.name} Rank</option>
+                        ))}
+                      </optgroup>
+                    </select>
                   </div>
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">Max</label>
-                    <input
-                      type="number"
-                      value={ctVarMax}
-                      onChange={e => setCtVarMax(parseInt(e.target.value) || 0)}
-                      className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">Default</label>
-                    <input
-                      type="number"
-                      value={ctVarDefault}
-                      onChange={e => setCtVarDefault(parseInt(e.target.value) || 0)}
-                      className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">Unit</label>
-                    <input
-                      type="text"
-                      value={ctVarUnit}
-                      onChange={e => setCtVarUnit(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-white"
-                      placeholder="e.g., d (for dice)"
-                    />
+
+                  {/* Chip prefix — only meaningful for derived sources */}
+                  {ctSource && (
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Label Prefix</label>
+                      <input
+                        type="text"
+                        value={ctSourceLabel}
+                        onChange={e => setCtSourceLabel(e.target.value)}
+                        className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-white"
+                        placeholder="e.g., Str"
+                      />
+                    </div>
+                  )}
+
+                  <div className={`grid gap-2 ${ctSource ? 'grid-cols-3' : 'grid-cols-4'}`}>
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">
+                        {ctSource ? 'Min (bound)' : 'Min'}
+                      </label>
+                      <input
+                        type="number"
+                        value={ctVarMin}
+                        onChange={e => setCtVarMin(parseInt(e.target.value) || 0)}
+                        className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">
+                        {ctSource ? 'Max (bound)' : 'Max'}
+                      </label>
+                      <input
+                        type="number"
+                        value={ctVarMax}
+                        onChange={e => setCtVarMax(parseInt(e.target.value) || 0)}
+                        className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">
+                        {ctSource ? 'Fallback' : 'Default'}
+                      </label>
+                      <input
+                        type="number"
+                        value={ctVarDefault}
+                        onChange={e => setCtVarDefault(parseInt(e.target.value) || 0)}
+                        className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-white"
+                      />
+                    </div>
+                    {!ctSource && (
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">Unit</label>
+                        <input
+                          type="text"
+                          value={ctVarUnit}
+                          onChange={e => setCtVarUnit(e.target.value)}
+                          className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-white"
+                          placeholder="e.g., d (for dice)"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
