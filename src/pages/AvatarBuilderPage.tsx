@@ -11,6 +11,7 @@ import { IconPicker } from '../components/IconPicker';
 import { ICONS, DEFAULT_ICON, type IconEntry } from '../data/icons';
 import { WeaponEditor } from '../components/WeaponEditor';
 import { resolveTagRef, idsToRefs } from '../data/weaponTags';
+import { useTagResolveContext } from '../context/useTagResolveContext';
 import type { WeaponTagRef } from '../types/character';
 import { TagChip } from '../components/TagChip';
 import { ArmorEditor } from '../components/ArmorEditor';
@@ -20,6 +21,7 @@ import AutoTextarea from '../components/AutoTextarea'
 
 export function AvatarBuilderPage() {
   const character = useCharacter();
+  const tagCtx = useTagResolveContext();
   
   useEffect(() => {
     document.title = character.name 
@@ -1222,7 +1224,7 @@ export function AvatarBuilderPage() {
                     return (
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {refs.map(ref => {
-                          const resolved = resolveTagRef(ref, character.customTags);
+                          const resolved = resolveTagRef(ref, character.customTags, tagCtx);
                           return resolved ? (
                             <TagChip 
                               key={ref.tagId} 

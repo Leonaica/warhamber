@@ -1,4 +1,9 @@
-import type { CharacterAspectRatings, CharacterFunctionRatings, CharacterSkill, CharacterPower, Artifact, Ally, PersonalShadow, CharacterWeapon, CharacterArmor, DiePool, Power, WeaponTagDefinition } from '../types/character';
+import type { CharacterAspectRatings, 
+  CharacterFunctionRatings, CharacterSkill, CharacterPower, 
+  Artifact, Ally, PersonalShadow, 
+  CharacterWeapon, CharacterArmor, 
+  DiePool, Power, 
+  WeaponTagDefinition, TagResolveContext } from '../types/character';
 import { ASPECTS, FUNCTIONS, ATTRIBUTES, SKILL_RATINGS, SIZE_OPTIONS, WEAPON_RANGES, RATING_SCALE, RATING_LABELS } from '../types/character';
 import { SKILLS } from '../data/skills';
 import { POWERS } from '../data/powers';
@@ -98,6 +103,16 @@ export function generateHomebreweryMarkdown(
 
   const lines: string[] = [];
   
+  const tagCtx: TagResolveContext = {
+    attributeDiePools: Object.fromEntries(
+      ATTRIBUTES.map(a => [a.id, getDiePoolEntry(functions[a.func] + aspects[a.aspect])])
+    ) as TagResolveContext['attributeDiePools'],
+    immaterialSize,
+    size,
+    surge,
+    stuff,
+  };
+
   // Character sheet frame
   lines.push(`{{monster,frame`);
   lines.push(`## ${avatarIcon} ${name || "Avatar Name"}`);
@@ -383,7 +398,7 @@ export function generateHomebreweryMarkdown(
       // Tags
       const refs: WeaponTagRef[] = weapon.tags ?? idsToRefs(weapon.tagIds ?? []);
       const tagTexts = refs.map(ref => {
-        const resolved = resolveTagRef(ref, customTags);
+        const resolved = resolveTagRef(ref, customTags, tagCtx);
         if (!resolved) return null;
         const effectText = formatTagEffect(resolved.def, resolved.x);
         return effectText ? `*${resolved.def.label}* (${effectText})` : resolved.def.label;

@@ -3,7 +3,9 @@ import { ASPECTS, FUNCTIONS, ATTRIBUTES, SKILL_RATINGS } from '../types/characte
 import { SKILLS } from '../data/skills';
 import { POWERS } from '../data/powers';
 import { getDiePoolEntry } from '../data/diePoolTable';
-import { resolveWeaponTags } from '../data/weaponTags';
+import { resolveTagRef, idsToRefs, formatTagLabel, formatTagEffect } from '../data/weaponTags';
+import type { WeaponTagRef } from '../types/character';
+import { useTagResolveContext } from '../context/useTagResolveContext'
 
 interface CharacterSheetProps {
   name: string;
@@ -59,6 +61,7 @@ export function CharacterSheet({
   armor = [],
   customTags = [],
 }: CharacterSheetProps) {
+  const tagCtx = useTagResolveContext();
   // Calculate skill costs
   const skillCostTotal = skills.reduce((sum, skill) => {
     const rating = SKILL_RATINGS.find(r => r.rating === skill.rating);
@@ -174,7 +177,10 @@ export function CharacterSheet({
                 </thead>
                 <tbody>
                   {weapons.map(weapon => {
-                    const resolvedTags = resolveWeaponTags(weapon.tagIds || [], customTags);
+                    const refs: WeaponTagRef[] = weapon.tags ?? idsToRefs(weapon.tagIds ?? []);
+                    const resolvedTags = refs
+                      .map(ref => resolveTagRef(ref, customTags, tagCtx))
+                      .filter((t): t is NonNullable<typeof t> => t !== null);
                     return (
                       <tr key={weapon.id}>
                         <td><strong>{weapon.name}</strong></td>
@@ -198,12 +204,15 @@ export function CharacterSheet({
                         </td>
                         <td>
                           <div className="tag-list">
-                            {resolvedTags.map(tag => (
-                              <div key={tag.id} className="tag-entry">
-                                <strong>{tag.label}</strong>
-                                {tag.effect && <span className="tag-effect"> — {tag.effect}</span>}
-                              </div>
-                            ))}
+                          {resolvedTags.map(({ def, x }) => {
+                              const effectText = formatTagEffect(def, x);
+                              return (
+                                <div key={def.id} className="tag-entry">
+                                  <strong>{formatTagLabel(def, x)}</strong>
+                                  {effectText && <span className="tag-effect"> — {effectText}</span>}
+                                </div>
+                              );
+                            })}
                           </div>
                         </td>
                       </tr>

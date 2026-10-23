@@ -11,6 +11,7 @@ import { calculateWoundProbabilities, type WoundProbabilities } from '../utils/p
 import { resolveTagRef, formatTagEffect, idsToRefs } from '../data/weaponTags';
 import { TagChip } from '../components/TagChip';
 import StepperInput from '../components/StepperInput';
+import { useTagResolveContext } from '../context/useTagResolveContext'
 
 interface CombatPageState {
   mode?: 'attacker' | 'defender';
@@ -82,6 +83,7 @@ export function CombatPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as CombatPageState | null;
+  const tagCtx = useTagResolveContext();
 
   // Combat mode
   const [combatMode, setCombatMode] = useState<'attacker' | 'defender'>(state?.mode || 'attacker');
@@ -478,8 +480,8 @@ export function CombatPage() {
 
                 const resolvedTags = refs
                   .map(ref => {
-                    const r = resolveTagRef(ref, character.customTags);
-                    return r ? { ref, def: r.def, x: ref.x ?? r.def.variable?.default } : null;
+                    const r = resolveTagRef(ref, character.customTags, tagCtx);
+                    return r ? { ref, def: r.def, x: r.x } : null;
                   })
                   .filter((t): t is { ref: WeaponTagRef; def: WeaponTagDefinition; x: number | undefined } => t !== null);
 

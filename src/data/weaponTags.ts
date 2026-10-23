@@ -646,15 +646,6 @@ export function resolveTag(
   return customTags.find(t => t.id === tagId);
 }
 
-export function resolveWeaponTags(
-  tagIds: string[],
-  customTags: WeaponTagDefinition[]
-): WeaponTagDefinition[] {
-  return tagIds
-    .map(id => resolveTag(id, customTags))
-    .filter((t): t is WeaponTagDefinition => t !== undefined);
-}
-
 function readSource(src: TagValueSource, ctx?: TagResolveContext): number | undefined {
   switch (src.kind) {
     case 'attributeRank': return ctx?.attributeDiePools?.[src.attribute]?.rank;
@@ -791,7 +782,7 @@ export function formatTagEffect(
 export function resolveTagRef(
   ref: WeaponTagRef,
   customTags: WeaponTagDefinition[],
-  ctx?: TagResolveContext
+  ctx: TagResolveContext
 ): { def: WeaponTagDefinition; x?: number } | undefined {
   const def = resolveTag(ref.tagId, customTags);
   if (!def) return undefined;
