@@ -386,9 +386,9 @@ export function generateHomebreweryMarkdown(
         const resolved = resolveTagRef(ref, customTags);
         if (!resolved) return null;
         const effectText = formatTagEffect(resolved.def, resolved.x);
-        return effectText ? `${resolved.def.label} (${effectText})` : resolved.def.label;
+        return effectText ? `*${resolved.def.label}* (${effectText})` : resolved.def.label;
       }).filter((t): t is string => t !== null);
-      const tagsSection = tagTexts.length > 0 ? `. Qualities: ${tagTexts.join(', ')}` : '';
+      const tagsSection = tagTexts.length > 0 ? `. ***Qualities:*** ${tagTexts.join(', ')}` : '';
       
       lines.push(`**${weapon.name}** :: (${parenthetical}). ${parts.join('. ')}${tagsSection}`);
     });

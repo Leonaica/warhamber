@@ -213,12 +213,6 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
     effect: 'Makes no sound when fired/striking',
   },
   {
-    id: 'tag-intimidating',
-    label: 'Intimidating',
-    category: 'Craftsmanship',
-    effect: 'Merely displaying it causes nonlethal Spirit damage (fear) to witnesses',
-  },
-  {
     id: 'tag-fragile',
     label: 'Fragile',
     category: 'Craftsmanship',
@@ -439,6 +433,13 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
     category: 'Supernatural',
     description: 'Psyker weapon, applies only if character possesses Psionics or any Magic Power',
     effect: 'If charged (1 action), next hit adds wielder\'s Presence rank to Damage + 1 Damage point per 5 development points spent on Psionics or Magic',
+  },
+  {
+    id: 'tag-intimidating',
+    label: 'Intimidating',
+    category: 'Supernatural',
+    effect: 'Inflicts nonlethal Mag {x} Mind-Shattering (fear) to witnesses when brandished',
+    variable: { min: 1, max: 11, default: 1, step: 1 },
   },
   {
     id: 'tag-null',
