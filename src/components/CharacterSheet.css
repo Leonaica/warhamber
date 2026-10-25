@@ -4,21 +4,9 @@
   }
   
   @media print {
-    /* Hide everything except the character sheet */
-    body * {
-      visibility: hidden;
-    }
-    
-    .character-sheet,
-    .character-sheet * {
-      visibility: visible;
-    }
-    
+
     .character-sheet {
       display: block;
-      position: absolute;
-      left: 0;
-      top: 0;
       width: 100%;
       padding: 20px;
       font-family: 'Georgia', serif;

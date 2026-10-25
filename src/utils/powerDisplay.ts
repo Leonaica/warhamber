@@ -1,4 +1,9 @@
-import type { Power } from '../types/character';
+import type {
+  CharacterAspectRatings,
+  CharacterFunctionRatings,
+  Power,
+} from '../types/character';
+import { ASPECTS, FUNCTIONS, RATING_LABELS, RATING_SCALE } from '../types/character';
 
 interface PowerDisplay {
   title: string;
@@ -71,4 +76,87 @@ export function getPowerDisplay(
   const systemReference = `${levelName} • ${power.name} • ${pointsStr} pts`;
   
   return { title, systemReference };
+}
+
+/** Ratings at or above this are mythic — written up as Powers, not numbers. */
+const MYTHIC_THRESHOLD = 20;
+
+const MYTHIC_LEVELS = RATING_SCALE.map(cost => ({
+  cost,
+  name: RATING_LABELS[cost].split(' ').slice(1).join(' '),
+}));
+
+export interface MythicTrait {
+  id: string;
+  emoji: string;
+  title: string;
+  systemReference: string;
+  description: string;
+  points: number;
+}
+
+/**
+ * Aspects and Functions rated +20 or higher must be surfaced in the Powers
+ * section — at that level the trait is a toolkit rather than a number.
+ */
+export function buildMythicTraits(
+  aspects: CharacterAspectRatings,
+  functions: CharacterFunctionRatings,
+  aspectExplanations: Record<string, string> = {},
+  functionExplanations: Record<string, string> = {},
+): MythicTrait[] {
+  const traits: MythicTrait[] = [];
+
+  const push = (id: string, name: string, emoji: string, points: number, description: string) => {
+    const display = getPowerDisplay(
+      {
+        id,
+        name,
+        emoji,
+        category: 'Substance',
+        levels: MYTHIC_LEVELS,
+        description: '',
+        repeatable: false,
+        requirements: '',
+        keyAttributes: [],
+      } as Power,
+      points,
+      undefined,
+      `Mythic ${name}`,
+    );
+    traits.push({
+      id,
+      emoji,
+      title: display.title,
+      systemReference: display.systemReference,
+      description,
+      points,
+    });
+  };
+
+  ASPECTS.forEach(aspect => {
+    if (aspects[aspect.id] >= MYTHIC_THRESHOLD) {
+      push(
+        `mythic-aspect-${aspect.id}`,
+        aspect.name,
+        aspect.emoji,
+        aspects[aspect.id],
+        aspectExplanations[aspect.id] || '',
+      );
+    }
+  });
+
+  FUNCTIONS.forEach(func => {
+    if (functions[func.id] >= MYTHIC_THRESHOLD) {
+      push(
+        `mythic-function-${func.id}`,
+        func.name,
+        func.emoji,
+        functions[func.id],
+        functionExplanations[func.id] || '',
+      );
+    }
+  });
+
+  return traits;
 }

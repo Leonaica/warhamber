@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useGameState } from '../context/useGameState';
 import { useCharacter } from '../context/useCharacter';
+import type { AttributeName } from '../types/character';
 import { DIE_POOL_TABLE } from '../data/diePoolTable';
 import type { DiePoolEntry } from '../data/diePoolTable';
 import { 
@@ -15,16 +16,26 @@ import {
 import { isBandAvailable, resultToScale } from '../data/actionEffortTable';
 import type { EffortBand, ActionResult, ContestResult } from '../types/resolution';
 import StepperInput from '../components/StepperInput';
+import type { ReactionPoolKey } from '../context/GameStateContext';
 
 // Interface for navigation state from playsheet
 interface PlaysheetState {
   poolRank: number;
   skillBonus: number;
   woundPenalty: number;
-  attributeName?: string;
+  attributeName?: AttributeName;
   skillName?: string;
   targetNumber?: number;
   defenseMode?: boolean;
+  reactionPoolKey?: ReactionPoolKey;
+  reactionPoolMax?: number;
+  secondaryAttributeName?: AttributeName;
+  secondaryPoolRank?: number;
+  secondaryReactionPoolKey?: ReactionPoolKey;
+  secondaryReactionPoolMax?: number;
+  defenseCombined?: boolean;
+  weaponId?: string;
+  attackIndex?: number;
 }
 
 export function ResolverPage() {
@@ -52,10 +63,14 @@ export function ResolverPage() {
   const [hasPlaysheetData, setHasPlaysheetData] = useState(!!playsheetState);
   const [isDefenseMode, setIsDefenseMode] = useState(!!playsheetState?.defenseMode);
   const [prevPlaysheetState, setPrevPlaysheetState] = useState(playsheetState);
-  
+  const [reactionConsumed, setReactionConsumed] = useState(false);
+  const [combinedResult, setCombinedResult] = useState<{ primary: ActionResult; secondary: ActionResult } | null>(null);
+
   // Sync state when playsheet data arrives
   if (playsheetState !== prevPlaysheetState) {
     setPrevPlaysheetState(playsheetState);
+    setReactionConsumed(false);
+    setCombinedResult(null);
     if (playsheetState) {
       setActorPoolRank(playsheetState.poolRank);
       setActorSkillBonus(playsheetState.skillBonus);
@@ -67,6 +82,50 @@ export function ResolverPage() {
       setHasPlaysheetData(true);
     }
   }
+
+  // A defense click reserves a reaction slot, but it is only spent once the
+  // roll actually happens.
+  const consumeReactionPools = () => {
+    const s = playsheetState;
+    if (reactionConsumed || !s?.reactionPoolKey || s.reactionPoolMax === undefined) return;
+    gameState.useReactionPool(s.reactionPoolKey, s.reactionPoolMax);
+    if (s.defenseCombined && s.secondaryReactionPoolKey && s.secondaryReactionPoolMax !== undefined) {
+      gameState.useReactionPool(s.secondaryReactionPoolKey, s.secondaryReactionPoolMax);
+    }
+    setReactionConsumed(true);
+  };
+
+  const secondaryPoolEntry = useMemo(() => {
+    const rank = playsheetState?.secondaryPoolRank;
+    if (rank === undefined) return null;
+    return DIE_POOL_TABLE.find(e => e.rank === rank) ?? null;
+  }, [playsheetState?.secondaryPoolRank]);
+
+  /** Run the same test against the second defense pool, when combined. */
+  const maybeRunSecondary = (
+    primary: ActionResult,
+    approach: 'baseline' | 'roll' | 'surge',
+    band?: EffortBand,
+  ) => {
+    if (!playsheetState?.defenseCombined || !secondaryPoolEntry) {
+      setCombinedResult(null);
+      return;
+    }
+    setCombinedResult({
+      primary,
+      secondary: resolveTest({
+        attributePool: secondaryPoolEntry.pool,
+        poolRank: secondaryPoolEntry.rank,
+        skillBonus: actorSkillBonus,
+        woundPenalty: actorWoundPenalty,
+        situationalModifier: actorModifier,
+        isContest: false,
+        targetNumber,
+        approach,
+        ...(band ? { surgeBand: band } : {}),
+      }),
+    });
+  };
   
   // Opponent configuration (for contests)
   const [opponentPoolRank, setOpponentPoolRank] = useState(5);
@@ -238,6 +297,8 @@ export function ResolverPage() {
         approach: 'baseline',
       });
       setResult(res);
+      maybeRunSecondary(res, '<approach>'[, band]);
+      consumeReactionPools();
     } else {
       const res = resolveContest(
         {
@@ -260,6 +321,8 @@ export function ResolverPage() {
         }
       );
       setResult(res);
+      maybeRunSecondary(res, '<approach>'[, band]);
+      consumeReactionPools();
     }
     setLastApproach('Baseline (Green)');
   };
@@ -277,6 +340,8 @@ export function ResolverPage() {
         approach: 'roll',
       });
       setResult(res);
+      maybeRunSecondary(res, '<approach>'[, band]);
+      consumeReactionPools();
     } else {
       const res = resolveContest(
         {
@@ -299,6 +364,8 @@ export function ResolverPage() {
         }
       );
       setResult(res);
+      maybeRunSecondary(res, '<approach>'[, band]);
+      consumeReactionPools();
     }
     setLastApproach('Rolled Dice');
   };
@@ -320,6 +387,8 @@ export function ResolverPage() {
         surgeBand: band,
       });
       setResult(res);
+      maybeRunSecondary(res, '<approach>'[, band]);
+      consumeReactionPools();
     } else {
       const res = resolveContest(
         {
@@ -343,6 +412,8 @@ export function ResolverPage() {
         }
       );
       setResult(res);
+      maybeRunSecondary(res, '<approach>'[, band]);
+      consumeReactionPools();
     }
     
     // Spend surge from the character's pool
@@ -472,7 +543,7 @@ export function ResolverPage() {
         <div className="text-center py-1">
           <div className="text-2xl">💀</div>
           <div className="text-red-400 font-bold text-sm">CRITICAL FAILURE</div>
-          <div className="text-xs text-slate-400">All 1s rolled!</div>
+          <div className="text-xs text-slate-400">All dice showed their minimum</div>
           {ar.rollDetails?.criticalFailureCheck && (
             <div className="text-xs text-slate-400">
               Confirmation: 🎲 {ar.rollDetails.criticalFailureCheck.confirmationRoll}
@@ -505,7 +576,7 @@ export function ResolverPage() {
           {ar.rollDetails?.criticalFailureCheck?.allMinimum && (
             <div className="mt-1 p-1 bg-amber-900/30 rounded text-center">
               <div className="text-xs text-amber-400">
-                ⚠️ All dice rolled 1{ar.calculationBreakdown?.skillBonusPerDie && ar.calculationBreakdown.skillBonusPerDie < 0 ? ' or 2' : ''}!
+                ⚠️ All dice showed their minimum!
                 Confirmation: 🎲 {ar.rollDetails.criticalFailureCheck.confirmationRoll} — Saved!
               </div>
             </div>
@@ -887,7 +958,7 @@ export function ResolverPage() {
             {probability.result && (
               <div className="text-xs text-right mt-1.5">
                 {testType === 'challenge' ? (
-                  <span className={probability.result.success && probability.result.success >= 50 ? 'text-green-400' : 'text-red-400'}>
+                  <span className={(probability.result.success ?? 0) >= 50 ? 'text-green-400' : 'text-red-400'}>
                     {probability.result.success}% success
                   </span>
                 ) : (
@@ -895,7 +966,7 @@ export function ResolverPage() {
                     <span className="text-green-400">{probability.result.win}%</span>
                     <span className="text-slate-400">/</span>
                     <span className="text-red-400">{probability.result.lose}%</span>
-                    {probability.result.tie && probability.result.tie > 0 && (
+                    {(probability.result.tie ?? 0) > 0 && (
                       <>
                         <span className="text-slate-400">/</span>
                         <span className="text-slate-300">{probability.result.tie}%</span>
@@ -906,6 +977,30 @@ export function ResolverPage() {
               </div>
             )}
           </div>
+
+          {combinedResult && (
+            <div className="bg-slate-800 rounded p-2 space-y-2">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold text-violet-400">🎯🛡️ Dodge + Parry</h2>
+                <span className="text-xs text-slate-400">take the better result</span>
+              </div>
+              {(() => {
+                const better = combinedResult.primary.result >= combinedResult.secondary.result ? 'primary' : 'secondary';
+                return (
+                  <>
+                    {renderActionResult(combinedResult.primary, `Dodge — ${playsheetState?.attributeName ?? ''}`, better === 'primary')}
+                    {renderActionResult(combinedResult.secondary, `Parry — ${playsheetState?.secondaryAttributeName ?? ''}`, better === 'secondary')}
+                    <div className="text-xs text-center text-violet-300">
+                      Use the <strong>{better === 'primary' ? 'Dodge' : 'Parry'}</strong> result —{' '}
+                      <span className="font-bold text-white">
+                        {Math.max(combinedResult.primary.result, combinedResult.secondary.result)}
+                      </span>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
 
           {/* Result Display */}
           {result && (

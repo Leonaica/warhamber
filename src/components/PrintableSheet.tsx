@@ -9,6 +9,7 @@ import { formatWeaponLogistics } from '../data/weaponData';
 import { resolveTagRef, idsToRefs, formatTagEffect } from '../data/weaponTags';
 import type { WeaponTagRef } from '../types/character';
 import { useTagResolveContext } from '../context/useTagResolveContext';
+import { buildMythicTraits } from '../utils/powerDisplay';
 
 const SKILL_MODIFIERS: Record<SkillRating, number> = Object.fromEntries(
   SKILL_RATINGS.map(s => [s.rating, s.modifier])
@@ -58,6 +59,13 @@ export function PrintableSheet() {
 
   if (!character.hasCharacter) return null;
   const c = character.computedCharacter;
+
+  const mythicTraits = buildMythicTraits(
+    character.aspects,
+    character.functions,
+    character.aspectExplanations,
+    character.functionExplanations,
+  );
 
   const getDieNotation = (attrName: AttributeName): string =>
     c.diePools[attrName]?.notation ?? '—';
@@ -162,18 +170,35 @@ export function PrintableSheet() {
         </div>
       )}
 
-      {/* Powers */}
-      {c.powers.length > 0 && (
+      {/* Powers — mythic Aspects/Functions are written up here too */}
+      {(c.powers.length > 0 || mythicTraits.length > 0) && (
         <div className="mb-3 break-inside-avoid">
           <h2 className="font-bold text-sm border-b border-gray-400 mb-1">Powers</h2>
-          {c.powers.map(power => (
-            <div key={power.id} className="mb-1">
-              <span className="font-medium">{power.label}</span>
-              <span className="text-gray-600"> ({power.points} pts)</span>
-              {power.customTitle && <span className="text-gray-500"> — {power.customTitle}</span>}
-              <div className="text-gray-600 ml-3">{power.description}</div>
-            </div>
-          ))}
+          {[
+            ...mythicTraits.map(t => ({
+              key: t.id,
+              title: t.title,
+              points: t.points,
+              note: 'Mythic',
+              description: t.description,
+            })),
+            ...c.powers.map(power => ({
+              key: power.id,
+              title: power.label,
+              points: power.points,
+              note: power.customTitle ?? '',
+              description: power.description,
+            })),
+          ]
+            .sort((a, b) => b.points - a.points)
+            .map(item => (
+              <div key={item.key} className="mb-1">
+                <span className="font-medium">{item.title}</span>
+                <span className="text-gray-600"> ({item.points} pts)</span>
+                {item.note && <span className="text-gray-500"> — {item.note}</span>}
+                <div className="text-gray-600 ml-3">{item.description}</div>
+              </div>
+            ))}
         </div>
       )}
 
@@ -238,7 +263,7 @@ export function PrintableSheet() {
                 {weapon.attacks.map(atk => (
                   <div key={atk.id} className="ml-3 text-gray-600">
                     {atk.aspect} {atk.type}: Mag {atk.magnitude}, Pen{' '}
-                    {Array.isArray(atk.penetration) ? `${atk.penetration[0]}-${atk.penetration[1]}` : atk.penetration},{' '}
+                    {Array.isArray(atk.penetration) ? `${atk.penetration[0]}/${atk.penetration[1]}` : atk.penetration},{' '}
                     Range {atk.range}
                     {atk.isConditional && atk.condition && <span className="italic"> ({atk.condition})</span>}
                   </div>
@@ -315,7 +340,9 @@ export function PrintableSheet() {
           const soakAttrDef = ATTRIBUTES.find(attr => attr.name === soakAttr);
           const soakValue = soakAttrDef ? c.functions[soakAttrDef.func] + c.aspects[soakAttrDef.aspect] : 0;
           const soakRank = getDiePoolEntry(soakValue).rank;
-          const sizeMod = (a.id === 'Form' || a.id === 'Flesh') ? character.size : character.immaterialSize;
+          const sizeMod = ((a.id === 'Form' || a.id === 'Flesh')
+            ? character.size
+            : character.immaterialSize) * 4;
           const finalSoak = soakRank + sizeMod;
 
           return (

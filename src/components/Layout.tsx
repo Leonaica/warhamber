@@ -20,7 +20,7 @@ export function Layout({ children }: LayoutProps) {
             
             {/* Desktop nav - hidden on mobile */}
             <nav className="hidden md:flex gap-1">
-              <NavLink to="/" className={({ isActive }) =>
+              <NavLink to="/" end className={({ isActive }) =>
                 `px-4 py-2 rounded text-sm font-medium transition-colors ${
                   isActive ? 'bg-amber-500 text-slate-900' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                 }`
@@ -74,7 +74,7 @@ export function Layout({ children }: LayoutProps) {
           {/* Mobile nav dropdown */}
           {menuOpen && (
             <nav className="md:hidden flex flex-col gap-1 pt-3 pb-1">
-              <NavLink to="/" onClick={() => setMenuOpen(false)} className={({ isActive }) =>
+              <NavLink to="/" end onClick={() => setMenuOpen(false)} className={({ isActive }) =>
                 `px-4 py-2 rounded text-sm font-medium transition-colors ${
                   isActive ? 'bg-amber-500 text-slate-900' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                 }`

@@ -17,31 +17,9 @@
   line-height: 1;
 }
 
-/* Hide character sheet on screen */
-@media screen {
-  .character-sheet {
-    display: none;
-  }
-}
-
 /* Print styles */
 @media print {
-  .app-header {
-    display: none !important;
-  }
-  
-  .avatar-builder {
-    display: none !important;
-  }
-  
-  .character-sheet {
-    display: block;
-    font-family: 'Georgia', serif;
-    color: black;
-    background: white;
-    padding: 20px;
-  }
-  
+    
   .character-sheet h2,
   .character-sheet h3 {
     color: black;

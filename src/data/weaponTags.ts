@@ -41,19 +41,14 @@ export function tagSourceAbbr(src: TagValueSource): string {
 export function defaultBoundsForSource(src: TagValueSource) {
   switch (src.kind) {
     case 'attributeRank': return { min: 0, max: 20, default: 8 };
-    case 'immaterialSize': return { min: -2, max: 16, default: 0 };
+    case 'immaterialSize': return { min: -2, max: 6, default: 0 };
     case 'size': return { min: -3, max: 6, default: 0 };
     case 'surge': return { min: 0, max: 60, default: 0 };
     case 'stuff': return { min: -100, max: 100, default: 0 };
   }
 }
 
-/** Encode/decode a TagValueSource for a <select> value. */
-export function sourceKey(src?: TagValueSource): string {
-  if (!src) return '';
-  return src.kind === 'attributeRank' ? `attr:${src.attribute}` : src.kind;
-}
-
+/** Decode a `<select>` value into a TagValueSource; '' means a fixed value. */
 export function parseSourceKey(key: string): TagValueSource | undefined {
   if (!key) return undefined;
   if (key.startsWith('attr:')) {
@@ -111,7 +106,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
     id: 'tag-ensnaring',
     label: 'Ensnaring',
     category: 'Inherent',
-    effect: 'Target must test each action to free themselves va TN {x} or remain immobilized',
+    effect: 'Target must test each action to free themselves vs. TN {x} or remain immobilized',
     variable: { min: 4, max: 96, default: 4, step: 4 },
   },
   {
@@ -305,7 +300,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
     label: 'Overheats',
     category: 'Craftsmanship',
     description: 'Overheats on failure (negative)',
-    effect: 'If highest damge die explodes, weapon deals Magnitude 2 Form-Burning to wielder unless dropped',
+    effect: 'If highest damage die explodes, weapon deals Magnitude 2 Form-Burning to wielder unless dropped',
   },
 
   // === Enchantment ===
@@ -371,7 +366,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
     label: 'Bane',
     category: 'Enchantment',
     description: 'Specific enemy slayer',
-    effect: '+2 damage and Raises occur on 3-point difference against specific creature type',
+    effect: '+2 damage and double the number of Raises against a specific creature type',
   },
   {
     id: 'tag-vorpal',
@@ -407,7 +402,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
     label: 'Haywire',
     category: 'Enchantment',
     description: 'Disrupts electronics and machines (40K)',
-    effect: 'Against technological targets: +4 Magnitude and disables target\'s tech for d6 rounds',
+    effect: 'Against technological targets: +4 Magnitude and disables target\'s tech for one round per success',
   },
   {
     id: 'tag-returning',
@@ -721,22 +716,6 @@ export function parseTagRef(id: string): WeaponTagRef {
   const xStr = id.slice(idx + 1);
   const x = parseInt(xStr, 10);
   return Number.isFinite(x) ? { tagId, x } : { tagId };
-}
-
-/**
- * Serialize a WeaponTagRef back to a string id.
- * Tags without a variable, or with x === undefined, produce bare ids.
- */
-export function serializeTagRef(ref: WeaponTagRef): string {
-  return ref.x === undefined ? ref.tagId : `${ref.tagId}:${ref.x}`;
-}
-
-/**
- * Convenience: convert a list of refs to legacy string ids (for components
- * that haven't been migrated yet). Preserves the colon-suffix format.
- */
-export function refsToIds(refs: WeaponTagRef[]): string[] {
-  return refs.map(serializeTagRef);
 }
 
 /**

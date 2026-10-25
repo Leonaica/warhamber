@@ -210,8 +210,9 @@ const removeArmor = useCallback((id: string) => {
       weapons,
       armorState,
       sizeState,
+      customTagsState,
     );
-  }, [nameState, campaignLimitState, aspectsState, functionsState, skillsState, powersState, artifactsState, alliesState, personalShadowsState, weapons, armorState, sizeState]);
+  }, [nameState, campaignLimitState, aspectsState, functionsState, skillsState, powersState, artifactsState, alliesState, personalShadowsState, weapons, armorState, sizeState, customTagsState]);
 
   const attributeValues = useMemo(() => {
     const values: Record<AttributeName, number> = {} as Record<AttributeName, number>;

@@ -111,7 +111,7 @@ export function AvatarBuilderPage() {
   
       // Only auto-update label if it's empty or still at a default value
       // For Minor Powers, never auto-update the label when points change
-      if (power.id === 'MinorPower') {
+      if (power.id === 'minorPower') {
         return { ...p, points };
       }
   
@@ -249,7 +249,7 @@ export function AvatarBuilderPage() {
   return (
     <>
       {/* Header */}
-      <header className="bg-slate-800 border-b border-slate-700">
+      <header className="bg-slate-800 border-b border-slate-700 print:hidden">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex-1"></div>
@@ -380,7 +380,7 @@ export function AvatarBuilderPage() {
       </header>
 
 {/* Main Content */}
-<main className="max-w-7xl mx-auto px-4 py-6 space-y-8">
+<main className="max-w-7xl mx-auto px-4 py-6 space-y-8 print:hidden">
         {/* Step 1: Aspects, Functions, and Attributes */}
         <section className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-[1fr_1fr_2fr] gap-6">
           {/* Aspects */}
@@ -727,7 +727,7 @@ export function AvatarBuilderPage() {
                 
                 const getTier = (pts: number, levels: { cost: number }[], powerId: string) => {
                   // Special handling for Minor Power
-                  if (powerId === 'MinorPower') {
+                  if (powerId === 'minorPower') {
                     if (pts < 0) return { name: 'Limitation', color: 'text-red-400' };
                     if (pts === 0) return { name: 'Trivial', color: 'text-slate-400' };
                     return { name: 'Minor', color: 'text-green-400' };
@@ -780,7 +780,7 @@ export function AvatarBuilderPage() {
                     <div className="flex gap-2 items-end">
                       <div className="flex-1">
                         <label className="block text-xs text-slate-400 mb-1">Points</label>
-                        {power.id === 'MinorPower' ? (
+                        {power.id === 'minorPower' ? (
                           <select
                             value={powerEntry.points}
                             onChange={(e) => updatePowerPoints(powerEntry.id, parseInt(e.target.value))}
@@ -814,7 +814,7 @@ export function AvatarBuilderPage() {
                     
                     {/* Quick-set buttons based on power's standard levels */}
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {power.id === 'MinorPower' ? (
+                      {power.id === 'minorPower' ? (
                         <>
                           {[-3, 3, 5].map(cost => (
                             <button
@@ -1265,7 +1265,10 @@ export function AvatarBuilderPage() {
                       customTags={character.customTags}
                       onSave={(weaponData, newCustomTags) => {
                         if (newCustomTags.length > 0) {
-                          character.setCustomTags(prev => [...prev, ...newCustomTags]);
+                          character.setCustomTags(prev => {
+                            const known = new Set(prev.map(t => t.id));
+                            return [...prev, ...newCustomTags.filter(t => !known.has(t.id))];
+                          });
                         }
                         if (editingWeapon) {
                           character.updateWeapon(editingWeapon.id, weaponData);
@@ -1459,6 +1462,8 @@ export function AvatarBuilderPage() {
         weapons={character.weapons}
         armor={character.armor}
         customTags={character.customTags}
+        aspectExplanations={character.aspectExplanations}
+        functionExplanations={character.functionExplanations}
       />
       {/* Icon Picker Modal */}
       <IconPicker

@@ -2,7 +2,8 @@ import type { AspectName, AttackType, WeaponCapacity, WeaponCategory, WeaponHand
 
 export const WEAPON_CATEGORY_GROUPS: Record<string, WeaponCategory[]> = {
   'Physical Weapons': ['Melee', 'Pistol', 'Ranged', 'Heavy', 'Mounted', 'Thrown'],
-  'Natural Attacks': ['Natural', 'Unarmed'],
+  'Natural Attacks': ['Natural', 'Unarmed'], 
+  'Supernatural Attacks': ['Spell', 'Innate'],
 };
 
 export const WEAPON_CAPACITY_OPTIONS: { value: WeaponCapacity; label: string; description: string }[] = [

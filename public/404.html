@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>WarhAmber</title>
+  <script>
+    // GitHub Pages SPA fallback: bounce deep links back into the app
+    (function () {
+      var base = '/warhamber/';
+      var rest = location.pathname.replace('/warhamber', '');
+      location.replace(base + '?p=' + encodeURIComponent(rest + location.search + location.hash));
+    })();
+  </script>
+</head>
+<body></body>
+</html>

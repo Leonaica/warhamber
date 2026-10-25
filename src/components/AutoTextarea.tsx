@@ -18,7 +18,8 @@ function AutoTextarea({
     const el = ref.current
     if (!el) return
     el.style.height = 'auto'
-    const maxHeight = maxRows * parseFloat(getComputedStyle(el).lineHeight)
+    const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 20
+    const maxHeight = maxRows * lineHeight
     el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`
     el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden'
   }, [value, rows, maxRows])

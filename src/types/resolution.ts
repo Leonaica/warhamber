@@ -31,6 +31,7 @@ export interface ActionResult {
     otherRolls?: { value: number; rolls: number[] }[];
     criticalFailureCheck?: {
       allMinimum: boolean;
+      minimumFace?: number;
       confirmationRoll?: number;
     };
   };

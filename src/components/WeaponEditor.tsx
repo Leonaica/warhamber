@@ -282,7 +282,10 @@ export function WeaponEditor({ weapon, customTags, onSave, onCancel }: WeaponEdi
           </div>
         )}
 
-        {attacks.map((attack) => (
+        {attacks.map((attack) => {
+          const penMin = typeof attack.penetration === 'number' ? attack.penetration : attack.penetration[0];
+          const penMax = typeof attack.penetration === 'number' ? null : attack.penetration[1];
+          return (          
           <div key={attack.id} className="bg-slate-700/50 rounded p-3">
             <div className="flex justify-between items-center mb-3">
               <span className="text-sm font-medium text-white">
@@ -352,14 +355,41 @@ export function WeaponEditor({ weapon, customTags, onSave, onCancel }: WeaponEdi
               {/* Penetration */}
               <div className="min-w-0">
                 <label className="block text-xs text-slate-400 mb-1">Penetration</label>
-                <StepperInput
-                  value={typeof attack.penetration === 'number' ? attack.penetration : attack.penetration[0]}
-                  onValueChange={(val) => updateAttack(attack.id, { penetration: val })}
-                  min={0}
-                  max={224}
-                  className="text-sm"
-                  buttonClassName="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
-                />
+                <div className="flex items-center gap-1">
+                  <StepperInput
+                    value={penMin}
+                    onValueChange={(val) => updateAttack(attack.id, {
+                      penetration: penMax === null ? val : [val, penMax],
+                    })}
+                    min={0}
+                    max={224}
+                    className="text-sm"
+                    buttonClassName="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => updateAttack(attack.id, {
+                      penetration: penMax === null ? [penMin, penMin + 4] : penMin,
+                    })}
+                    title="Toggle range-dependent penetration (Pen X/Y)"
+                    className="text-[10px] bg-slate-600 hover:bg-slate-500 rounded px-1.5 py-1 shrink-0"
+                  >
+                    {penMax === null ? 'X' : 'X/Y'}
+                  </button>
+                </div>
+                {penMax !== null && (
+                  <div className="flex items-center gap-1 mt-1">
+                    <span className="text-[10px] text-slate-500">/</span>
+                    <StepperInput
+                      value={penMax}
+                      onValueChange={(val) => updateAttack(attack.id, { penetration: [penMin, val] })}
+                      min={0}
+                      max={224}
+                      className="text-sm"
+                      buttonClassName="bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded text-sm"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Range */}
@@ -402,7 +432,7 @@ export function WeaponEditor({ weapon, customTags, onSave, onCancel }: WeaponEdi
               )}
             </div>
           </div>
-        ))}
+        );})}
       </div>
 
       {/* Section: Qualities (rendered by WeaponTagEditor with its own header) */}

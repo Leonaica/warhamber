@@ -61,7 +61,7 @@ function formatPenetration(penetration: number | [number, number]): string {
   if (Array.isArray(penetration)) {
     return penetration[0] === penetration[1] 
       ? `${penetration[0]}` 
-      : `${penetration[0]}-${penetration[1]}`;
+      : `${penetration[0]}/${penetration[1]}`;
   }
   return penetration > 0 ? `${penetration}` : '';
 }
@@ -229,9 +229,9 @@ export function generateHomebreweryMarkdown(
       const soakPoolEntry = getDiePoolEntry(soakValue);
       
       // Add Material Size to Form/Flesh, Immaterial Size to Mind/Spirit
-      const sizeModifier = (aspect.id === 'Form' || aspect.id === 'Flesh') 
-        ? sizeValue 
-        : immaterialSizeValue;
+      const sizeModifier = ((aspect.id === 'Form' || aspect.id === 'Flesh')
+        ? sizeValue
+        : immaterialSizeValue) * 4;
         
       const finalSoak = soakPoolEntry.rank + sizeModifier;
       soakText = `Soak: ${finalSoak}`;

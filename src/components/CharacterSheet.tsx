@@ -6,6 +6,9 @@ import { getDiePoolEntry } from '../data/diePoolTable';
 import { resolveTagRef, idsToRefs, formatTagLabel, formatTagEffect } from '../data/weaponTags';
 import type { WeaponTagRef } from '../types/character';
 import { useTagResolveContext } from '../context/useTagResolveContext'
+import { buildMythicTraits } from '../utils/powerDisplay';
+
+import './CharacterSheet.css';
 
 interface CharacterSheetProps {
   name: string;
@@ -22,6 +25,8 @@ interface CharacterSheetProps {
   weapons: CharacterWeapon[];
   armor: CharacterArmor[];
   customTags: WeaponTagDefinition[];
+  aspectExplanations: Record<string, string>;
+  functionExplanations: Record<string, string>;
 }
 
 function dieNotation(dice: number[]): string {
@@ -60,6 +65,8 @@ export function CharacterSheet({
   weapons = [],
   armor = [],
   customTags = [],
+  aspectExplanations = {},
+  functionExplanations = {},
 }: CharacterSheetProps) {
   const tagCtx = useTagResolveContext();
   // Calculate skill costs
@@ -76,6 +83,31 @@ export function CharacterSheet({
 
   // Power cost total
   const powerCostTotal = powers.reduce((sum, cp) => sum + cp.points, 0);
+
+  const mythicTraits = buildMythicTraits(aspects, functions, aspectExplanations, functionExplanations);
+
+  const powerListItems = [
+    ...mythicTraits.map(t => ({
+      key: t.id,
+      emoji: t.emoji,
+      title: t.title,
+      points: t.points,
+      note: 'Mythic',
+      description: t.description,
+    })),
+    ...powers.flatMap(cp => {
+      const power = POWERS.find(p => p.id === cp.powerId);
+      if (!power) return [];
+      return [{
+        key: cp.id,
+        emoji: power.emoji,
+        title: power.name,
+        points: cp.points,
+        note: cp.label ?? '',
+        description: cp.description ?? '',
+      }];
+    }),
+  ].sort((a, b) => b.points - a.points);
 
   // Artifact cost total
   const artifactCostTotal = artifacts.reduce((sum, a) => sum + a.cost * a.quantity, 0);
@@ -261,22 +293,19 @@ export function CharacterSheet({
       {/* Two Column Layout */}
       <div className="two-column">
         <div className="column left-column">
-          {/* Powers */}
-          {powers.length > 0 && (
+          {/* Powers — mythic Aspects/Functions are written up here too */}
+          {powerListItems.length > 0 && (
             <div className="section">
               <h3>✨ Powers [{powerCostTotal} pts]</h3>
               <ul className="power-list">
-                {powers.map(cp => {
-                  const power = POWERS.find(p => p.id === cp.powerId);
-                  if (!power) return null;
-                  return (
-                    <li key={cp.id}>
-                      <strong>{power.name}</strong>
-                      <span className="cost"> [{cp.points} pts]</span>
-                      {cp.label && <span className="label"> — {cp.label}</span>}
-                    </li>
-                  );
-                })}
+                {powerListItems.map(item => (
+                  <li key={item.key}>
+                    <strong>{item.emoji} {item.title}</strong>
+                    <span className="cost"> [{item.points} pts]</span>
+                    {item.note && <span className="label"> — {item.note}</span>}
+                    {item.description && <span className="desc"> — {item.description}</span>}
+                  </li>
+                ))}
               </ul>
             </div>
           )}

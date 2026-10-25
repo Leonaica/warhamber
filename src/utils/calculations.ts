@@ -155,8 +155,12 @@ export function calculateSurge(
     functionDice['Force']
   );
 
-  // Stuff adjustment: every 5 points adds/subtracts 1
-  const stuffModifier = Math.floor(stuff / 5);
+  // Good Stuff adds +1 Surge per full 5 points (5–9 → +1, 10–14 → +2).
+  // Bad Stuff bites from the first point: –1 to –5 costs 1 Surge, –6 to –10
+  // costs 2, and so on. Surge floors at 0. 
+  const stuffModifier = stuff >= 0
+    ? Math.floor(stuff / 5)
+    : -Math.ceil(Math.abs(stuff) / 5);
 
   return Math.max(0, baseSurge + stuffModifier);
 }

@@ -194,7 +194,7 @@ export function CombatPage() {
   const effectiveArmor = Math.max(0, armorValue - attackPenetration);
 
   // Derived damage modifier from successes (raises)
-  const successesDamageModifier = (successes - 1) * 4;
+  const successesDamageModifier = (successes - 1) * 2;
   const totalDamageModifier = damageModifier + successesDamageModifier;
 
   // Calculate wound probabilities
@@ -213,6 +213,8 @@ export function CombatPage() {
     setAttackAspect(aspect);
     setCustomResistanceRank(null);
     setCustomArmor(null);
+    setCustomMaterialSize(null);
+    setCustomImmaterialSize(null);
     gameState.updateOpponentCombatData({ attackAspect: aspect });
   };
 
@@ -583,7 +585,7 @@ export function CombatPage() {
             <div>
              <label className="block text-xs text-slate-400 mb-0.5">
                Attack Result: # Successes
-               <span className="text-[9px] text-slate-500 ml-1">(raises add +4 dmg each)</span>
+               <span className="text-[9px] text-slate-500 ml-1">(raises add +2 dmg each)</span>
              </label>
              <div className="flex items-center justify-between">
                <StepperInput
@@ -912,7 +914,7 @@ export function CombatPage() {
                     <span className="text-green-400">
                       +{successesDamageModifier}
                       <span className="text-slate-500 ml-1 text-[10px]">
-                        ({successes - 1} raise{successes - 1 > 1 ? 's' : ''} × 4)
+                        ({successes - 1} raise{successes - 1 > 1 ? 's' : ''} × 2)
                       </span>
                     </span>
                   </div>

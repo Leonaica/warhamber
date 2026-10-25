@@ -44,6 +44,15 @@ const DODGE_POOL_KEYS: Record<AspectName, ReactionPoolKey | null> = {
   Spirit: 'spiritDodge',
 };
 
+// the number of Parries per round equals the Finesse dice for the
+// aspect being attacked. The Parry *roll* still uses the Resist attribute.
+const FINESSE_ATTRIBUTES: Record<AspectName, AttributeName> = {
+  Form: 'Agility',
+  Flesh: 'Reflexes',
+  Mind: 'Intelligence',
+  Spirit: 'Inspiration',
+};
+
 // ReactionPool keys for Parry
 const PARRY_POOL_KEYS: Record<AspectName, ReactionPoolKey> = {
   Form: 'formParry',
@@ -331,7 +340,6 @@ export function PlaysheetPage() {
     maxPool: number
   ) => {
     const attrEntry = character.attributeDiePools[attribute];
-    gameState.useReactionPool(poolKey, maxPool);
     navigate('/resolver', {
       state: {
         poolRank: attrEntry.rank,
@@ -340,7 +348,34 @@ export function PlaysheetPage() {
         attributeName: attribute,
         targetNumber: 4,
         defenseMode: true,
+        reactionPoolKey: poolKey,
+        reactionPoolMax: maxPool,
       }
+    });
+  };
+
+  const goToDefenseResolverCombined = (
+    primaryAttr: AttributeName, primaryKey: ReactionPoolKey, primaryMax: number,
+    secondaryAttr: AttributeName, secondaryKey: ReactionPoolKey, secondaryMax: number,
+  ) => {
+    const primaryEntry = character.attributeDiePools[primaryAttr];
+    const secondaryEntry = character.attributeDiePools[secondaryAttr];
+    navigate('/resolver', {
+      state: {
+        poolRank: primaryEntry.rank,
+        skillBonus: 0,
+        woundPenalty: gameState.woundPenalty,
+        attributeName: primaryAttr,
+        targetNumber: 4,
+        defenseMode: true,
+        reactionPoolKey: primaryKey,
+        reactionPoolMax: primaryMax,
+        secondaryAttributeName: secondaryAttr,
+        secondaryPoolRank: secondaryEntry.rank,
+        secondaryReactionPoolKey: secondaryKey,
+        secondaryReactionPoolMax: secondaryMax,
+        defenseCombined: true,
+      },
     });
   };
 
@@ -868,10 +903,11 @@ export function PlaysheetPage() {
                   {ASPECTS.map(aspect => {
                     const dodgeAttr = DODGE_ATTRIBUTES[aspect.id];
                     const parryAttr = DEFENSE_ATTRIBUTES[aspect.id];
+                    const parryFinesse = FINESSE_ATTRIBUTES[aspect.id];
                     const dodgeKey = DODGE_POOL_KEYS[aspect.id];
                     const parryKey = PARRY_POOL_KEYS[aspect.id];
 
-                    const parryPoolSize = character.attributeDiePools[parryAttr].pool.dice.length;
+                    const parryPoolSize = character.attributeDiePools[parryFinesse].pool.dice.length;
                     const parryUsed = gameState.reactionPools[parryKey];
                     const parryRemaining = parryPoolSize - parryUsed;
 
@@ -931,6 +967,7 @@ export function PlaysheetPage() {
                           </div>
                           <div className="text-xs text-slate-500 mb-1">
                             {parryAttr} — {character.attributeDiePools[parryAttr].pool.notation}
+                            <span className="text-slate-600"> · {parryFinesse} ({parryPoolSize})</span>
                           </div>
                           <button
                             onClick={() => goToDefenseResolver(parryAttr, parryKey, parryPoolSize)}
@@ -940,6 +977,20 @@ export function PlaysheetPage() {
                             🛡️ Parry
                           </button>
                         </div>
+
+                        {/* Dodge + Parry — take the better */}
+                        {dodgeAttr && dodgeKey && (
+                          <button
+                            onClick={() => goToDefenseResolverCombined(
+                              dodgeAttr, dodgeKey, dodgePoolSize,
+                              parryAttr, parryKey, parryPoolSize,
+                            )}
+                            disabled={dodgeRemaining <= 0 || parryRemaining <= 0}
+                            className="w-full mt-1 bg-violet-900/50 hover:bg-violet-700/50 disabled:opacity-30 disabled:cursor-not-allowed text-violet-300 rounded px-2 py-1 text-xs font-medium transition-all"
+                          >
+                            🎯🛡️ Both — better result
+                          </button>
+                        )}
                       </div>
                     );
                   })}

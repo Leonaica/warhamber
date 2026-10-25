@@ -2,6 +2,7 @@ import type { EffortBand } from '../types/resolution';
 import type { DiePool } from '../types/character';
 
 export const ACTION_EFFORT_TABLE: Record<string, Record<EffortBand, number | null>> = {
+  'd4÷2': { green: null, yellow: null, orange: null, red: 4 },
   'd4': { green: null, yellow: 4, orange: null, red: 8 },
   'd6': { green: null, yellow: 4, orange: 8, red: 12 },
   'd8': { green: 4, yellow: 8, orange: 12, red: 16 },

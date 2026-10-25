@@ -109,19 +109,26 @@ function rollWithAdvantage(pool: DiePool, advantageDice: number): {
   };
 }
 
-export function checkCriticalFailure(rolls: number[], isLowSkill: boolean): {
+/**
++ * a critical failure requires every die in the initial pool to show its
++ * minimum face. A Poor (–1) Skill treats 2s as 1s; a Terrible (–2) Skill
++ * treats 3s and 2s as 1s. Explosions are excluded.
++ */
+export function checkCriticalFailure(rolls: number[], skillBonus: number): {
   isCriticalFailure: boolean;
   allMinimum: boolean;
+  minimumFace: number;
   confirmationRoll?: number;
 } {
-  const threshold = isLowSkill ? 2 : 1;
-  const allMinimum = rolls.every(r => r <= threshold);
+  const minimumFace = skillBonus <= -2 ? 3 : skillBonus === -1 ? 2 : 1;
+  const allMinimum = rolls.every(r => r <= minimumFace);
   
   if (allMinimum) {
     const confirmRoll = Math.floor(Math.random() * 6) + 1;
     return {
       isCriticalFailure: confirmRoll === 1,
       allMinimum: true,
+      minimumFace,
       confirmationRoll: confirmRoll,
     };
   }
@@ -129,6 +136,7 @@ export function checkCriticalFailure(rolls: number[], isLowSkill: boolean): {
   return {
     isCriticalFailure: false,
     allMinimum: false,
+    minimumFace,
   };
 }
 
@@ -185,7 +193,7 @@ export function calculateSuccesses(result: number, targetNumber: number): number
 
 export function calculateContestSuccesses(margin: number): number {
   if (margin <= 0) return 0;
-  return 1 + Math.floor((margin - 1) / 4);
+  return 1 + Math.floor(margin / 4);
 }
 
 export function getSurgeCost(band: EffortBand): number {
@@ -230,7 +238,7 @@ export function resolveTest(context: ResolutionContext): ActionResult {
     const result = greenTN + totalModifier;
     const capped = result > redMax;
     const finalResult = capped ? redMax : result;
-    const successes = isContest ? 0 : calculateSuccesses(result, targetNumber);
+    const successes = isContest ? 0 : calculateSuccesses(finalResult, targetNumber);
 
     return {
       result: finalResult,
@@ -319,9 +327,8 @@ export function resolveTest(context: ResolutionContext): ActionResult {
     explosions = rollResult.explosions;
   }
   
-  // Both Poor (-1) and Terrible (-1) skills expand the critical failure threshold to 2
-  const isLowSkill = skillBonus < 0;
-  const criticalFailureResult = checkCriticalFailure(rolls, isLowSkill);
+  // Poor widens the minimum face to 2, Terrible to 3
+  const criticalFailureResult = checkCriticalFailure(rolls, skillBonus);
   const criticalFailure = criticalFailureResult.isCriticalFailure;
   
   let result = rollTotal + totalModifier;

@@ -25,7 +25,7 @@ export function IconPicker({ isOpen, onClose, onSelect, currentIcon }: IconPicke
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 print:hidden" onClick={onClose}>
       <div 
         className="bg-slate-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col"
         onClick={e => e.stopPropagation()}
