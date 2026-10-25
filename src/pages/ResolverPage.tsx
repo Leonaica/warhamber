@@ -40,6 +40,7 @@ interface PlaysheetState {
 
 export function ResolverPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const playsheetState = location.state as PlaysheetState | undefined;
   const gameState = useGameState();
   const character = useCharacter();
@@ -64,7 +65,10 @@ export function ResolverPage() {
   const [isDefenseMode, setIsDefenseMode] = useState(!!playsheetState?.defenseMode);
   const [prevPlaysheetState, setPrevPlaysheetState] = useState(playsheetState);
   const [reactionConsumed, setReactionConsumed] = useState(false);
-  const [combinedResult, setCombinedResult] = useState<{ primary: ActionResult; secondary: ActionResult } | null>(null);
+  const [combinedResult, setCombinedResult] = useState<{
+    primary: ActionResult | ContestResult;
+    secondary: ActionResult;
+  } | null>(null);
 
   // Sync state when playsheet data arrives
   if (playsheetState !== prevPlaysheetState) {
@@ -103,7 +107,7 @@ export function ResolverPage() {
 
   /** Run the same test against the second defense pool, when combined. */
   const maybeRunSecondary = (
-    primary: ActionResult,
+    primary: ActionResult | ContestResult,
     approach: 'baseline' | 'roll' | 'surge',
     band?: EffortBand,
   ) => {
@@ -297,7 +301,7 @@ export function ResolverPage() {
         approach: 'baseline',
       });
       setResult(res);
-      maybeRunSecondary(res, '<approach>'[, band]);
+      maybeRunSecondary(res, 'baseline');
       consumeReactionPools();
     } else {
       const res = resolveContest(
@@ -321,7 +325,7 @@ export function ResolverPage() {
         }
       );
       setResult(res);
-      maybeRunSecondary(res, '<approach>'[, band]);
+      maybeRunSecondary(res, 'baseline');
       consumeReactionPools();
     }
     setLastApproach('Baseline (Green)');
@@ -340,7 +344,7 @@ export function ResolverPage() {
         approach: 'roll',
       });
       setResult(res);
-      maybeRunSecondary(res, '<approach>'[, band]);
+      maybeRunSecondary(res, 'roll');
       consumeReactionPools();
     } else {
       const res = resolveContest(
@@ -364,7 +368,7 @@ export function ResolverPage() {
         }
       );
       setResult(res);
-      maybeRunSecondary(res, '<approach>'[, band]);
+      maybeRunSecondary(res, 'roll');
       consumeReactionPools();
     }
     setLastApproach('Rolled Dice');
@@ -387,7 +391,7 @@ export function ResolverPage() {
         surgeBand: band,
       });
       setResult(res);
-      maybeRunSecondary(res, '<approach>'[, band]);
+      maybeRunSecondary(res, 'surge', band);
       consumeReactionPools();
     } else {
       const res = resolveContest(
@@ -412,7 +416,7 @@ export function ResolverPage() {
         }
       );
       setResult(res);
-      maybeRunSecondary(res, '<approach>'[, band]);
+      maybeRunSecondary(res, 'surge', band);
       consumeReactionPools();
     }
     
@@ -530,15 +534,17 @@ export function ResolverPage() {
   };
 
   // Render result display
-  const renderActionResult = (ar: ActionResult, label: string) => (
+  const renderActionResult = (ar: ActionResult, label: string, highlight = false) => (
     <div className={`rounded p-2 ${
       ar.criticalFailure 
         ? 'bg-red-900/50 border border-red-500' 
         : ar.successes > 0 
           ? 'bg-green-900/30 border border-green-500/50' 
           : 'bg-slate-700/50 border border-slate-500'
-    }`}>
-      <div className="text-xs text-slate-400 mb-1">{label}</div>
+    }${highlight ? ' ring-2 ring-violet-400' : ''}`}>
+    <div className="text-xs text-slate-400 mb-1">
+      {label}{highlight && <span className="text-violet-300"> ← better</span>}
+    </div>
       {ar.criticalFailure ? (
         <div className="text-center py-1">
           <div className="text-2xl">💀</div>
@@ -985,15 +991,22 @@ export function ResolverPage() {
                 <span className="text-xs text-slate-400">take the better result</span>
               </div>
               {(() => {
-                const better = combinedResult.primary.result >= combinedResult.secondary.result ? 'primary' : 'secondary';
+                // primary is a ContestResult when contest mode is selected
+                const primaryAction: ActionResult = 'winner' in combinedResult.primary
+                  ? combinedResult.primary.actor
+                  : combinedResult.primary;
+                const secondaryAction: ActionResult = combinedResult.secondary;
+                const better: 'primary' | 'secondary' =
+                  primaryAction.result >= secondaryAction.result ? 'primary' : 'secondary';
+
                 return (
                   <>
-                    {renderActionResult(combinedResult.primary, `Dodge — ${playsheetState?.attributeName ?? ''}`, better === 'primary')}
-                    {renderActionResult(combinedResult.secondary, `Parry — ${playsheetState?.secondaryAttributeName ?? ''}`, better === 'secondary')}
+                    {renderActionResult(primaryAction, `Dodge — ${playsheetState?.attributeName ?? ''}`, better === 'primary')}
+                    {renderActionResult(secondaryAction, `Parry — ${playsheetState?.secondaryAttributeName ?? ''}`, better === 'secondary')}
                     <div className="text-xs text-center text-violet-300">
                       Use the <strong>{better === 'primary' ? 'Dodge' : 'Parry'}</strong> result —{' '}
                       <span className="font-bold text-white">
-                        {Math.max(combinedResult.primary.result, combinedResult.secondary.result)}
+                        {Math.max(primaryAction.result, secondaryAction.result)}
                       </span>
                     </div>
                   </>
@@ -1078,6 +1091,26 @@ export function ResolverPage() {
                 </div>
               )}
             </div>
+          )}
+          {result && playsheetState?.weaponId && (
+            <button
+              onClick={() => {
+                const successes = 'winner' in result
+                  ? (result.winner === 'opponent' ? 0 : (result.actor?.successes ?? 0))
+                  : result.successes;
+                navigate('/combat', {
+                  state: {
+                    mode: 'attacker',
+                    weaponId: playsheetState.weaponId,
+                    attackIndex: playsheetState.attackIndex ?? 0,
+                    successes: Math.max(1, successes),
+                  },
+                });
+              }}
+              className="w-full bg-red-600 hover:bg-red-500 text-white py-2 rounded text-sm font-bold transition-colors"
+            >
+              🎲 Resolve Damage{playsheetState.attackIndex !== undefined ? '' : ''}
+            </button>
           )}
         </div>
       </div>

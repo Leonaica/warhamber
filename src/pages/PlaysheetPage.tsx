@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCharacter } from '../context/useCharacter';
 import { useGameState } from '../context/useGameState';
@@ -289,6 +289,15 @@ export function PlaysheetPage() {
     }
   };
 
+  const [selectedWeapon, setSelectedWeapon] = useState<{ weaponId: string; attackIndex: number } | null>(null);
+
+  const selectedWeaponInfo = useMemo(() => {
+    if (!selectedWeapon) return null;
+    const weapon = character.weapons.find(w => w.id === selectedWeapon.weaponId);
+    const attack = weapon?.attacks[selectedWeapon.attackIndex];
+    return weapon && attack ? { weapon, attack } : null;
+  }, [selectedWeapon, character.weapons]);
+
   const goToResolver = () => {
     if (!selectedAttribute) return;
     
@@ -304,6 +313,12 @@ export function PlaysheetPage() {
         woundPenalty: gameState.woundPenalty,
         attributeName: selectedAttribute,
         skillName: selectedSkill,
+        ...(selectedWeaponInfo
+          ? {
+            weaponId: selectedWeaponInfo.weapon.id,
+            attackIndex: selectedWeapon.attackIndex,
+            }
+          : {}),
       }
     });
   };
@@ -649,10 +664,18 @@ export function PlaysheetPage() {
                       </span>
                     </>
                   )}
+                  {selectedWeaponInfo && (
+                    <>
+                      <span className="text-slate-400">+</span>
+                      <span className="bg-orange-900/50 px-2 py-1 rounded text-orange-300 text-sm">
+                        ⚔️ {selectedWeaponInfo.weapon.name} ({selectedWeaponInfo.attack.type})
+                      </span>
+                    </>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => { setSelectedAttribute(null); setSelectedSkill(null); }}
+                    onClick={() => { setSelectedAttribute(null); setSelectedSkill(null); setSelectedWeapon(null); }}
                     className="bg-slate-600 hover:bg-slate-500 text-slate-200 px-3 py-1 rounded text-sm"
                   >
                     Clear
@@ -661,7 +684,7 @@ export function PlaysheetPage() {
                     onClick={goToResolver}
                     className="bg-amber-500 hover:bg-amber-400 text-slate-900 px-4 py-1 rounded font-medium text-sm"
                   >
-                    🎲 Resolve
+                    🎲 Resolve Attack
                   </button>
                 </div>
               </div>
@@ -839,13 +862,20 @@ export function PlaysheetPage() {
                             {weapon.attacks.map((attack, idx) => {
                               const aspectInfo = ASPECTS.find(a => a.id === attack.aspect);
                               const pen = typeof attack.penetration === 'number' ? attack.penetration : attack.penetration[0];
-
+                              const isSelected =
+                                selectedWeapon !== null &&
+                                selectedWeapon.weaponId === weapon.id &&
+                                selectedWeapon.attackIndex === idx;
                               return (
-                                <button
-                                  key={attack.id}
-                                  onClick={() => goToCombatAsAttacker(weapon.id, idx)}
-                                  className="w-full flex items-center justify-between bg-orange-900/50 hover:bg-orange-700/50 border border-slate-600 hover:border-red-500/50 rounded px-2 py-1 text-xs transition-all group"
-                                >
+                                <div key={attack.id} className={`flex items-stretch rounded border transition-all ${
+                                  isSelected
+                                    ? 'bg-orange-800/60 border-amber-500/60 ring-1 ring-amber-500/50'
+                                    : 'bg-orange-900/50 border-slate-600 hover:border-red-500/50'
+                                }`}>
+                                  <button
+                                    onClick={() => setSelectedWeapon(isSelected ? null : { weaponId: weapon.id, attackIndex: idx })}
+                                    className="flex-1 flex items-center justify-between px-2 py-1 text-xs text-left group min-w-0"
+                                  >                              
                                   <div className="flex items-center gap-1.5 min-w-0">
                                     <span className="flex-shrink-0">{aspectInfo?.emoji}</span>
                                     <div className="min-w-0">
@@ -859,8 +889,18 @@ export function PlaysheetPage() {
                                       </div>
                                     </div>
                                   </div>
-                                  <span className="text-slate-500 group-hover:text-red-400 flex-shrink-0 ml-1">⚔️</span>
-                                </button>
+                                    <span className="text-slate-500 group-hover:text-red-400 flex-shrink-0 ml-1">
+                                      {isSelected ? '✓' : '○'}
+                                    </span>
+                                  </button>
+                                  <button
+                                    onClick={() => goToCombatAsAttacker(weapon.id, idx)}
+                                    title="Straight to damage roll"
+                                    className="px-1.5 border-l border-slate-600 text-slate-400 hover:text-red-400 hover:bg-red-900/30 rounded-r"
+                                  >
+                                    ⚔️
+                                  </button>
+                                </div>                                  
                               );
                             })}
                           </div>

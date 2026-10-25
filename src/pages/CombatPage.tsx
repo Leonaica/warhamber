@@ -19,6 +19,7 @@ interface CombatPageState {
   attackIndex?: number;
   defenderAspect?: AspectName;
   armorId?: string;
+  successes?: number;
 }
 
 function DamageSpread({ probabilities }: { probabilities: WoundProbabilities }) {
@@ -111,7 +112,7 @@ export function CombatPage() {
       ? (Array.isArray(initialAttack.penetration) ? initialAttack.penetration[0] : initialAttack.penetration)
       : gameState.opponentCombatData.attackPenetration
   );
-  const [successes, setSuccesses] = useState(1);
+  const [successes, setSuccesses] = useState(Math.max(1, state?.successes ?? 1));
   const [damageModifier, setDamageModifier] = useState(
     gameState.opponentCombatData.damageModifier
   );
@@ -586,6 +587,9 @@ export function CombatPage() {
              <label className="block text-xs text-slate-400 mb-0.5">
                Attack Result: # Successes
                <span className="text-[9px] text-slate-500 ml-1">(raises add +2 dmg each)</span>
+               {state?.successes !== undefined && (
+                 <span className="text-[9px] text-amber-400 ml-1">· from attack roll</span>
+               )}
              </label>
              <div className="flex items-center justify-between">
                <StepperInput
