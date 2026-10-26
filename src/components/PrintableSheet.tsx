@@ -14,8 +14,7 @@ import { SKILLS, getSkillModifier } from '../data/skills';
 export function PrintableSheet() {
   const character = useCharacter();
   const tagCtx = useTagResolveContext();
-
-  if (!character.hasCharacter) return null;
+  
   const c = character.computedCharacter;
 
   const mythicTraits = buildMythicTraits(

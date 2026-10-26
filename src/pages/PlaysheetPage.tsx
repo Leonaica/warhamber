@@ -18,6 +18,7 @@ import { PrintableSheet } from '../components/PrintableSheet';
 import { formatWeaponLogistics } from '../data/weaponData';
 import { resolveTagRef, idsToRefs } from '../data/weaponTags';
 import type { WeaponTagRef } from '../types/character';
+import type { CombatPageState } from '../types/navigation';
 import { TagChip } from '../components/TagChip';
 import { useTagResolveContext } from '../context/useTagResolveContext';
 import {
@@ -28,14 +29,6 @@ import {
   PARRY_POOL_KEYS,
   HEALING_ATTRIBUTES,
 } from '../data/aspectAttributes';
-
-export interface CombatPageState {
-  mode?: 'attacker' | 'defender';
-  weaponId?: string;
-  attackIndex?: number;
-  defenderAspect?: AspectName;
-  armorId?: string;
-}
 
 type TabId = 'actions' | 'defense' | 'abilities';
 
@@ -222,23 +215,21 @@ export function PlaysheetPage() {
   const handleNewRound = () => {
     gameState.resetReactionPools();
 
-    if (character.hasCharacter) {
-      const reflexes = character.attributeDiePools['Reflexes'];
-      const agility = character.attributeDiePools['Agility'];
-      const physicalPool = reflexes.rank <= agility.rank ? reflexes.pool : agility.pool;
+    const reflexes = character.attributeDiePools['Reflexes'];
+    const agility = character.attributeDiePools['Agility'];
+    const physicalPool = reflexes.rank <= agility.rank ? reflexes.pool : agility.pool;
 
-      const inspiration = character.attributeDiePools['Inspiration'];
-      const intelligence = character.attributeDiePools['Intelligence'];
-      const mentalPool = inspiration.rank <= intelligence.rank ? inspiration.pool : intelligence.pool;
+    const inspiration = character.attributeDiePools['Inspiration'];
+    const intelligence = character.attributeDiePools['Intelligence'];
+    const mentalPool = inspiration.rank <= intelligence.rank ? inspiration.pool : intelligence.pool;
 
-      gameState.setInitiative({
-        physical: rollSimplePool(physicalPool),
-        mental: rollSimplePool(mentalPool),
-      });
-    } else {
-      gameState.clearInitiative();
-    }
-  };
+    gameState.setInitiative({
+      physical: rollSimplePool(physicalPool),
+      mental: rollSimplePool(mentalPool),
+    });
+   };
+
+
 
   const [selectedWeapon, setSelectedWeapon] = useState<{ weaponId: string; attackIndex: number } | null>(null);
 
@@ -399,25 +390,6 @@ export function PlaysheetPage() {
   const handlePrint = () => {
     window.print();
   };
-
-  if (!character.hasCharacter) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-12 text-center">
-        <div className="bg-slate-800 rounded-lg p-8">
-          <h2 className="text-xl font-bold text-amber-400 mb-4">No Avatar Loaded</h2>
-          <p className="text-slate-400 mb-6">
-            Build an avatar in the Avatar Builder first, then switch to the Playsheet.
-          </p>
-          <a
-            href="/"
-            className="inline-block bg-amber-500 hover:bg-amber-400 text-slate-900 px-6 py-2 rounded font-medium transition-colors"
-          >
-            Go to Avatar Builder
-          </a>
-        </div>
-      </div>
-    );
-  }
 
   const tabs: { id: TabId; label: string; emoji: string }[] = [
     { id: 'actions', label: 'Actions', emoji: '⚔️' },

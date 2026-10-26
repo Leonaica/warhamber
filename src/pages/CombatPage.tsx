@@ -4,6 +4,7 @@ import { useCharacter } from '../context/useCharacter';
 import { useGameState } from '../context/useGameState';
 import { WOUND_LABELS, WOUND_PENALTIES } from '../data/wounds';
 import { ASPECTS, type AspectName, type WeaponAttack, type ArmorAspect, type WeaponTagRef, type WeaponTagDefinition } from '../types/character';
+import type { CombatPageState } from '../types/navigation';
 import { DAMAGE_MAGNITUDE_TABLE, type DamageMagnitudeEntry } from '../data/damageTable';
 import { calculateDamage, getResistanceAttribute } from '../utils/damage';
 import type { DamageResult, WoundLevel } from '../utils/damage';
@@ -13,15 +14,6 @@ import { TagChip } from '../components/TagChip';
 import StepperInput from '../components/StepperInput';
 import { useTagResolveContext } from '../context/useTagResolveContext'
 import { calculateStacking } from '../data/wounds'
-
-interface CombatPageState {
-  mode?: 'attacker' | 'defender';
-  weaponId?: string;
-  attackIndex?: number;
-  defenderAspect?: AspectName;
-  armorId?: string;
-  successes?: number;
-}
 
 function DamageSpread({ probabilities }: { probabilities: WoundProbabilities }) {
   const woundLevels = [
@@ -356,20 +348,6 @@ export function CombatPage() {
     };
     return labels[size] || '';
   };
-
-  if (!character.hasCharacter) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-12 text-center">
-        <div className="bg-slate-800 rounded-lg p-8">
-          <h2 className="text-xl font-bold text-amber-400 mb-4">No Avatar Loaded</h2>
-          <p className="text-slate-400 mb-6">Build an avatar in the Avatar Builder first.</p>
-          <a href="/" className="inline-block bg-amber-500 hover:bg-amber-400 text-slate-900 px-6 py-2 rounded font-medium transition-colors">
-            Go to Avatar Builder
-          </a>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-6xl mx-auto px-2 py-2 space-y-2">
