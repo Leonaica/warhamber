@@ -4,14 +4,14 @@ import { useCharacter } from '../context/useCharacter';
 import { useGameState } from '../context/useGameState';
 import type { ReactionPoolKey } from '../context/GameStateContext';
 import {  WOUND_LABELS, WOUND_PENALTIES, type WoundLevel } from '../data/wounds';
-import { ASPECTS, FUNCTIONS, ATTRIBUTES, SIZE_OPTIONS, SKILL_RATINGS, RATING_SCALE, RATING_LABELS, type AspectName, type AttributeName, type ArmorAspect, type PowerCategory } from '../types/character';
+import { ASPECTS, FUNCTIONS, ATTRIBUTES, SIZE_OPTIONS, RATING_SCALE, RATING_LABELS, type AspectName, type AttributeName, type ArmorAspect, type PowerCategory } from '../types/character';
 import { ICONS, DEFAULT_ICON, type IconEntry } from '../data/icons';
 import { DIE_POOL_TABLE } from '../data/diePoolTable';
 import type { DiePoolEntry } from '../data/diePoolTable';
 import { rollSimplePool, resolveTest } from '../utils/resolution';
 import { getScaleForPool } from '../data/actionEffortTable';
 import { POWERS } from '../data/powers';
-import { SKILLS } from '../data/skills';
+import { SKILLS, getSkillModifier } from '../data/skills';
 import { getPowerDisplay } from '../utils/powerDisplay';
 import { generateHomebreweryMarkdown } from '../utils/homebreweryExport';
 import { PrintableSheet } from '../components/PrintableSheet';
@@ -20,63 +20,14 @@ import { resolveTagRef, idsToRefs } from '../data/weaponTags';
 import type { WeaponTagRef } from '../types/character';
 import { TagChip } from '../components/TagChip';
 import { useTagResolveContext } from '../context/useTagResolveContext';
-
-const DEFENSE_ATTRIBUTES: Record<AspectName, AttributeName> = {
-  Form: 'Toughness',
-  Flesh: 'Endurance',
-  Mind: 'Willpower',
-  Spirit: 'Resilience',
-};
-
-// Finesse attributes used for Dodge (null = no dodge possible)
-const DODGE_ATTRIBUTES: Record<AspectName, AttributeName | null> = {
-  Form: 'Agility',
-  Flesh: null,
-  Mind: 'Intelligence',
-  Spirit: 'Inspiration',
-};
-
-// ReactionPool keys for Dodge (null = no dodge pool)
-const DODGE_POOL_KEYS: Record<AspectName, ReactionPoolKey | null> = {
-  Form: 'formDodge',
-  Flesh: null,
-  Mind: 'mindDodge',
-  Spirit: 'spiritDodge',
-};
-
-// the number of Parries per round equals the Finesse dice for the
-// aspect being attacked. The Parry *roll* still uses the Resist attribute.
-const FINESSE_ATTRIBUTES: Record<AspectName, AttributeName> = {
-  Form: 'Agility',
-  Flesh: 'Reflexes',
-  Mind: 'Intelligence',
-  Spirit: 'Inspiration',
-};
-
-// ReactionPool keys for Parry
-const PARRY_POOL_KEYS: Record<AspectName, ReactionPoolKey> = {
-  Form: 'formParry',
-  Flesh: 'fleshParry',
-  Mind: 'mindParry',
-  Spirit: 'spiritParry',
-};
-
-const HEALING_ATTRIBUTES: Record<AspectName, AttributeName> = {
-  Form: 'Endurance',
-  Flesh: 'Endurance',
-  Mind: 'Willpower',
-  Spirit: 'Resilience',
-};
-
-// Create a quick lookup map from the source of truth
-const SKILL_MODIFIER_MAP = new Map<string, number>(
-  SKILL_RATINGS.map(r => [r.rating, r.modifier])
-);
-
-// Helper function
-function getSkillModifier(rating: string): number {
-  return SKILL_MODIFIER_MAP.get(rating) ?? 0;
-}
+import {
+  SOAK_ATTRIBUTES,
+  PARRY_POOL_ATTRIBUTES,
+  DODGE_ATTRIBUTES,
+  DODGE_POOL_KEYS,
+  PARRY_POOL_KEYS,
+  HEALING_ATTRIBUTES,
+} from '../data/aspectAttributes';
 
 export interface CombatPageState {
   mode?: 'attacker' | 'defender';
@@ -802,9 +753,9 @@ export function PlaysheetPage() {
                       <span className="text-xs text-slate-500">Click to add to roll</span>
                     </div>
                     <div className="grid grid-cols-2 gap-1.5">
-                      {[...character.skills].sort((a, b) => (getSkillModifier(b.rating) ?? 0) - (getSkillModifier(a.rating) ?? 0)).map(skillEntry => {
+                      {[...character.skills].sort((a, b) => getSkillModifier(b.rating) - getSkillModifier(a.rating)).map(skillEntry => {
                         const isSelected = selectedSkill === skillEntry.skillId;
-                        const bonus = getSkillModifier(skillEntry.rating) ?? 0;
+                        const bonus = getSkillModifier(skillEntry.rating);
                         const skill = SKILLS.find(s => s.id === skillEntry.skillId);
                         const displayName = skillEntry.specialty || skill?.name || skillEntry.skillId;
                         const hasSpecialty = Boolean(skillEntry.specialty);
@@ -942,8 +893,8 @@ export function PlaysheetPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {ASPECTS.map(aspect => {
                     const dodgeAttr = DODGE_ATTRIBUTES[aspect.id];
-                    const parryAttr = DEFENSE_ATTRIBUTES[aspect.id];
-                    const parryFinesse = FINESSE_ATTRIBUTES[aspect.id];
+                    const parryAttr = SOAK_ATTRIBUTES[aspect.id];
+                    const parryFinesse = PARRY_POOL_ATTRIBUTES[aspect.id];
                     const dodgeKey = DODGE_POOL_KEYS[aspect.id];
                     const parryKey = PARRY_POOL_KEYS[aspect.id];
 
@@ -1062,7 +1013,7 @@ export function PlaysheetPage() {
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {ASPECTS.map(aspect => {
-                    const defenseAttr = DEFENSE_ATTRIBUTES[aspect.id];
+                    const defenseAttr = SOAK_ATTRIBUTES[aspect.id];
                     const diePool = character.attributeDiePools[defenseAttr];
                     const isPhysical = aspect.id === 'Form' || aspect.id === 'Flesh';
                     const sizeValue = isPhysical ? character.size : character.immaterialSize;
@@ -1160,7 +1111,7 @@ export function PlaysheetPage() {
                   {ASPECTS.map(aspect => {
                     const woundLevel = gameState.wounds[aspect.id];
                     const woundInfo = WOUND_LABELS[woundLevel];
-                    const defenseAttr = DEFENSE_ATTRIBUTES[aspect.id];
+                    const defenseAttr = SOAK_ATTRIBUTES[aspect.id];
                     const diePool = character.attributeDiePools[defenseAttr];
                     const restoration = gameState.restorationPoints[aspect.id];
                     const canHeal = wouldHeal(aspect.id);

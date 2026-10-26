@@ -1,6 +1,7 @@
 import type { AspectName, AttributeName } from '../types/character';
 import { DAMAGE_MAGNITUDE_TABLE } from '../data/damageTable';
 import { getWoundLevelInfo, type WoundLevel } from '../data/wounds';
+import { SOAK_ATTRIBUTES } from '../data/aspectAttributes';
 
 export type { WoundLevel } from '../data/wounds';
 
@@ -39,15 +40,9 @@ interface DamageCalculationParams {
   resistanceModifier?: number;
 }
 
-// Map aspect to its resistance attribute
+/** The attribute a defender soaks an attack of this Aspect with. */
 export function getResistanceAttribute(aspect: AspectName): AttributeName {
-  const map: Record<AspectName, AttributeName> = {
-    Form: 'Toughness',
-    Flesh: 'Endurance',
-    Mind: 'Willpower',
-    Spirit: 'Resilience',
-  };
-  return map[aspect];
+  return SOAK_ATTRIBUTES[aspect];
 }
 
 // Roll a single die with explosion

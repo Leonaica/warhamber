@@ -5,13 +5,15 @@ import type { CharacterAspectRatings,
   DiePool, Power, 
   WeaponTagDefinition, TagResolveContext } from '../types/character';
 import { ASPECTS, FUNCTIONS, ATTRIBUTES, SKILL_RATINGS, SIZE_OPTIONS, WEAPON_RANGES, RATING_SCALE, RATING_LABELS } from '../types/character';
-import { SKILLS } from '../data/skills';
+import { SKILLS, getSkillModifier } from '../data/skills';
 import { POWERS } from '../data/powers';
 import { getDiePoolEntry } from '../data/diePoolTable';
 import { getPowerDisplay } from './powerDisplay';
 import { formatWeaponLogistics } from '../data/weaponData';
 import { resolveTagRef, idsToRefs, formatTagEffect } from '../data/weaponTags';
 import type { WeaponTagRef } from '../types/character';
+import { SOAK_ATTRIBUTES, PARRY_POOL_ATTRIBUTES, DODGE_ATTRIBUTES } from '../data/aspectAttributes';
+import type { PaceValues } from '../context/CharacterContext';
 
 // Convert die pool to Homebrewery die icons
 function dieIcons(pool: DiePool): string {
@@ -64,12 +66,6 @@ function formatPenetration(penetration: number | [number, number]): string {
       : `${penetration[0]}/${penetration[1]}`;
   }
   return penetration > 0 ? `${penetration}` : '';
-}
-
-export interface PaceValues {
-  walking: { mph: number; kph: number; ms: number };
-  sprinting: { mph: number; kph: number; ms: number };
-  multiplier: number;
 }
 
 export function generateHomebreweryMarkdown(
@@ -159,35 +155,11 @@ export function generateHomebreweryMarkdown(
   // Pace (mph only)
   const paceMultiplierText = pace.multiplier !== 1 ? ` (${pace.multiplier}x)` : '';
   lines.push(`**Pace:** ${pace.walking.mph}/${pace.sprinting.mph} mph${paceMultiplierText}  `);
-  
-  // Finesse attributes used for Parry (pool size = number of dice)
-  const parryAttributes: Record<string, string> = {
-    Form: 'Agility',
-    Flesh: 'Reflexes',
-    Mind: 'Intelligence',
-    Spirit: 'Inspiration',
-  };
-  
-  // Finesse attributes used for Dodge (pool size = number of dice, null = no dodge)
-  const dodgeAttributes: Record<string, string | null> = {
-    Form: 'Agility',
-    Flesh: null,
-    Mind: 'Intelligence',
-    Spirit: 'Inspiration',
-  };
-  
-  // Resist attributes used for Soak (damage reduction = die pool rank)
-  const resistAttributes: Record<string, string> = {
-    Form: 'Toughness',
-    Flesh: 'Endurance',
-    Mind: 'Willpower',
-    Spirit: 'Resilience',
-  };
 
   ASPECTS.forEach(aspect => {
-    const parryAttrName = parryAttributes[aspect.id];
-    const dodgeAttrName = dodgeAttributes[aspect.id];
-    const soakAttrName = resistAttributes[aspect.id];
+    const parryAttrName = PARRY_POOL_ATTRIBUTES[aspect.id];
+    const dodgeAttrName = DODGE_ATTRIBUTES[aspect.id];
+    const soakAttrName = SOAK_ATTRIBUTES[aspect.id];
     const sizeValue = SIZE_OPTIONS.find(s => s.value === size)?.value ?? 0;
     const immaterialSizeValue = SIZE_OPTIONS.find(s => s.value === immaterialSize)?.value ?? 0;
 
@@ -354,14 +326,14 @@ export function generateHomebreweryMarkdown(
     lines.push(``);
     lines.push(`#### Skills [${skillCostTotal} Points], Cap:${skillCap}, Max:${skillMax}`);
     [...skills].sort((a, b) => {
-      const modA = SKILL_RATINGS.find(r => r.rating === a.rating)?.modifier ?? 0;
-      const modB = SKILL_RATINGS.find(r => r.rating === b.rating)?.modifier ?? 0;
+      const modA = getSkillModifier(a.rating);
+      const modB = getSkillModifier(b.rating);
       return modB - modA;
     }).forEach(skillEntry => {
       const skill = SKILLS.find(s => s.id === skillEntry.skillId);
       if (skill) {
-        const rating = SKILL_RATINGS.find(r => r.rating === skillEntry.rating);
-        const modText = rating ? ` (${rating.modifier >= 0 ? '+' : ''}${rating.modifier})` : '';
+        const modifier = getSkillModifier(skillEntry.rating);
+        const modText = ` (${modifier >= 0 ? '+' : ''}${modifier})`;
         const specialtyText = skillEntry.specialty ? ` (${skillEntry.specialty})` : '';
         const explanationText = skillEntry.specialtyExplanation ? ` ${skillEntry.specialtyExplanation}` : '';
         lines.push(`**${skill.name}** :: ${skillEntry.rating}${modText}${specialtyText}${explanationText}`);

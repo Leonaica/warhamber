@@ -1,4 +1,5 @@
-import type { Skill } from '../types/character';
+import type { Skill, SkillRating } from '../types/character';
+import { SKILL_RATINGS } from '../types/character';
 
 export const SKILLS: Skill[] = [
   {
@@ -86,3 +87,12 @@ export const SKILLS: Skill[] = [
     description: 'Acquisition, analysis, and synthesis of knowledge through research and deduction.',
   },
 ];
+
+const SKILL_MODIFIERS: Record<string, number> = Object.fromEntries(
+  SKILL_RATINGS.map(r => [r.rating, r.modifier])
+);
+
+/** Skill rating -> per-die modifier. */
+export function getSkillModifier(rating: SkillRating): number {
+  return SKILL_MODIFIERS[rating] ?? 0;
+}

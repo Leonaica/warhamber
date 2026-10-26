@@ -1,57 +1,15 @@
 import { useCharacter } from '../context/useCharacter';
 import {
-  ASPECTS, FUNCTIONS, ATTRIBUTES, SKILL_RATINGS, SIZE_OPTIONS,
-  type AspectName, type FunctionName, type AttributeName,
-  type SkillName, type SkillRating,
-} from '../types/character';
+  ASPECTS, FUNCTIONS, ATTRIBUTES, SIZE_OPTIONS,
+  type AspectName, type FunctionName, type AttributeName } from '../types/character';
 import { getDiePoolEntry } from '../data/diePoolTable';
 import { formatWeaponLogistics } from '../data/weaponData';
 import { resolveTagRef, idsToRefs, formatTagEffect } from '../data/weaponTags';
 import type { WeaponTagRef } from '../types/character';
 import { useTagResolveContext } from '../context/useTagResolveContext';
 import { buildMythicTraits } from '../utils/powerDisplay';
-
-const SKILL_MODIFIERS: Record<SkillRating, number> = Object.fromEntries(
-  SKILL_RATINGS.map(s => [s.rating, s.modifier])
-) as Record<SkillRating, number>;
-
-const SKILL_NAMES: Record<SkillName, string> = {
-  SilverTongue: "Silver Tongue",
-  WhisperersWeb: "Whisperer's Web",
-  LeadersMantle: "Leader's Mantle",
-  UnseenHand: "Unseen Hand",
-  WayOfTheWarrior: "Way of the Warrior",
-  WayOfTheRogue: "Way of the Rogue",
-  EngineersPen: "Engineer's Pen",
-  WayOfTheExplorer: "Way of the Explorer",
-  HeartsFire: "Heart's Fire",
-  ArtisansCraft: "Artisan's Craft",
-  MachinesMind: "Machine's Mind",
-  ScholarsMind: "Scholar's Mind",
-};
-
-// Attributes used for Soak keyed by Aspect
-const SOAK_ATTRIBUTES: Record<AspectName, AttributeName> = {
-  Form: 'Toughness',
-  Flesh: 'Endurance',
-  Mind: 'Willpower',
-  Spirit: 'Resilience',
-};
-
-// Attributes used for Parry/Dodge keyed by Aspect
-const PARRY_ATTRIBUTES: Record<AspectName, AttributeName> = {
-  Form: 'Agility',
-  Flesh: 'Reflexes',
-  Mind: 'Intelligence',
-  Spirit: 'Inspiration',
-};
-
-const DODGE_ATTRIBUTES: Record<AspectName, AttributeName | null> = {
-  Form: 'Agility',
-  Flesh: null,
-  Mind: 'Intelligence',
-  Spirit: 'Inspiration',
-};
+import { SOAK_ATTRIBUTES, PARRY_POOL_ATTRIBUTES, DODGE_ATTRIBUTES } from '../data/aspectAttributes';
+import { SKILLS, getSkillModifier } from '../data/skills';
 
 export function PrintableSheet() {
   const character = useCharacter();
@@ -157,9 +115,9 @@ export function PrintableSheet() {
           <div className="grid grid-cols-2 gap-x-4">
             {c.skills.map(skill => (
               <div key={skill.skillId}>
-                <span className="font-medium">{SKILL_NAMES[skill.skillId]}</span>
+                <span className="font-medium">{SKILLS.find(s => s.id === skill.skillId)?.name ?? skill.skillId}</span>
                 <span className="text-gray-600">
-                  {' '}{skill.rating} ({SKILL_MODIFIERS[skill.rating] >= 0 ? '+' : ''}{SKILL_MODIFIERS[skill.rating]})
+                  {' '}{skill.rating} ({getSkillModifier(skill.rating) >= 0 ? '+' : ''}{getSkillModifier(skill.rating)})
                 </span>
                 {skill.specialty && (
                   <span className="text-gray-500"> — {skill.specialty}</span>
@@ -327,7 +285,7 @@ export function PrintableSheet() {
       <div>
         <h2 className="font-bold text-sm border-b border-gray-400 mb-1">Aspects State</h2>
         {ASPECTS.map(a => {
-          const parryAttr = PARRY_ATTRIBUTES[a.id];
+          const parryAttr = PARRY_POOL_ATTRIBUTES[a.id];
           const dodgeAttr = DODGE_ATTRIBUTES[a.id];
           const parryNotation = getDieNotation(parryAttr);
           const dodgeNotation = dodgeAttr ? getDieNotation(dodgeAttr) : null;
