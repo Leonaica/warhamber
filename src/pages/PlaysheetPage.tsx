@@ -227,10 +227,8 @@ export function PlaysheetPage() {
       physical: rollSimplePool(physicalPool),
       mental: rollSimplePool(mentalPool),
     });
-   };
-
-
-
+  };
+  
   const [selectedWeapon, setSelectedWeapon] = useState<{ weaponId: string; attackIndex: number } | null>(null);
 
   const selectedWeaponInfo = useMemo(() => {
