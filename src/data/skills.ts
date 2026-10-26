@@ -96,3 +96,22 @@ const SKILL_MODIFIERS: Record<string, number> = Object.fromEntries(
 export function getSkillModifier(rating: SkillRating): number {
   return SKILL_MODIFIERS[rating] ?? 0;
 }
+
+const SKILL_COSTS: Record<string, number> = Object.fromEntries(
+  SKILL_RATINGS.map(r => [r.rating, r.cost])
+);
+
+/** Skill rating -> development point cost. */
+export function getSkillCost(rating: SkillRating): number {
+  return SKILL_COSTS[rating] ?? 0;
+}
+
+/** Total development points spent on a list of skills. */
+export function getTotalSkillCost(skills: { rating: SkillRating }[]): number {
+  return skills.reduce((sum, s) => sum + getSkillCost(s.rating), 0);
+}
+
+/** Total per-die modifier across a list of skills. */
+export function getTotalSkillModifier(skills: { rating: SkillRating }[]): number {
+  return skills.reduce((sum, s) => sum + getSkillModifier(s.rating), 0);
+}

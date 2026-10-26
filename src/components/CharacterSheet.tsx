@@ -1,6 +1,7 @@
 import type { CharacterAspectRatings, CharacterFunctionRatings, CharacterSkill, CharacterPower, Artifact, Ally, PersonalShadow, CharacterWeapon, CharacterArmor, WeaponTagDefinition } from '../types/character';
-import { ASPECTS, FUNCTIONS, ATTRIBUTES, SKILL_RATINGS } from '../types/character';
-import { SKILLS } from '../data/skills';
+import { ASPECTS, FUNCTIONS, ATTRIBUTES } from '../types/character';
+import { SKILLS, getSkillModifier, getTotalSkillCost } from '../data/skills';
+import { calculateSkillCap, calculateSkillMaximum } from '../utils/calculations';
 import { POWERS } from '../data/powers';
 import { getDiePoolEntry } from '../data/diePoolTable';
 import { resolveTagRef, idsToRefs, formatTagLabel, formatTagEffect } from '../data/weaponTags';
@@ -70,16 +71,13 @@ export function CharacterSheet({
 }: CharacterSheetProps) {
   const tagCtx = useTagResolveContext();
   // Calculate skill costs
-  const skillCostTotal = skills.reduce((sum, skill) => {
-    const rating = SKILL_RATINGS.find(r => r.rating === skill.rating);
-    return sum + (rating?.cost || 0);
-  }, 0);
+  const skillCostTotal = getTotalSkillCost(skills);
 
   // Calculate cap and max
   const willpowerPool = getDiePoolEntry(functions['Resist'] + aspects['Mind']).pool.dice.reduce((s, d) => s + d, 0);
   const memoryPool = getDiePoolEntry(functions['Perceive'] + aspects['Mind']).pool.dice.reduce((s, d) => s + d, 0);
-  const skillCap = Math.min(Math.floor(willpowerPool / 4), 4);
-  const skillMax = Math.floor(memoryPool / 2);
+  const skillCap = calculateSkillCap(willpowerPool);
+  const skillMax = calculateSkillMaximum(memoryPool);
 
   // Power cost total
   const powerCostTotal = powers.reduce((sum, cp) => sum + cp.points, 0);
@@ -318,12 +316,12 @@ export function CharacterSheet({
                 {skills.map(skillEntry => {
                   const skill = SKILLS.find(s => s.id === skillEntry.skillId);
                   if (!skill) return null;
-                  const rating = SKILL_RATINGS.find(r => r.rating === skillEntry.rating);
+                  const modifier = getSkillModifier(skillEntry.rating);
                   return (
                     <li key={skillEntry.skillId}>
                       <strong>{skill.name}</strong>
                       <span className="rating"> {skillEntry.rating}</span>
-                      {rating && <span className="modifier"> ({rating.modifier >= 0 ? '+' : ''}{rating.modifier})</span>}
+                      <span className="modifier"> ({modifier >= 0 ? '+' : ''}{modifier})</span>
                       {skillEntry.specialty && <span className="specialty"> — {skillEntry.specialty}</span>}
                       {skillEntry.specialtyExplanation && <span className="specialtydescription"> — {skillEntry.specialtyExplanation}</span>}
                     </li>

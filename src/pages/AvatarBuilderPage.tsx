@@ -2,10 +2,10 @@ import { useState, useMemo, useEffect } from 'react';
 import { useCharacter } from '../context/useCharacter';
 import type { RatingValue, CharacterSkill, Artifact, Ally, PersonalShadow, ArmorAspect, CharacterArmor } from '../types/character';
 import { ASPECTS, FUNCTIONS, ATTRIBUTES, RATING_SCALE, RATING_LABELS, SKILL_RATINGS, SIZE_OPTIONS } from '../types/character';
-import { SKILLS } from '../data/skills';
+import { SKILLS, getSkillModifier, getTotalSkillModifier, getTotalSkillCost } from '../data/skills';
 import { POWERS } from '../data/powers';
 import { getDiePoolEntry } from '../data/diePoolTable';
-import { calculateSkillCosts, calculateTotalSkillBonuses, checkPowerPrerequisites, getAttributeTierColor } from '../utils/calculations';
+import { checkPowerPrerequisites, getAttributeTierColor } from '../utils/calculations';
 import { CharacterSheet } from '../components/CharacterSheet';
 import { IconPicker } from '../components/IconPicker';
 import { ICONS, DEFAULT_ICON, type IconEntry } from '../data/icons';
@@ -560,8 +560,8 @@ export function AvatarBuilderPage() {
                 Cap: <span className="text-purple-400">+{character.computedCharacter.skillCap}</span>
               </span>
               <span className="text-slate-400">
-                Used: <span className={calculateTotalSkillBonuses(character.skills) > character.computedCharacter.skillMaximum ? 'text-red-400' : 'text-green-400'}>
-                  {calculateTotalSkillBonuses(character.skills)}
+                Used: <span className={getTotalSkillModifier(character.skills) > character.computedCharacter.skillMaximum ? 'text-red-400' : 'text-green-400'}>
+                  {getTotalSkillModifier(character.skills)}
                 </span> / {character.computedCharacter.skillMaximum}
               </span>
               <select
@@ -620,13 +620,10 @@ export function AvatarBuilderPage() {
                             if (r.modifier > character.computedCharacter.skillCap) return false;
                             
                             // Filter by skill maximum (sum of all modifiers must not exceed max)
-                            const currentTotal = character.skills.reduce((sum, s) => {
-                              const rating = SKILL_RATINGS.find(sr => sr.rating === s.rating);
-                              return sum + (rating?.modifier || 0);
-                            }, 0);
+                            const currentTotal = getTotalSkillModifier(character.skills);
                             
                             // Remove modifier of current rating, add modifier of new rating
-                            const currentRatingModifier = SKILL_RATINGS.find(sr => sr.rating === skillEntry.rating)?.modifier || 0;
+                            const currentRatingModifier = getSkillModifier(skillEntry.rating);
                             const projectedTotal = currentTotal - currentRatingModifier + r.modifier;
                             
                             return projectedTotal <= character.computedCharacter.skillMaximum;
@@ -1411,7 +1408,7 @@ export function AvatarBuilderPage() {
             <div className="bg-slate-700/50 rounded p-3">
               <div className="text-slate-400 mb-2">Skills</div>
               <div className="text-xl font-bold text-amber-400">
-                {calculateSkillCosts(character.skills)} pts
+                {getTotalSkillCost(character.skills)} pts
               </div>
             </div>
             <div className="bg-slate-700/50 rounded p-3">

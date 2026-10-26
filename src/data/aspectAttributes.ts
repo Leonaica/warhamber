@@ -55,3 +55,16 @@ export const PARRY_POOL_KEYS: Record<AspectName, ReactionPoolKey> = {
   Mind: 'mindParry',
   Spirit: 'spiritParry',
 };
+
+/** Three-letter abbreviations for attribute names, for compact display. */
+export const ATTRIBUTE_ABBR: Record<AttributeName, string> = {
+    Toughness: 'Tgh', Endurance: 'End', Willpower: 'Wil', Resilience: 'Res',
+    Agility: 'Agi', Reflexes: 'Rfl', Intelligence: 'Int', Inspiration: 'Ins',
+    Perception: 'Per', Intuition: 'Itn', Memory: 'Mem', Wisdom: 'Wis',
+    Strength: 'Str', Magnetism: 'Mag', Charisma: 'Cha', Presence: 'Pre',
+  };
+  
+  /** Abbreviation for an attribute name; falls back to the first three letters. */
+  export function abbreviateAttribute(name: string): string {
+    return ATTRIBUTE_ABBR[name as AttributeName] ?? name.substring(0, 3);
+  }

@@ -4,15 +4,16 @@ import type { CharacterAspectRatings,
   CharacterWeapon, CharacterArmor, 
   DiePool, Power, 
   WeaponTagDefinition, TagResolveContext } from '../types/character';
-import { ASPECTS, FUNCTIONS, ATTRIBUTES, SKILL_RATINGS, SIZE_OPTIONS, WEAPON_RANGES, RATING_SCALE, RATING_LABELS } from '../types/character';
-import { SKILLS, getSkillModifier } from '../data/skills';
+import { ASPECTS, FUNCTIONS, ATTRIBUTES, SIZE_OPTIONS, WEAPON_RANGES, RATING_SCALE, RATING_LABELS } from '../types/character';
+import { SKILLS, getSkillModifier, getTotalSkillCost } from '../data/skills';
+import { calculateSkillCap, calculateSkillMaximum } from './calculations';
 import { POWERS } from '../data/powers';
 import { getDiePoolEntry } from '../data/diePoolTable';
 import { getPowerDisplay } from './powerDisplay';
 import { formatWeaponLogistics } from '../data/weaponData';
 import { resolveTagRef, idsToRefs, formatTagEffect } from '../data/weaponTags';
 import type { WeaponTagRef } from '../types/character';
-import { SOAK_ATTRIBUTES, PARRY_POOL_ATTRIBUTES, DODGE_ATTRIBUTES } from '../data/aspectAttributes';
+import { SOAK_ATTRIBUTES, PARRY_POOL_ATTRIBUTES, DODGE_ATTRIBUTES, abbreviateAttribute } from '../data/aspectAttributes';
 import type { PaceValues } from '../context/CharacterContext';
 
 // Convert die pool to Homebrewery die icons
@@ -33,29 +34,6 @@ function dieIcons(pool: DiePool): string {
   
   // Generate icons for each die (no separator)
   return pool.dice.map(d => iconMap[d] || `d${d}`).join('');
-}
-
-// Get attribute abbreviation (3 chars)
-function attrAbbr(name: string): string {
-  const abbrs: Record<string, string> = {
-    'Toughness': 'Tgh',
-    'Endurance': 'End',
-    'Willpower': 'Wil',
-    'Resilience': 'Res',
-    'Agility': 'Agi',
-    'Reflexes': 'Rfl',
-    'Intelligence': 'Int',
-    'Inspiration': 'Ins',
-    'Perception': 'Per',
-    'Intuition': 'Itn',
-    'Memory': 'Mem',
-    'Wisdom': 'Wis',
-    'Strength': 'Str',
-    'Magnetism': 'Mag',
-    'Charisma': 'Cha',
-    'Presence': 'Pre',
-  };
-  return abbrs[name] || name.substring(0, 3);
 }
 
 // Format penetration value
@@ -127,7 +105,7 @@ export function generateHomebreweryMarkdown(
         const value = funcRating + aspects[aspect.id];
         const pool = getDiePoolEntry(value).pool;
         const icons = dieIcons(pool);
-        cells.push(`${attrAbbr(attr.name)}<br>${icons}`);
+        cells.push(`${abbreviateAttribute(attr.name)}<br>${icons}`);
       }
     });
     
@@ -313,15 +291,12 @@ export function generateHomebreweryMarkdown(
 
   // Skills
   if (skills.length > 0) {
-    const skillCostTotal = skills.reduce((sum, skill) => {
-      const rating = SKILL_RATINGS.find(r => r.rating === skill.rating);
-      return sum + (rating?.cost || 0);
-    }, 0);
+    const skillCostTotal = getTotalSkillCost(skills);
     
     const willpowerPool = getDiePoolEntry(functions['Resist'] + aspects['Mind']).pool.dice.reduce((s, d) => s + d, 0);
     const memoryPool = getDiePoolEntry(functions['Perceive'] + aspects['Mind']).pool.dice.reduce((s, d) => s + d, 0);
-    const skillCap = Math.min(Math.floor(willpowerPool / 4), 4);
-    const skillMax = Math.floor(memoryPool / 2);
+    const skillCap = calculateSkillCap(willpowerPool);
+    const skillMax = calculateSkillMaximum(memoryPool);
     
     lines.push(``);
     lines.push(`#### Skills [${skillCostTotal} Points], Cap:${skillCap}, Max:${skillMax}`);

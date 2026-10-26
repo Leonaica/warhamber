@@ -1,4 +1,5 @@
 import type { WeaponTagDefinition, WeaponTagRef, TagValueSource, TagResolveContext, AttributeName } from '../types/character';
+import { abbreviateAttribute } from './aspectAttributes';
 
 export const WEAPON_TAG_CATEGORIES = [
   'Inherent',
@@ -15,13 +16,6 @@ const SOURCE_LABELS: Record<Exclude<TagValueSource['kind'], 'attributeRank'>, st
   stuff: 'Stuff',
 };
 
-const ATTRIBUTE_ABBR: Record<AttributeName, string> = {
-  Toughness: 'Tgh', Endurance: 'End', Willpower: 'Wil', Resilience: 'Res',
-  Agility: 'Agi', Reflexes: 'Rfl', Intelligence: 'Int', Inspiration: 'Ins',
-  Perception: 'Per', Intuition: 'Itn', Memory: 'Mem', Wisdom: 'Wis',
-  Strength: 'Str', Magnetism: 'Mag', Charisma: 'Cha', Presence: 'Pre',
-};
-
 export function describeTagSource(src: TagValueSource): string {
   return src.kind === 'attributeRank' ? `${src.attribute} Rank` : SOURCE_LABELS[src.kind];
 }
@@ -34,7 +28,7 @@ const SOURCE_ABBR: Record<Exclude<TagValueSource['kind'], 'attributeRank'>, stri
 };
 
 export function tagSourceAbbr(src: TagValueSource): string {
-  return src.kind === 'attributeRank' ? ATTRIBUTE_ABBR[src.attribute] : SOURCE_ABBR[src.kind];
+  return src.kind === 'attributeRank' ? abbreviateAttribute(src.attribute) : SOURCE_ABBR[src.kind];
 }
 
 /** Sensible bounds + fallback for a freshly chosen source. */

@@ -1,7 +1,8 @@
 import type { Character, AttributeName, FunctionName, DiePool, Power, CharacterPower } from '../types/character';
-import { ATTRIBUTES, SKILL_RATINGS } from '../types/character';
+import { ATTRIBUTES } from '../types/character';
 import { getDiePoolEntry, DIE_POOL_TABLE } from '../data/diePoolTable';
 import { POWERS } from '../data/powers';
+import { getTotalSkillCost } from '../data/skills';
 
 // Calculate attribute value from function + aspect ratings
 function calculateAttribute(
@@ -21,30 +22,14 @@ export function getAttributeTierColor(value: number): string {
 }
 
 // Calculate skill cap (based on Willpower)
-function calculateSkillCap(willpowerPool: number): number {
+export function calculateSkillCap(willpowerPool: number): number {
   const cap = Math.floor(willpowerPool / 4);
   return Math.min(cap, 4); // Hard max of Extraordinary (+4)
 }
 
 // Calculate skill maximum (based on Memory)
-function calculateSkillMaximum(memoryPool: number): number {
+export function calculateSkillMaximum(memoryPool: number): number {
   return Math.floor(memoryPool / 2);
-}
-
-// Calculate total skill bonuses
-export function calculateTotalSkillBonuses(skills: Character['skills']): number {
-  return skills.reduce((total, skill) => {
-    const rating = SKILL_RATINGS.find(r => r.rating === skill.rating);
-    return total + (rating?.modifier ?? 0);
-  }, 0);
-}
-
-// Calculate skill point costs
-export function calculateSkillCosts(skills: Character['skills']): number {
-  return skills.reduce((total, skill) => {
-    const rating = SKILL_RATINGS.find(r => r.rating === skill.rating);
-    return total + (rating?.cost ?? 0);
-  }, 0);
 }
 
 // Check if power prerequisites are met
@@ -207,7 +192,7 @@ export function computeCharacter(
   totalPointsSpent += functions.Force;
   
     // Skills
-    totalPointsSpent += calculateSkillCosts(skills);
+    totalPointsSpent += getTotalSkillCost(skills);
 
     // Powers
     totalPointsSpent += powers.reduce((sum, p) => sum + p.points, 0);
