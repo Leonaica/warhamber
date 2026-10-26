@@ -89,15 +89,6 @@ export function resultToScale(result: number): number | null {
   return maxScale * Math.pow(2, extraFours);
 }
 
-export function scaleToResult(scale: number): number | null {
-  for (const [threshold, scaleVal] of Object.entries(SCALE_TABLE)) {
-    if (scaleVal === scale) {
-      return parseInt(threshold);
-    }
-  }
-  return null;
-}
-
 export function normalizeNotation(notation: string): string {
   return notation.replace(/\s+/g, ' ').trim();
 }

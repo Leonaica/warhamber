@@ -20,7 +20,6 @@ export interface DamageResult {
   };
   armorValue: number;             // Original armor before penetration
   armorReduction: number;         // Effective armor after penetration
-  effectiveArmor: number;         // Same as armorReduction
   penetration: number;            // Penetration value
   finalDamage: number;
   woundLevel: WoundLevel;
@@ -49,11 +48,6 @@ export function getResistanceAttribute(aspect: AspectName): AttributeName {
     Spirit: 'Resilience',
   };
   return map[aspect];
-}
-
-// Map aspect to armor attribute
-export function getArmorAttribute(aspect: AspectName): AttributeName {
-  return getResistanceAttribute(aspect);
 }
 
 // Roll a single die with explosion
@@ -152,7 +146,6 @@ export function calculateDamage(params: DamageCalculationParams): DamageResult {
     },
     armorValue,
     armorReduction: effectiveArmor,
-    effectiveArmor,
     penetration: weaponPenetration,
     finalDamage,
     woundLevel: woundInfo.level,
@@ -163,4 +156,4 @@ export function calculateDamage(params: DamageCalculationParams): DamageResult {
 }
 
 // Re-export wound utilities for convenience
-export { getWoundLevel, getWoundLevelInfo, calculateStacking, WOUND_LABELS, WOUND_PENALTIES } from '../data/wounds';
+export { getWoundLevelInfo, calculateStacking, WOUND_LABELS, WOUND_PENALTIES } from '../data/wounds';

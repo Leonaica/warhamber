@@ -66,12 +66,6 @@ function formatPenetration(penetration: number | [number, number]): string {
   return penetration > 0 ? `${penetration}` : '';
 }
 
-// Format attack type with proper spacing
-function formatAttackType(type: string): string {
-  // Convert camelCase to Title Case with spaces
-  return type.replace(/([A-Z])/g, ' $1').trim();
-}
-
 export interface PaceValues {
   walking: { mph: number; kph: number; ms: number };
   sprinting: { mph: number; kph: number; ms: number };
@@ -386,7 +380,7 @@ export function generateHomebreweryMarkdown(
         const penText = penFormatted ? ` Pen ${penFormatted}` : '';
         const rangeLabel = WEAPON_RANGES.find(r => r.value === attack.range)?.label || attack.range;
         const conditionalText = attack.isConditional ? ` ➡️${attack.condition ? ` (${attack.condition})` : ''}` : '';
-        return `${conditionalText} ${aspectName}-${formatAttackType(attack.type)} ${attack.magnitude}${penText} ${rangeLabel}`;
+        return `${conditionalText} ${aspectName}-${attack.type} ${attack.magnitude}${penText} ${rangeLabel}`;
       });
       
       const parenthetical = attackTexts.join('; ');

@@ -10,7 +10,6 @@ export interface ResolutionContext {
   situationalModifier: number;  // Flat modifier
   isContest: boolean;
   targetNumber: number;
-  opponentPool?: DiePool;
   opponentRank?: number;
   approach: 'baseline' | 'roll' | 'surge';
   surgeBand?: EffortBand;

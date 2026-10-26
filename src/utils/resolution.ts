@@ -147,12 +147,6 @@ export function getRedMaximum(pool: DiePool): number {
   return pool.dice.reduce((sum, d) => sum + d * 2, 0);
 }
 
-export function getGreenTN(pool: DiePool): number | null {
-  const notation = normalizeNotation(pool.notation);
-  const tableEntry = ACTION_EFFORT_TABLE[notation];
-  return tableEntry?.green ?? null;
-}
-
 export function getBandThresholds(pool: DiePool): Record<EffortBand, number | null> {
   const notation = normalizeNotation(pool.notation);
   const tableEntry = ACTION_EFFORT_TABLE[notation];

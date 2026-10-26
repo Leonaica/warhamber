@@ -18,8 +18,6 @@ import { ATTRIBUTES } from '../types/character';
 import { getDiePoolEntry } from '../data/diePoolTable';
 import { calculateImmaterialSize, computeCharacter } from '../utils/calculations';
 import { DEFAULT_ICON } from '../data/icons';
-// export { WOUND_DAMAGE_RANGES, getWoundLevel, calculateStacking } from '../data/wounds';
-// export type { WoundLevel as DamageWoundLevel } from '../data/wounds';
 
 // Helper function to get default rating based on campaign limit
 function getDefaultRating(campaignLimit: number): RatingValue {

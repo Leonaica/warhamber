@@ -178,7 +178,6 @@ export interface Power {
   id: string;
   name: string;
   emoji: string;
-  customTitle?: string;
   category: PowerCategory;
   description: string;
   requirements: string;
@@ -245,8 +244,6 @@ export interface Artifact {
   name: string;
   description: string;
   cost: number;
-  attributes?: Partial<Record<AttributeName, number>>;
-  powers?: string[];
   quantity: number;
 }
 
@@ -296,7 +293,7 @@ export type SpiritAttackType =
 
 export type AttackType = FormAttackType | FleshAttackType | MindAttackType | SpiritAttackType;
 
-// Convenience unions per aspect (replaces the old MECHANISM-to-TYPE mappings)
+// Convenience unions per aspect 
 export const FORM_ATTACK_TYPES: FormAttackType[] = [
   'Annihilation', 'Slashing', 'Piercing', 'Distortion', 'Shockwave',
 ];
@@ -319,24 +316,6 @@ export const ATTACK_TYPES_BY_ASPECT: Record<AspectName, AttackType[]> = {
   Mind: MIND_ATTACK_TYPES,
   Spirit: SPIRIT_ATTACK_TYPES,
 };
-
-// === MECHANISMS ===
-
-export type FormMechanism = 
-  | 'Removal' | 'Severance' | 'Distortion' | 'Fragmentation' 
-  | 'StateDisruption' | 'Resonance';
-
-export type FleshMechanism = 
-  | 'ChemicalDisruption' | 'BiologicalInvasion' | 'FluidDisruption' 
-  | 'RespirationDisruption' | 'EnergyDisruption' | 'SystemFailure' | 'Degeneration';
-
-export type MindMechanism = 
-  | 'MemoryDamage' | 'ReasoningDamage' | 'PerceptionDamage' 
-  | 'WillDamage' | 'FocusDamage';
-
-export type SpiritMechanism = 
-  | 'HopeDamage' | 'ConnectionDamage' | 'IdentityDamage' | 'IdentityCorruption' 
-  | 'EnergyDrain' | 'Burden' | 'Violation' | 'FaithDamage';
 
 // === WEAPON CATEGORIES ===
 

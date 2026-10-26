@@ -11,23 +11,6 @@ export function calculateAttribute(
   return funcRating + aspectRating;
 }
 
-// Calculate die pool sum from attribute value
-export function attributeToDiePoolSum(attrValue: number): number {
-  const clampedValue = Math.max(-35, Math.min(60, attrValue));
-  const entry = DIE_POOL_TABLE.find(e => e.cost === clampedValue);
-  if (entry) {
-    return entry.pool.dice.reduce((sum, d) => sum + d, 0);
-  }
-  // Interpolate
-  const sorted = [...DIE_POOL_TABLE].sort((a, b) => a.cost - b.cost);
-  for (let i = 0; i < sorted.length - 1; i++) {
-    if (sorted[i].cost <= clampedValue && sorted[i + 1].cost > clampedValue) {
-      return sorted[i].pool.dice.reduce((sum, d) => sum + d, 0);
-    }
-  }
-  return 48; // 4d12
-}
-
 // Get tier color for attribute value
 export function getAttributeTierColor(value: number): string {
   if (value >= 40) return 'text-rose-400';        // Unnatural
@@ -35,15 +18,6 @@ export function getAttributeTierColor(value: number): string {
   if (value >= 0) return 'text-amber-400';        // Superhuman (Amber-level)
   if (value >= -10) return 'text-violet-400';     // Transhuman
   return 'text-blue-400';                         // Human
-}
-
-// Get tier name for attribute value
-export function getAttributeTierName(value: number): string {
-  if (value >= 40) return 'Unnatural';
-  if (value >= 15) return 'Supernatural';
-  if (value >= 0) return 'Superhuman';
-  if (value >= -10) return 'Transhuman';
-  return 'Human';
 }
 
 // Calculate skill cap (based on Willpower)
