@@ -70,6 +70,27 @@ export function ResolverPage() {
     secondary: ActionResult;
   } | null>(null);
 
+  // A combined Dodge+Parry produces two independent rolls. Everything
+  // downstream — the highlight, the Result panel, the defence TN it prints,
+  // and the damage hand-off — has to agree on which roll is in play, so
+  // unwrap the pair once here instead of re-deriving it per call site.
+  const combinedActions = (() => {
+    if (!combinedResult) return null;
+    const primary: ActionResult = 'winner' in combinedResult.primary
+      ? combinedResult.primary.actor
+      : combinedResult.primary;
+    const secondary: ActionResult = combinedResult.secondary;
+    const better: 'primary' | 'secondary' =
+      primary.result >= secondary.result ? 'primary' : 'secondary';
+    return {
+      primary,
+      secondary,
+      better,
+      betterLabel: better === 'primary' ? 'Dodge' : 'Parry',
+      best: better === 'primary' ? primary : secondary,
+    };
+  })();
+
   // Sync state when playsheet data arrives
   if (playsheetState !== prevPlaysheetState) {
     setPrevPlaysheetState(playsheetState);
@@ -123,7 +144,8 @@ export function ResolverPage() {
         skillBonus: actorSkillBonus,
         woundPenalty: actorWoundPenalty,
         situationalModifier: actorModifier,
-        isContest: false,
+        isContest: testType === 'contest',
+        ...(testType === 'contest' ? { opponentRank: opponentPoolEntry.rank } : {}),
         targetNumber,
         approach,
         ...(band ? { surgeBand: band } : {}),
@@ -984,34 +1006,18 @@ export function ResolverPage() {
             )}
           </div>
 
-          {combinedResult && (
+          {combinedActions && (
             <div className="bg-slate-800 rounded p-2 space-y-2">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-bold text-violet-400">🎯🛡️ Dodge + Parry</h2>
                 <span className="text-xs text-slate-400">take the better result</span>
               </div>
-              {(() => {
-                // primary is a ContestResult when contest mode is selected
-                const primaryAction: ActionResult = 'winner' in combinedResult.primary
-                  ? combinedResult.primary.actor
-                  : combinedResult.primary;
-                const secondaryAction: ActionResult = combinedResult.secondary;
-                const better: 'primary' | 'secondary' =
-                  primaryAction.result >= secondaryAction.result ? 'primary' : 'secondary';
-
-                return (
-                  <>
-                    {renderActionResult(primaryAction, `Dodge — ${playsheetState?.attributeName ?? ''}`, better === 'primary')}
-                    {renderActionResult(secondaryAction, `Parry — ${playsheetState?.secondaryAttributeName ?? ''}`, better === 'secondary')}
-                    <div className="text-xs text-center text-violet-300">
-                      Use the <strong>{better === 'primary' ? 'Dodge' : 'Parry'}</strong> result —{' '}
-                      <span className="font-bold text-white">
-                        {Math.max(primaryAction.result, secondaryAction.result)}
-                      </span>
-                    </div>
-                  </>
-                );
-              })()}
+              {renderActionResult(combinedActions.primary, `Dodge — ${playsheetState?.attributeName ?? ''}`, combinedActions.better === 'primary')}
+              {renderActionResult(combinedActions.secondary, `Parry — ${playsheetState?.secondaryAttributeName ?? ''}`, combinedActions.better === 'secondary')}
+              <div className="text-xs text-center text-violet-300">
+                Use the <strong>{combinedActions.betterLabel}</strong> result —{' '}
+                <span className="font-bold text-white">{combinedActions.best.result}</span>
+              </div>
             </div>
           )}
 
@@ -1025,79 +1031,110 @@ export function ResolverPage() {
 
               {'winner' in result ? (
                 // Contest result
-                <div className="space-y-2">
-                  {renderActionResult(result.actor, 'Actor')}
-                  {result.opponent && renderActionResult(result.opponent, 'Opponent')}
-                  
-                  {result.foregoneEnforced && (
-                    <div className="bg-amber-900/30 border border-amber-500/50 rounded px-2 py-1 text-xs text-center">
-                      <span className="text-amber-400">⚡ Foregone Conclusion Enforced</span>
-                      <span className="text-slate-400 ml-1">— Minimum 1 success awarded</span>
-                    </div>
-                  )}
-                  
-                  <div className={`text-center p-2 rounded ${
-                    result.winner === 'actor' ? 'bg-green-900/30 border border-green-500/50' :
-                    result.winner === 'opponent' ? 'bg-red-900/30 border border-red-500/50' :
-                    'bg-slate-700/50 border border-slate-500'
-                  }`}>
-                    <div className="text-lg font-bold">
-                      {result.winner === 'actor' ? '🥇 Actor Wins!' :
-                      result.winner === 'opponent' ? '🥈 Opponent Wins!' :
-                      '⚔️ Tie!'}
-                    </div>
-                    {result.winner !== 'tie' && result.margin !== Infinity && (
-                      <div className="text-xs text-slate-400">
-                        {(() => {
-                          const winnerSuccesses = result.winner === 'actor' 
-                            ? result.actor.successes 
-                            : result.opponent?.successes ?? 0;
-                          const winThreshold = winnerSuccesses * 4;
-                          const winScale = resultToScale(winThreshold);
-                          const relativeScale = winScale !== null ? winScale + 1 : null;
-                          
-                          return (
-                            <>
-                              <span className="text-white font-medium">{winnerSuccesses}</span> {winnerSuccesses === 1 ? 'success' : 'successes'}
-                              {relativeScale !== null && (
-                                <span className="ml-1">
-                                  (Scale <span className="text-white font-medium">{formatScale(relativeScale)}x</span>)
-                                </span>
-                              )}
-                            </>
-                          );
-                        })()}
+                (() => {
+                  const actorAction = combinedActions ? combinedActions.best : result.actor;
+                  const opponentAction = result.opponent;
+                  const opponentValue = opponentAction?.result ?? 0;
+                  const margin = Math.abs(actorAction.result - opponentValue);
+                  const winner: 'actor' | 'opponent' | 'tie' = !combinedActions
+                    ? result.winner
+                    : actorAction.result > opponentValue ? 'actor'
+                      : actorAction.result < opponentValue ? 'opponent'
+                        : 'tie';
+
+                  return (
+                    <div className="space-y-2">
+                      {renderActionResult(
+                        actorAction,
+                        combinedActions ? `${combinedActions.betterLabel} (better of Dodge/Parry)` : 'Actor'
+                      )}
+                      {opponentAction && renderActionResult(opponentAction, 'Opponent')}
+
+                      {result.foregoneEnforced && (
+                        <div className="bg-amber-900/30 border border-amber-500/50 rounded px-2 py-1 text-xs text-center">
+                          <span className="text-amber-400">⚡ Foregone Conclusion Enforced</span>
+                          <span className="text-slate-400 ml-1">— Minimum 1 success awarded</span>
+                        </div>
+                      )}
+
+                      <div className={`text-center p-2 rounded ${
+                        winner === 'actor' ? 'bg-green-900/30 border border-green-500/50' :
+                        winner === 'opponent' ? 'bg-red-900/30 border border-red-500/50' :
+                        'bg-slate-700/50 border border-slate-500'
+                      }`}>
+                        <div className="text-lg font-bold">
+                          {winner === 'actor' ? '🥇 Actor Wins!' :
+                          winner === 'opponent' ? '🥈 Opponent Wins!' :
+                          '⚔️ Tie!'}
+                        </div>
+                        {winner !== 'tie' && margin !== Infinity && (
+                          <div className="text-xs text-slate-400">
+                            {(() => {
+                              const winnerSuccesses = winner === 'actor'
+                                ? (combinedActions
+                                  ? (margin > 0 ? 1 + Math.floor(margin / 4) : 0)
+                                  : result.actor.successes)
+                                : opponentAction?.successes ?? 0;
+                              const winThreshold = winnerSuccesses * 4;
+                              const winScale = resultToScale(winThreshold);
+                              const relativeScale = winScale !== null ? winScale + 1 : null;
+
+                              return (
+                                <>
+                                  <span className="text-white font-medium">{winnerSuccesses}</span> {winnerSuccesses === 1 ? 'success' : 'successes'}
+                                  {relativeScale !== null && (
+                                    <span className="ml-1">
+                                      (Scale <span className="text-white font-medium">{formatScale(relativeScale)}x</span>)
+                                    </span>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
+                    </div>
+                  );
+                })()
               ) : (
                 // Challenge result
-                <div className="space-y-2">
-                  {renderActionResult(result, 'Result')}
-                  <div className={`text-center p-2 rounded ${
-                    result.successes > 0 ? 'bg-green-900/30' : 'bg-red-900/30'
-                  }`}>
-                    <div className="text-sm font-bold">
-                      {isDefenseMode
-                        ? (result.result > 4
-                          ? `🛡️ Defense ${result.result} — New TN: ${result.result}`
-                          : `🛡️ Defense ${result.result} — TN remains 4`)
-                        : (result.successes > 0
-                          ? `✓ Success! Beat TN ${targetNumber} by ${result.result - targetNumber}`
-                          : `✗ Failed by ${targetNumber - result.result}`)}
+                (() => {
+                  // If Dodge and Parry were both rolled, the better of the two
+                  // is the defence the attack actually has to beat.
+                  const shown = combinedActions ? combinedActions.best : result;
+                  const label = combinedActions
+                    ? `Result — ${combinedActions.betterLabel} (better of Dodge/Parry)`
+                    : 'Result';
+                  return (
+                    <div className="space-y-2">
+                      {renderActionResult(shown, label)}
+                      <div className={`text-center p-2 rounded ${
+                        shown.successes > 0 ? 'bg-green-900/30' : 'bg-red-900/30'
+                      }`}>
+                        <div className="text-sm font-bold">
+                          {isDefenseMode
+                            ? (shown.result > 4
+                              ? `🛡️ Defense ${shown.result} — New TN: ${shown.result}`
+                              : `🛡️ Defense ${shown.result} — TN remains 4`)
+                            : (shown.successes > 0
+                              ? `✓ Success! Beat TN ${targetNumber} by ${shown.result - targetNumber}`
+                              : `✗ Failed by ${targetNumber - shown.result}`)}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  );
+                })()
               )}
             </div>
           )}
           {result && playsheetState?.weaponId && (
             <button
               onClick={() => {
-                const successes = 'winner' in result
-                  ? (result.winner === 'opponent' ? 0 : (result.actor?.successes ?? 0))
-                  : result.successes;
+                const successes = combinedActions
+                  ? combinedActions.best.successes
+                  : 'winner' in result
+                    ? (result.winner === 'opponent' ? 0 : (result.actor?.successes ?? 0))
+                    : result.successes;
                 navigate('/combat', {
                   state: {
                     mode: 'attacker',
@@ -1109,7 +1146,7 @@ export function ResolverPage() {
               }}
               className="w-full bg-red-600 hover:bg-red-500 text-white py-2 rounded text-sm font-bold transition-colors"
             >
-              🎲 Resolve Damage{playsheetState.attackIndex !== undefined ? '' : ''}
+              🎲 Resolve Damage
             </button>
           )}
         </div>

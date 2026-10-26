@@ -313,10 +313,10 @@ export function PlaysheetPage() {
         woundPenalty: gameState.woundPenalty,
         attributeName: selectedAttribute,
         skillName: selectedSkill,
-        ...(selectedWeaponInfo
+        ...(selectedWeapon && selectedWeaponInfo
           ? {
-            weaponId: selectedWeaponInfo.weapon.id,
-            attackIndex: selectedWeapon.attackIndex,
+              weaponId: selectedWeaponInfo.weapon.id,
+              attackIndex: selectedWeapon.attackIndex,
             }
           : {}),
       }
