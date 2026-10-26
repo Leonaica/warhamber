@@ -120,6 +120,13 @@ export function ResolverPage() {
     setReactionConsumed(true);
   };
 
+  // Opponent die pool. Declared ahead of `maybeRunSecondary`, which reads it —
+  // a value captured by a closure declared *above* it has its mutable range
+  // widened, which is what stops React Compiler preserving memos that use it.
+  const [opponentPoolRank, setOpponentPoolRank] = useState(5);
+
+  const opponentPoolEntry = DIE_POOL_TABLE.find((e: DiePoolEntry) => e.rank === opponentPoolRank) || DIE_POOL_TABLE[5];
+
   const secondaryPoolEntry = useMemo(() => {
     const rank = playsheetState?.secondaryPoolRank;
     if (rank === undefined) return null;
@@ -154,7 +161,6 @@ export function ResolverPage() {
   };
   
   // Opponent configuration (for contests)
-  const [opponentPoolRank, setOpponentPoolRank] = useState(5);
   const [opponentSkillBonus, setOpponentSkillBonus] = useState(0);
   const [opponentWoundPenalty, setOpponentWoundPenalty] = useState(0);
   const [opponentModifier, setOpponentModifier] = useState(0);
@@ -163,15 +169,11 @@ export function ResolverPage() {
   const [result, setResult] = useState<ActionResult | ContestResult | null>(null);
   const [lastApproach, setLastApproach] = useState<string>('');
 
-  // Get selected pool entries
-  const actorPoolEntry = useMemo(() => {
-    return DIE_POOL_TABLE.find((e: DiePoolEntry) => e.rank === actorPoolRank) || DIE_POOL_TABLE[8];
-  }, [actorPoolRank]);
+  // Get selected pool entries. `DIE_POOL_TABLE` is a module-level constant and
+  // `find` returns a stable object reference, so these need no manual memo —
+  // and with none to preserve, React Compiler owns the memoization.
+  const actorPoolEntry = DIE_POOL_TABLE.find((e: DiePoolEntry) => e.rank === actorPoolRank) || DIE_POOL_TABLE[8];
   
-  const opponentPoolEntry = useMemo(() => {
-    return DIE_POOL_TABLE.find((e: DiePoolEntry) => e.rank === opponentPoolRank) || DIE_POOL_TABLE[5];
-  }, [opponentPoolRank]);
-
   const formatRollEntry = (r: { value: number; rolls: number[] }) => {
     return r.rolls.length > 1 ? r.rolls.join('+') : String(r.rolls[0]);
   };
@@ -220,10 +222,9 @@ export function ResolverPage() {
   };
 
   // Check for foregone conclusion
-  const foregoneCheck = useMemo(() => {
-    if (testType !== 'contest') return null;
-    return isForegoneConclusion(actorPoolEntry.rank, opponentPoolEntry.rank);
-  }, [testType, actorPoolEntry.rank, opponentPoolEntry.rank]);
+  const foregoneCheck = testType === 'contest'
+    ? isForegoneConclusion(actorPoolEntry.rank, opponentPoolEntry.rank)
+    : null;
 
   // When user manually changes pool rank, clear playsheet indicator
   const handlePoolRankChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
