@@ -43,7 +43,6 @@ export interface CharacterState {
 
 export interface CharacterContextValue extends CharacterState {
   computedCharacter: ReturnType<typeof computeCharacter>;
-  attributeValues: Record<AttributeName, number>;
   attributeDiePools: Record<AttributeName, ReturnType<typeof getDiePoolEntry>>;
   immaterialSize: number;
   pace: PaceValues;

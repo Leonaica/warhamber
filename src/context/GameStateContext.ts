@@ -16,12 +16,6 @@ export interface RestorationPoints {
   Spirit: number;
 }
 
-export interface TemporaryModifier {
-  id: string;
-  description: string;
-  value: number;
-}
-
 export interface InitiativeState {
   physical: number | null;
   mental: number | null;
@@ -67,19 +61,13 @@ export interface GameStateContextValue {
   woundPenalty: number;
   restorationPoints: RestorationPoints;
   addRestorationPoints: (aspect: AspectName, points: number) => void;
-  clearRestorationPoints: (aspect: AspectName) => void;
   initiative: InitiativeState;
   setInitiative: (values: InitiativeState) => void;
   clearInitiative: () => void;
   surgeSpent: number;
   spendSurge: (amount: number) => void;
   resetSurge: () => void;
-  modifiers: TemporaryModifier[];
-  addModifier: (description: string, value: number) => void;
-  removeModifier: (id: string) => void;
-  totalModifier: number;
   reactionPools: ReactionPools;
-  setReactionPool: (key: ReactionPoolKey, value: number) => void;
   useReactionPool: (key: ReactionPoolKey, max: number) => void;
   resetReactionPools: () => void;
   opponentWounds: WoundState;

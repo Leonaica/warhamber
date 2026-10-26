@@ -28,7 +28,7 @@ export interface DamageResult {
   woundPenalty: number;
 }
 
-export interface DamageCalculationParams {
+interface DamageCalculationParams {
   weaponMagnitude: number;
   weaponPenetration: number;
   attackedAspect: AspectName;
@@ -154,6 +154,3 @@ export function calculateDamage(params: DamageCalculationParams): DamageResult {
     woundPenalty: woundInfo.penalty,
   };
 }
-
-// Re-export wound utilities for convenience
-export { getWoundLevelInfo, calculateStacking, WOUND_LABELS, WOUND_PENALTIES } from '../data/wounds';

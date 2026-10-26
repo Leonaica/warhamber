@@ -79,7 +79,7 @@ export const ATTACK_TYPE_LABELS: Record<AttackType, string> = {
   Doubt: 'Doubt — Destroying belief systems and conviction',
 };
 
-export function formatCapacity(capacity?: { min: WeaponCapacity; max?: WeaponCapacity }): string {
+function formatCapacity(capacity?: { min: WeaponCapacity; max?: WeaponCapacity }): string {
   if (!capacity) return '';
   const max = capacity.max && capacity.max !== capacity.min ? `/${capacity.max}` : '';
   return `${capacity.min}${max}`;

@@ -22,7 +22,7 @@ export const RATING_LABELS: Record<RatingValue, string> = {
 // Aspects (What you are)
 export type AspectName = 'Form' | 'Flesh' | 'Mind' | 'Spirit';
 
-export interface Aspect {
+interface Aspect {
   id: AspectName;
   name: string;
   emoji: string;
@@ -59,7 +59,7 @@ export const ASPECTS: Aspect[] = [
 // Functions (What you do)
 export type FunctionName = 'Resist' | 'Finesse' | 'Perceive' | 'Force';
 
-export interface Function {
+interface Function {
   id: FunctionName;
   name: string;
   emoji: string;
@@ -100,7 +100,7 @@ export type AttributeName =
   | 'Perception' | 'Intuition' | 'Memory' | 'Wisdom'
   | 'Strength' | 'Magnetism' | 'Charisma' | 'Presence';
 
-export interface Attribute {
+interface Attribute {
   id: AttributeName;
   name: string;
   func: FunctionName;
@@ -169,7 +169,7 @@ export interface Skill {
 // Power categories
 export type PowerCategory = 'Substance' | 'Semi-Substance' | 'Shadow';
 
-export interface PowerLevel {
+interface PowerLevel {
   name: string;
   cost: number;
 }
@@ -191,7 +191,7 @@ export interface Power {
 }
 
 // Prerequisites to use a power
-export interface PowerPrerequisite {
+interface PowerPrerequisite {
   type: 'attribute' | 'aspect' | 'function' | 'power';
   // For attribute prerequisites
   attribute?: AttributeName;
@@ -262,7 +262,7 @@ export interface PersonalShadow {
   cost: number;
 }
 
-export type SizeValue = -3 | -2 | -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6;
+type SizeValue = -3 | -2 | -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 export const SIZE_OPTIONS: { value: SizeValue; label: string; description: string }[] = [
   { value: -3, label: 'Minuscule', description: 'to 500g' },
@@ -279,34 +279,34 @@ export const SIZE_OPTIONS: { value: SizeValue; label: string; description: strin
 
 // === ATTACK TYPES ===
 
-export type FormAttackType =
+type FormAttackType =
   | 'Annihilation' | 'Slashing' | 'Piercing' | 'Distortion' | 'Shockwave';
 
-export type FleshAttackType =
+type FleshAttackType =
   | 'Poisoning' | 'Infection' | 'Asphyxiation' | 'Burnout' | 'Decay';
 
-export type MindAttackType =
+type MindAttackType =
   | 'Shattering' | 'Degradation' | 'Erasure' | 'Dissolution' | 'Subversion';
 
-export type SpiritAttackType =
+type SpiritAttackType =
   | 'Despair' | 'Severing' | 'Corruption' | 'Unmaking' | 'Desecration' | 'Doubt';
 
 export type AttackType = FormAttackType | FleshAttackType | MindAttackType | SpiritAttackType;
 
 // Convenience unions per aspect 
-export const FORM_ATTACK_TYPES: FormAttackType[] = [
+const FORM_ATTACK_TYPES: FormAttackType[] = [
   'Annihilation', 'Slashing', 'Piercing', 'Distortion', 'Shockwave',
 ];
 
-export const FLESH_ATTACK_TYPES: FleshAttackType[] = [
+const FLESH_ATTACK_TYPES: FleshAttackType[] = [
   'Poisoning', 'Infection', 'Asphyxiation', 'Burnout', 'Decay',
 ];
 
-export const MIND_ATTACK_TYPES: MindAttackType[] = [
+const MIND_ATTACK_TYPES: MindAttackType[] = [
   'Shattering', 'Degradation', 'Erasure', 'Dissolution', 'Subversion',
 ];
 
-export const SPIRIT_ATTACK_TYPES: SpiritAttackType[] = [
+const SPIRIT_ATTACK_TYPES: SpiritAttackType[] = [
   'Despair', 'Severing', 'Corruption', 'Unmaking', 'Desecration', 'Doubt',
 ];
 
@@ -342,7 +342,7 @@ export interface TagResolveContext {
   stuff?: number;
 }
   
-export interface WeaponTagVariable {
+interface WeaponTagVariable {
   min: number;
   max: number;
   default: number;

@@ -1,6 +1,6 @@
 export type WoundLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
-export interface WoundLevelInfo {
+interface WoundLevelInfo {
   level: WoundLevel;
   label: string;
   emoji: string;
@@ -9,7 +9,7 @@ export interface WoundLevelInfo {
   penalty: number;
 }
 
-export const WOUND_LEVELS: WoundLevelInfo[] = [
+const WOUND_LEVELS: WoundLevelInfo[] = [
   { level: 0, label: 'None', emoji: '', minDamage: -Infinity, maxDamage: -1, penalty: 0 },
   { level: 1, label: 'Grazed', emoji: '⚠️', minDamage: 0, maxDamage: 3, penalty: 0 },
   { level: 2, label: 'Scrape', emoji: '🟢', minDamage: 4, maxDamage: 7, penalty: 0 },

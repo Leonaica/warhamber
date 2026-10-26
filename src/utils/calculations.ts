@@ -4,7 +4,7 @@ import { getDiePoolEntry, DIE_POOL_TABLE } from '../data/diePoolTable';
 import { POWERS } from '../data/powers';
 
 // Calculate attribute value from function + aspect ratings
-export function calculateAttribute(
+function calculateAttribute(
   funcRating: number,
   aspectRating: number
 ): number {
@@ -21,13 +21,13 @@ export function getAttributeTierColor(value: number): string {
 }
 
 // Calculate skill cap (based on Willpower)
-export function calculateSkillCap(willpowerPool: number): number {
+function calculateSkillCap(willpowerPool: number): number {
   const cap = Math.floor(willpowerPool / 4);
   return Math.min(cap, 4); // Hard max of Extraordinary (+4)
 }
 
 // Calculate skill maximum (based on Memory)
-export function calculateSkillMaximum(memoryPool: number): number {
+function calculateSkillMaximum(memoryPool: number): number {
   return Math.floor(memoryPool / 2);
 }
 
@@ -102,7 +102,7 @@ export function checkPowerPrerequisites(
 }
 
 // Calculate surge points
-export function calculateSurge(
+function calculateSurge(
   diePools: Record<AttributeName, DiePool>,
   stuff: number
 ): number {
@@ -150,7 +150,7 @@ export function calculateImmaterialSize(charismaRank: number, presenceRank: numb
 }
 
 // Calculate stuff (good or bad)
-export function calculateStuff(campaignLimit: number, pointsSpent: number): number {
+function calculateStuff(campaignLimit: number, pointsSpent: number): number {
   return campaignLimit - pointsSpent;
 }
 

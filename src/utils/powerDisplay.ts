@@ -86,7 +86,7 @@ const MYTHIC_LEVELS = RATING_SCALE.map(cost => ({
   name: RATING_LABELS[cost].split(' ').slice(1).join(' '),
 }));
 
-export interface MythicTrait {
+interface MythicTrait {
   id: string;
   emoji: string;
   title: string;

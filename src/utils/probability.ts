@@ -41,7 +41,7 @@ function convolve(distA: Map<number, number>, distB: Map<number, number>): Map<n
 /**
  * Calculate the probability distribution for a damage magnitude
  */
-export function damageDistribution(magnitude: number): Map<number, number> {
+function damageDistribution(magnitude: number): Map<number, number> {
   const entry = DAMAGE_MAGNITUDE_TABLE.find(m => m.magnitude === magnitude);
   if (!entry) {
     const defaultEntry = DAMAGE_MAGNITUDE_TABLE.find(m => m.magnitude === 3)!;

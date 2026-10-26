@@ -335,7 +335,6 @@ const removeArmor = useCallback((id: string) => {
     allies: alliesState,
     personalShadows: personalShadowsState,
     computedCharacter,
-    attributeValues,
     attributeDiePools,
     immaterialSize,
     pace,

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useGameState } from '../context/useGameState';
 import { useCharacter } from '../context/useCharacter';
@@ -127,11 +127,14 @@ export function ResolverPage() {
 
   const opponentPoolEntry = DIE_POOL_TABLE.find((e: DiePoolEntry) => e.rank === opponentPoolRank) || DIE_POOL_TABLE[5];
 
-  const secondaryPoolEntry = useMemo(() => {
-    const rank = playsheetState?.secondaryPoolRank;
-    if (rank === undefined) return null;
-    return DIE_POOL_TABLE.find(e => e.rank === rank) ?? null;
-  }, [playsheetState?.secondaryPoolRank]);
+  // No manual memo in this component: `DIE_POOL_TABLE.find` returns a stable
+  // reference, and React Compiler widens the mutable range of any value
+  // captured by a later closure — which is exactly what stops a manual `useMemo`
+  // here from being preserved. Let the compiler own the memoization.
+  const secondaryPoolRank = playsheetState?.secondaryPoolRank;
+  const secondaryPoolEntry = secondaryPoolRank === undefined
+    ? null
+    : DIE_POOL_TABLE.find(e => e.rank === secondaryPoolRank) ?? null;
 
   /** Run the same test against the second defense pool, when combined. */
   const maybeRunSecondary = (
@@ -262,28 +265,25 @@ export function ResolverPage() {
     setTargetNumber(prev => Math.max(1, Math.min(224, prev + delta)));
   };
 
-  // Before the button grid, compute previews for all bands
-  const previews = useMemo(() => {
-    const result: Record<EffortBand, PreviewResult | null> = {
-      green: null,
-      yellow: null,
-      orange: null,
-      red: null,
-    };
-    
-    for (const band of ['green', 'yellow', 'orange', 'red'] as EffortBand[]) {
-      result[band] = calculatePreviewResult({
-        attributePool: actorPoolEntry.pool,
-        band,
-        approach: band === 'green' ? 'baseline' : 'surge',
-        skillBonus: actorSkillBonus,
-        woundPenalty: actorWoundPenalty,
-        situationalModifier: actorModifier,
-      });
-    }
-    
-    return result;
-  }, [actorPoolEntry, actorSkillBonus, actorWoundPenalty, actorModifier]);
+  // Before the button grid, compute previews for all bands. Four cheap
+  // arithmetic calls, so no manual memo.
+  const previews: Record<EffortBand, PreviewResult | null> = {
+    green: null,
+    yellow: null,
+    orange: null,
+    red: null,
+  };
+
+  for (const band of ['green', 'yellow', 'orange', 'red'] as EffortBand[]) {
+    previews[band] = calculatePreviewResult({
+      attributePool: actorPoolEntry.pool,
+      band,
+      approach: band === 'green' ? 'baseline' : 'surge',
+      skillBonus: actorSkillBonus,
+      woundPenalty: actorWoundPenalty,
+      situationalModifier: actorModifier,
+    });
+  }
 
   // Returns true if this band's result is strictly better than all cheaper available bands
   const isSurgeWorthIt = (band: EffortBand): boolean => {

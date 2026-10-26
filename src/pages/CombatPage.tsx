@@ -5,13 +5,14 @@ import { useGameState } from '../context/useGameState';
 import { WOUND_LABELS, WOUND_PENALTIES } from '../data/wounds';
 import { ASPECTS, type AspectName, type WeaponAttack, type ArmorAspect, type WeaponTagRef, type WeaponTagDefinition } from '../types/character';
 import { DAMAGE_MAGNITUDE_TABLE, type DamageMagnitudeEntry } from '../data/damageTable';
-import { calculateDamage, getResistanceAttribute, calculateStacking } from '../utils/damage';
+import { calculateDamage, getResistanceAttribute } from '../utils/damage';
 import type { DamageResult, WoundLevel } from '../utils/damage';
 import { calculateWoundProbabilities, type WoundProbabilities } from '../utils/probability';
 import { resolveTagRef, formatTagEffect, idsToRefs } from '../data/weaponTags';
 import { TagChip } from '../components/TagChip';
 import StepperInput from '../components/StepperInput';
 import { useTagResolveContext } from '../context/useTagResolveContext'
+import { calculateStacking } from '../data/wounds'
 
 interface CombatPageState {
   mode?: 'attacker' | 'defender';

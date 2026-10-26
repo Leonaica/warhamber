@@ -6,7 +6,6 @@ import {
   type GameStateContextValue,
   type WoundState,
   type RestorationPoints,
-  type TemporaryModifier,
   type InitiativeState,
   type ReactionPoolKey,
   type ReactionPools,
@@ -20,7 +19,6 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   const [wounds, setWounds] = useState<WoundState>(defaultWounds);
   const [restorationPoints, setRestorationPoints] = useState<RestorationPoints>(defaultRestoration);
   const [surgeSpent, setSurgeSpent] = useState(0);
-  const [modifiers, setModifiers] = useState<TemporaryModifier[]>([]);
   
   // Opponent tracking
   const [opponentWounds, setOpponentWounds] = useState<WoundState>(defaultWounds);
@@ -53,10 +51,6 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     spiritDodge: 0,
     spiritParry: 0,
   });
-
-  const setReactionPool = useCallback((key: ReactionPoolKey, value: number) => {
-    setReactionPools(prev => ({ ...prev, [key]: value }));
-  }, []);
 
   const useReactionPool = useCallback((key: ReactionPoolKey, max: number) => {
     setReactionPools(prev => ({
@@ -92,13 +86,6 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     setInitiativeState({ physical: null, mental: null });
   }, []);
 
-  const clearRestorationPoints = useCallback((aspect: AspectName) => {
-    setRestorationPoints(prev => ({
-      ...prev,
-      [aspect]: 0,
-    }));
-  }, []);
-
   const spendSurge = useCallback((amount: number) => {
     setSurgeSpent(prev => prev + amount);
   }, []);
@@ -106,19 +93,6 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   const resetSurge = useCallback(() => {
     setSurgeSpent(0);
   }, []);
-
-  const addModifier = useCallback((description: string, value: number) => {
-    const id = crypto.randomUUID();
-    setModifiers(prev => [...prev, { id, description, value }]);
-  }, []);
-
-  const removeModifier = useCallback((id: string) => {
-    setModifiers(prev => prev.filter(m => m.id !== id));
-  }, []);
-
-  const totalModifier = useMemo(() => {
-    return modifiers.reduce((sum, m) => sum + m.value, 0);
-  }, [modifiers]);
 
   // Opponent tracking
   const setOpponentWound = useCallback((aspect: AspectName, level: WoundLevel) => {
@@ -147,7 +121,6 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     setWounds(defaultWounds);
     setRestorationPoints(defaultRestoration);
     setSurgeSpent(0);
-    setModifiers([]);
     setOpponentWounds(defaultWounds);
     setOpponentCombatData(defaultOpponentCombatData);
     resetReactionPools();
@@ -160,19 +133,13 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     woundPenalty,
     restorationPoints,
     addRestorationPoints,
-    clearRestorationPoints,
     initiative,
     setInitiative,
     clearInitiative,
     surgeSpent,
     spendSurge,
     resetSurge,
-    modifiers,
-    addModifier,
-    removeModifier,
-    totalModifier,
     reactionPools,
-    setReactionPool,
     useReactionPool,
     resetReactionPools,
     opponentWounds,

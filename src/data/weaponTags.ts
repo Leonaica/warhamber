@@ -571,7 +571,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
 
 // === Category colors for UI ===
 
-export interface TagColorSet {
+interface TagColorSet {
   bg: string;
   text: string;
   border: string;
@@ -579,7 +579,7 @@ export interface TagColorSet {
   selectedBg: string;
 }
 
-export const TAG_CATEGORY_COLORS: Record<string, TagColorSet> = {
+const TAG_CATEGORY_COLORS: Record<string, TagColorSet> = {
   Inherent: {
     bg: 'bg-sky-900/40',
     text: 'text-sky-300',
@@ -617,7 +617,7 @@ export const TAG_CATEGORY_COLORS: Record<string, TagColorSet> = {
   },
 };
 
-export const DEFAULT_TAG_COLOR: TagColorSet = {
+const DEFAULT_TAG_COLOR: TagColorSet = {
   bg: 'bg-slate-700/40',
   text: 'text-slate-300',
   border: 'border-slate-600',
@@ -631,7 +631,7 @@ export function getTagColor(category: string): TagColorSet {
 
 // === Resolution utilities ===
 
-export function resolveTag(
+function resolveTag(
   tagId: string,
   customTags: WeaponTagDefinition[]
 ): WeaponTagDefinition | undefined {
@@ -709,7 +709,7 @@ export function getOrderedCategories(tags: WeaponTagDefinition[]): string[] {
  * Accepts "tag-id" or "tag-id:7".
  * Returns { tagId, x } — x is undefined if no suffix.
  */
-export function parseTagRef(id: string): WeaponTagRef {
+function parseTagRef(id: string): WeaponTagRef {
   const idx = id.indexOf(':');
   if (idx === -1) return { tagId: id };
   const tagId = id.slice(0, idx);

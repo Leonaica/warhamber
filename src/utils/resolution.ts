@@ -32,7 +32,7 @@ export function rollSimplePool(pool: DiePool): number {
   return total;
 }
 
-export function rollPool(pool: DiePool): { total: number; rolls: number[]; explosions: { dieIndex: number; rolls: number[] }[] } {
+function rollPool(pool: DiePool): { total: number; rolls: number[]; explosions: { dieIndex: number; rolls: number[] }[] } {
   let total = 0;
   const rolls: number[] = [];
   const explosions: { dieIndex: number; rolls: number[] }[] = [];
@@ -110,11 +110,12 @@ function rollWithAdvantage(pool: DiePool, advantageDice: number): {
 }
 
 /**
-+ * a critical failure requires every die in the initial pool to show its
-+ * minimum face. A Poor (–1) Skill treats 2s as 1s; a Terrible (–2) Skill
-+ * treats 3s and 2s as 1s. Explosions are excluded.
-+ */
-export function checkCriticalFailure(rolls: number[], skillBonus: number): {
+ * a critical failure requires every die in the initial pool to show its
+ * minimum face. A Poor (–1) Skill treats 2s as 1s; a Terrible (–2) Skill
+ * treats 3s and 2s as 1s. Explosions are excluded.
+ **/
+
+function checkCriticalFailure(rolls: number[], skillBonus: number): {
   isCriticalFailure: boolean;
   allMinimum: boolean;
   minimumFace: number;
@@ -140,21 +141,21 @@ export function checkCriticalFailure(rolls: number[], skillBonus: number): {
   };
 }
 
-export function getRedMaximum(pool: DiePool): number {
+function getRedMaximum(pool: DiePool): number {
   const notation = normalizeNotation(pool.notation);
   const tableEntry = ACTION_EFFORT_TABLE[notation];
   if (tableEntry && tableEntry.red !== null) return tableEntry.red;
   return pool.dice.reduce((sum, d) => sum + d * 2, 0);
 }
 
-export function getBandThresholds(pool: DiePool): Record<EffortBand, number | null> {
+function getBandThresholds(pool: DiePool): Record<EffortBand, number | null> {
   const notation = normalizeNotation(pool.notation);
   const tableEntry = ACTION_EFFORT_TABLE[notation];
   if (tableEntry) return tableEntry;
   return { green: null, yellow: null, orange: null, red: null };
 }
 
-export function calculateAdvantageDice(actorRank: number, opponentRank: number): number {
+function calculateAdvantageDice(actorRank: number, opponentRank: number): number {
   // Only eligible if rank > 5 (more than a single die)
   if (actorRank <= 5) return 0;
   return Math.max(0, actorRank - opponentRank);
@@ -169,7 +170,7 @@ export function isForegoneConclusion(actorRank: number, opponentRank: number): {
   return { isForegone: false, winner: null };
 }
 
-export function getEffortBand(pool: DiePool, result: number): EffortBand | null {
+function getEffortBand(pool: DiePool, result: number): EffortBand | null {
   const thresholds = getBandThresholds(pool);
   
   if (thresholds.red !== null && result >= thresholds.red) return 'red';
@@ -180,12 +181,12 @@ export function getEffortBand(pool: DiePool, result: number): EffortBand | null 
   return null;
 }
 
-export function calculateSuccesses(result: number, targetNumber: number): number {
+function calculateSuccesses(result: number, targetNumber: number): number {
   if (result < targetNumber) return 0;
   return 1 + Math.floor((result - targetNumber) / 4);
 }
 
-export function calculateContestSuccesses(margin: number): number {
+function calculateContestSuccesses(margin: number): number {
   if (margin <= 0) return 0;
   return 1 + Math.floor(margin / 4);
 }

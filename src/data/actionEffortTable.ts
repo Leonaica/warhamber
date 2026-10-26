@@ -32,7 +32,7 @@ export const SURGE_COST: Record<EffortBand, number> = {
   red: 3,
 };
 
-export const SCALE_TABLE: Record<number, number> = {
+const SCALE_TABLE: Record<number, number> = {
   4: 0.5,
   8: 1,
   12: 1.5,
