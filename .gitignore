@@ -12,6 +12,13 @@ dist
 dist-ssr
 *.local
 
+
+# Vite dev-server dep-optimiser cache
+.vite
+
+# TypeScript incremental build info
+*.tsbuildinfo
+ 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
