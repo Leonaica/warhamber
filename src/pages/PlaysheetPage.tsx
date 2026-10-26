@@ -14,7 +14,7 @@ import { POWERS } from '../data/powers';
 import { SKILLS, getSkillModifier } from '../data/skills';
 import { getPowerDisplay } from '../utils/powerDisplay';
 import { generateHomebreweryMarkdown } from '../utils/homebreweryExport';
-import { PrintableSheet } from '../components/PrintableSheet';
+import { CharacterSheet } from '../components/CharacterSheet';
 import { formatWeaponLogistics } from '../data/weaponData';
 import { resolveTagRef, idsToRefs } from '../data/weaponTags';
 import type { WeaponTagRef } from '../types/character';
@@ -1399,7 +1399,9 @@ export function PlaysheetPage() {
           )}
         </div>
       </div>
-      <PrintableSheet />
+      <div className="hidden print:block">
+        <CharacterSheet />
+      </div>
     </>
   );
 }

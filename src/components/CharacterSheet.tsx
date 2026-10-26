@@ -1,34 +1,16 @@
-import type { CharacterAspectRatings, CharacterFunctionRatings, CharacterSkill, CharacterPower, Artifact, Ally, PersonalShadow, CharacterWeapon, CharacterArmor, WeaponTagDefinition } from '../types/character';
 import { ASPECTS, FUNCTIONS, ATTRIBUTES } from '../types/character';
+import type { WeaponTagRef } from '../types/character';
 import { SKILLS, getSkillModifier, getTotalSkillCost } from '../data/skills';
 import { calculateSkillCap, calculateSkillMaximum } from '../utils/calculations';
 import { POWERS } from '../data/powers';
 import { getDiePoolEntry } from '../data/diePoolTable';
 import { resolveTagRef, idsToRefs, formatTagLabel, formatTagEffect } from '../data/weaponTags';
-import type { WeaponTagRef } from '../types/character';
+import { useCharacter } from '../context/useCharacter'
 import { useTagResolveContext } from '../context/useTagResolveContext'
 import { buildMythicTraits } from '../utils/powerDisplay';
+import { SOAK_ATTRIBUTES, PARRY_POOL_ATTRIBUTES, DODGE_ATTRIBUTES } from '../data/aspectAttributes';
 
 import './CharacterSheet.css';
-
-interface CharacterSheetProps {
-  name: string;
-  campaignLimit: number;
-  aspects: CharacterAspectRatings;
-  functions: CharacterFunctionRatings;
-  skills: CharacterSkill[];
-  powers: CharacterPower[];
-  artifacts: Artifact[];
-  allies: Ally[];
-  personalShadows: PersonalShadow[];
-  stuff: number;
-  surge: number;
-  weapons: CharacterWeapon[];
-  armor: CharacterArmor[];
-  customTags: WeaponTagDefinition[];
-  aspectExplanations: Record<string, string>;
-  functionExplanations: Record<string, string>;
-}
 
 function dieNotation(dice: number[]): string {
   const counts: Record<number, number> = {};
@@ -51,38 +33,40 @@ function dieNotation(dice: number[]): string {
   return parts.join(' + ');
 }
 
-export function CharacterSheet({
-  name,
-  campaignLimit,
-  aspects,
-  functions,
-  skills,
-  powers,
-  artifacts,
-  allies,
-  personalShadows,
-  stuff,
-  surge,
-  weapons = [],
-  armor = [],
-  customTags = [],
-  aspectExplanations = {},
-  functionExplanations = {},
-}: CharacterSheetProps) {
+/** Empty boxes to tick at the table. */
+function TickBoxes({ count }: { count: number }) {
+  return (
+    <span className="inline-flex gap-0.5 ml-1">
+      {Array.from({ length: count }).map((_, i) => (
+        <span key={i} className="inline-block w-3 h-3 border border-black"></span>
+      ))}
+    </span>
+  );
+}
+
+export function CharacterSheet() {
+  const character = useCharacter();
+  const c = character.computedCharacter;
   const tagCtx = useTagResolveContext();
+
   // Calculate skill costs
-  const skillCostTotal = getTotalSkillCost(skills);
+  const skillCostTotal = getTotalSkillCost(character.skills);
 
   // Calculate cap and max
-  const willpowerPool = getDiePoolEntry(functions['Resist'] + aspects['Mind']).pool.dice.reduce((s, d) => s + d, 0);
-  const memoryPool = getDiePoolEntry(functions['Perceive'] + aspects['Mind']).pool.dice.reduce((s, d) => s + d, 0);
+  const willpowerPool = getDiePoolEntry(character.functions['Resist'] + character.aspects['Mind']).pool.dice.reduce((s, d) => s + d, 0);
+  const memoryPool = getDiePoolEntry(character.functions['Perceive'] + character.aspects['Mind']).pool.dice.reduce((s, d) => s + d, 0);
   const skillCap = calculateSkillCap(willpowerPool);
   const skillMax = calculateSkillMaximum(memoryPool);
 
   // Power cost total
-  const powerCostTotal = powers.reduce((sum, cp) => sum + cp.points, 0);
+  const powerCostTotal = character.powers.reduce((sum, cp) => sum + cp.points, 0);
 
-  const mythicTraits = buildMythicTraits(aspects, functions, aspectExplanations, functionExplanations);
+  const mythicTraits = buildMythicTraits(
+    character.aspects,
+    character.functions,
+    character.aspectExplanations,
+    character.functionExplanations,
+  );
 
   const powerListItems = [
     ...mythicTraits.map(t => ({
@@ -93,7 +77,7 @@ export function CharacterSheet({
       note: 'Mythic',
       description: t.description,
     })),
-    ...powers.flatMap(cp => {
+    ...character.powers.flatMap(cp => {
       const power = POWERS.find(p => p.id === cp.powerId);
       if (!power) return [];
       return [{
@@ -108,22 +92,22 @@ export function CharacterSheet({
   ].sort((a, b) => b.points - a.points);
 
   // Artifact cost total
-  const artifactCostTotal = artifacts.reduce((sum, a) => sum + a.cost * a.quantity, 0);
+  const artifactCostTotal = character.artifacts.reduce((sum, a) => sum + a.cost * a.quantity, 0);
 
   // Ally cost total
-  const allyCostTotal = allies.reduce((sum, a) => sum + a.cost, 0);
+  const allyCostTotal = character.allies.reduce((sum, a) => sum + a.cost, 0);
 
   // Shadow cost total
-  const shadowCostTotal = personalShadows.reduce((sum, s) => sum + s.cost, 0);
+  const shadowCostTotal = character.personalShadows.reduce((sum, s) => sum + s.cost, 0);
 
-  const stuffText = stuff >= 0 ? `+${stuff} Good Stuff` : `${stuff} Bad Stuff`;
+  const stuffText = c.stuff >= 0 ? `+${c.stuff} Good Stuff` : `${c.stuff} Bad Stuff`;
 
   return (
     <div className="character-sheet">
       {/* Header */}
       <div className="sheet-header">
-        <div className="character-name">{name || 'Unnamed Character'}</div>
-        <div className="character-campaign">{campaignLimit} Points</div>
+        <div className="character-name">{c.name || 'Unnamed Character'}</div>
+        <div className="character-campaign">{character.campaignLimit} Points</div>
       </div>
 
       {/* Attributes Grid */}
@@ -137,14 +121,14 @@ export function CharacterSheet({
               {ASPECTS.map(aspect => (
                 <th key={aspect.id}>
                   <div className="aspect-name">{aspect.emoji} {aspect.name}</div>
-                  <div className="aspect-value">[{aspects[aspect.id] >= 0 ? '+' : ''}{aspects[aspect.id]}]</div>
+                  <div className="aspect-value">[{character.aspects[aspect.id] >= 0 ? '+' : ''}{character.aspects[aspect.id]}]</div>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {FUNCTIONS.map(func => {
-              const funcRating = functions[func.id];
+              const funcRating = character.functions[func.id];
               return (
                 <tr key={func.id}>
                   <td className="func-name">{func.emoji}</td>
@@ -155,7 +139,7 @@ export function CharacterSheet({
                   {ASPECTS.map(aspect => {
                     const attr = ATTRIBUTES.find(a => a.func === func.id && a.aspect === aspect.id);
                     if (!attr) return <td key={aspect.id}></td>;
-                    const value = funcRating + aspects[aspect.id];
+                    const value = funcRating + character.aspects[aspect.id];
                     const pool = getDiePoolEntry(value).pool;
                     return (
                       <td key={aspect.id} className="attr-cell">
@@ -175,9 +159,9 @@ export function CharacterSheet({
       <div className="stats-bar">
         <div className="stat surge">
           <span className="stat-label">Surge</span>
-          <span className="stat-value">{surge}</span>
+          <span className="stat-value">{c.surge}</span>
         </div>
-        <div className={`stat stuff ${stuff >= 0 ? 'good' : 'bad'}`}>
+        <div className={`stat stuff ${c.stuff >= 0 ? 'good' : 'bad'}`}>
           <span className="stat-label">Stuff</span>
           <span className="stat-value">{stuffText}</span>
         </div>
@@ -187,12 +171,75 @@ export function CharacterSheet({
         </div>
       </div>
 
+      {/* Play State — tick boxes to mark at the table */}
+      <div className="section">
+        <h3>🎲 Play State</h3>
+        <div className="summary-row">
+          <span>Surge:</span>
+          <span><TickBoxes count={c.surge} /></span>
+        </div>
+        <div className="summary-row">
+          <span>Physical Init:</span>
+          <span>{dieNotation(c.diePools['Reflexes'].dice)} / {dieNotation(c.diePools['Agility'].dice)} (lower)</span>
+        </div>
+        <div className="summary-row">
+          <span>Mental Init:</span>
+          <span>{dieNotation(c.diePools['Inspiration'].dice)} / {dieNotation(c.diePools['Intelligence'].dice)} (lower)</span>
+        </div>
+      </div>
+
+      <div className="section">
+        <h3>🩸 Aspects State</h3>
+        <table className="equipment-table">
+          <thead>
+            <tr>
+              <th>Aspect</th>
+              <th>Wounds</th>
+              <th>Parry</th>
+              <th>Dodge</th>
+              <th>Soak</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ASPECTS.map(a => {
+              const parryAttr = PARRY_POOL_ATTRIBUTES[a.id];
+              const dodgeAttr = DODGE_ATTRIBUTES[a.id];
+              const parryDice = c.diePools[parryAttr]?.dice.length ?? 0;
+              const dodgeDice = dodgeAttr ? (c.diePools[dodgeAttr]?.dice.length ?? 0) : 0;
+
+              const soakAttrDef = ATTRIBUTES.find(attr => attr.name === SOAK_ATTRIBUTES[a.id]);
+              const soakValue = soakAttrDef
+                ? character.functions[soakAttrDef.func] + character.aspects[soakAttrDef.aspect]
+                : 0;
+              const sizeMod = ((a.id === 'Form' || a.id === 'Flesh')
+                ? character.size
+                : character.immaterialSize) * 4;
+              const finalSoak = getDiePoolEntry(soakValue).rank + sizeMod;
+
+              return (
+                <tr key={a.id}>
+                  <td>{a.emoji} {a.name}</td>
+                  <td><TickBoxes count={8} /></td>
+                  <td><TickBoxes count={parryDice} /> <span className="desc">{parryAttr}</span></td>
+                  <td>
+                    {dodgeAttr
+                      ? <><TickBoxes count={dodgeDice} /> <span className="desc">{dodgeAttr}</span></>
+                      : <span className="desc">Surprise Roll ({dieNotation(c.diePools['Reflexes'].dice)})</span>}
+                  </td>
+                  <td>{finalSoak}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
       {/* Equipment Section */}
-      {(weapons.length > 0 || armor.length > 0) && (
+      {(character.weapons.length > 0 || character.armor.length > 0) && (
         <div className="section equipment-section">
           <h3>⚔️ Equipment</h3>
           
-          {weapons.length > 0 && (
+          {character.weapons.length > 0 && (
             <div className="weapons-block">
               <h4>Weapons</h4>
               <table className="equipment-table">
@@ -206,10 +253,10 @@ export function CharacterSheet({
                   </tr>
                 </thead>
                 <tbody>
-                  {weapons.map(weapon => {
+                  {character.weapons.map(weapon => {
                     const refs: WeaponTagRef[] = weapon.tags ?? idsToRefs(weapon.tagIds ?? []);
                     const resolvedTags = refs
-                      .map(ref => resolveTagRef(ref, customTags, tagCtx))
+                      .map(ref => resolveTagRef(ref, character.customTags, tagCtx))
                       .filter((t): t is NonNullable<typeof t> => t !== null);
                     return (
                       <tr key={weapon.id}>
@@ -253,7 +300,7 @@ export function CharacterSheet({
             </div>
           )}
 
-          {armor.length > 0 && (
+          {character.armor.length > 0 && (
             <div className="armor-block">
               <h4>Armor</h4>
               <table className="equipment-table">
@@ -267,7 +314,7 @@ export function CharacterSheet({
                   </tr>
                 </thead>
                 <tbody>
-                  {armor.map(piece => {
+                  {character.armor.map(piece => {
                     const aspectEmojis: Record<string, string> = {
                       Form: '🧱', Flesh: '🧬', Mind: '🧠', Spirit: '🔥'
                     };
@@ -309,11 +356,11 @@ export function CharacterSheet({
           )}
 
           {/* Skills */}
-          {skills.length > 0 && (
+          {character.skills.length > 0 && (
             <div className="section">
               <h3>🎓 Skills [{skillCostTotal} pts]</h3>
               <ul className="skill-list">
-                {skills.map(skillEntry => {
+                {character.skills.map(skillEntry => {
                   const skill = SKILLS.find(s => s.id === skillEntry.skillId);
                   if (!skill) return null;
                   const modifier = getSkillModifier(skillEntry.rating);
@@ -332,11 +379,11 @@ export function CharacterSheet({
           )}
 
           {/* Artifacts */}
-          {artifacts.length > 0 && (
+          {character.artifacts.length > 0 && (
             <div className="section">
               <h3>🗡️ Artifacts [{artifactCostTotal} pts]</h3>
               <ul className="artifact-list">
-                {artifacts.map(artifact => (
+                {character.artifacts.map(artifact => (
                   <li key={artifact.id}>
                     <strong>{artifact.name}</strong>
                     {artifact.quantity > 1 && <span> ×{artifact.quantity}</span>}
@@ -351,11 +398,11 @@ export function CharacterSheet({
 
         <div className="column right-column">
           {/* Personal Shadows */}
-          {personalShadows.length > 0 && (
+          {character.personalShadows.length > 0 && (
             <div className="section">
               <h3>🌓 Personal Shadows [{shadowCostTotal} pts]</h3>
               <ul className="shadow-list">
-                {personalShadows.map(shadow => (
+                {character.personalShadows.map(shadow => (
                   <li key={shadow.id}>
                     <strong>{shadow.name}</strong>
                     <span className="cost"> [{shadow.cost} pts]</span>
@@ -367,11 +414,11 @@ export function CharacterSheet({
           )}
 
           {/* Allies & Enemies */}
-          {allies.length > 0 && (
+          {character.allies.length > 0 && (
             <div className="section">
               <h3>🤝 Allies & Enemies [{allyCostTotal} pts]</h3>
               <ul className="ally-list">
-                {allies.map(ally => {
+                {character.allies.map(ally => {
                   const loyaltyClass = ally.loyalty < 0 ? 'enemy' : ally.loyalty > 3 ? 'devotee' : 'ally';
                   return (
                     <li key={ally.id} className={loyaltyClass}>
@@ -390,7 +437,7 @@ export function CharacterSheet({
             <h3>📊 Point Summary</h3>
             <div className="summary-row">
               <span>Aspects & Functions:</span>
-              <span>{Object.values(aspects).reduce<number>((s, v) => s + v, 0) + Object.values(functions).reduce<number>((s, v) => s + v, 0)}</span>
+              <span>{Object.values(character.aspects).reduce<number>((s, v) => s + v, 0) + Object.values(character.functions).reduce<number>((s, v) => s + v, 0)}</span>
             </div>
             <div className="summary-row">
               <span>Skills:</span>
@@ -414,7 +461,7 @@ export function CharacterSheet({
             </div>
             <div className="summary-row total">
               <span>Total:</span>
-              <span>{campaignLimit - stuff}</span>
+              <span>{character.campaignLimit - c.stuff}</span>
             </div>
           </div>
         </div>

@@ -1443,25 +1443,8 @@ export function AvatarBuilderPage() {
           </div>
         </section>
       </main>
-      {/* Print-only character sheet */}
-      <CharacterSheet
-        name={character.name}
-        campaignLimit={character.campaignLimit}
-        aspects={character.aspects}
-        functions={character.functions}
-        skills={character.skills}
-        powers={character.powers}
-        artifacts={character.artifacts}
-        allies={character.allies}
-        personalShadows={character.personalShadows}
-        stuff={stuff}
-        surge={character.computedCharacter.surge}
-        weapons={character.weapons}
-        armor={character.armor}
-        customTags={character.customTags}
-        aspectExplanations={character.aspectExplanations}
-        functionExplanations={character.functionExplanations}
-      />
+      {/* Live preview — also this page's print target */}
+      <CharacterSheet />
       {/* Icon Picker Modal */}
       <IconPicker
         isOpen={showIconPicker}
