@@ -4,11 +4,13 @@ import { SKILLS, getSkillModifier, getTotalSkillCost } from '../data/skills';
 import { calculateSkillCap, calculateSkillMaximum } from '../utils/calculations';
 import { POWERS } from '../data/powers';
 import { getDiePoolEntry } from '../data/diePoolTable';
+import { formatMagnitude, formatRange } from '../data/weaponData'
 import { resolveTagRef, idsToRefs, formatTagLabel, formatTagEffect } from '../data/weaponTags';
 import { useCharacter } from '../context/useCharacter'
 import { useTagResolveContext } from '../context/useTagResolveContext'
 import { buildMythicTraits } from '../utils/powerDisplay';
 import { SOAK_ATTRIBUTES, PARRY_POOL_ATTRIBUTES, DODGE_ATTRIBUTES } from '../data/aspectAttributes';
+import { WOUND_LABELS, WOUND_PENALTIES, type WoundLevel } from '../data/wounds';
 
 import './CharacterSheet.css';
 
@@ -39,6 +41,22 @@ function TickBoxes({ count }: { count: number }) {
     <span className="inline-flex gap-0.5 ml-1">
       {Array.from({ length: count }).map((_, i) => (
         <span key={i} className="inline-block w-3 h-3 border border-black"></span>
+      ))}
+    </span>
+  );
+}
+
+/** Eight wound boxes, numbered to match the ladder beneath the table. */
+function WoundBoxes() {
+  return (
+    <span className="inline-flex gap-0.5 ml-1">
+      {Array.from({ length: 8 }, (_, i) => (
+        <span
+          key={i}
+          className="inline-flex items-center justify-center w-3.5 h-3.5 border border-black text-[8px] leading-none"
+        >
+          {i + 1}
+        </span>
       ))}
     </span>
   );
@@ -100,19 +118,24 @@ export function CharacterSheet() {
   // Shadow cost total
   const shadowCostTotal = character.personalShadows.reduce((sum, s) => sum + s.cost, 0);
 
-  const stuffText = c.stuff >= 0 ? `+${c.stuff} Good Stuff` : `${c.stuff} Bad Stuff`;
+  const stuffText = c.stuff === 0 ? 'Neutral Stuff' : `${Math.abs(c.stuff)} ${c.stuff > 0 ? 'Good' : 'Bad'} Stuff`;
 
   return (
     <div className="character-sheet">
+      <div className="sheet-table">
+        <div className="sheet-cell">
+
       {/* Header */}
       <div className="sheet-header">
         <div className="character-name">{c.name || 'Unnamed Character'}</div>
-        <div className="character-campaign">{character.campaignLimit} Points</div>
+        <div className="character-campaign">
+          {c.totalPointsSpent} / {character.campaignLimit} Points · {stuffText}
+        </div>
       </div>
-
+  
       {/* Attributes Grid */}
-      <div className="attributes-section">
-        <h2>Attributes</h2>
+      <div className="section attributes-section">
+        <h3>Attributes</h3>
         <table className="attributes-table">
           <thead>
             <tr>
@@ -133,8 +156,8 @@ export function CharacterSheet() {
                 <tr key={func.id}>
                   <td className="func-name">{func.emoji}</td>
                   <td className="func-value">
-                    <span className="func-label">{func.name}</span>
-                    <span className="func-rating">{funcRating >= 0 ? '+' : ''}{funcRating}</span>
+                    <div className="func-label">{func.name}</div>
+                    <div className="func-rating">[{funcRating >= 0 ? '+' : ''}{funcRating}]</div>
                   </td>
                   {ASPECTS.map(aspect => {
                     const attr = ATTRIBUTES.find(a => a.func === func.id && a.aspect === aspect.id);
@@ -155,28 +178,12 @@ export function CharacterSheet() {
         </table>
       </div>
 
-      {/* Stats Bar */}
-      <div className="stats-bar">
-        <div className="stat surge">
-          <span className="stat-label">Surge</span>
-          <span className="stat-value">{c.surge}</span>
-        </div>
-        <div className={`stat stuff ${c.stuff >= 0 ? 'good' : 'bad'}`}>
-          <span className="stat-label">Stuff</span>
-          <span className="stat-value">{stuffText}</span>
-        </div>
-        <div className="stat skills-meta">
-          <span className="stat-label">Skills</span>
-          <span className="stat-value">Cap +{skillCap}, Max {skillMax}</span>
-        </div>
-      </div>
-
       {/* Play State — tick boxes to mark at the table */}
       <div className="section">
         <h3>🎲 Play State</h3>
         <div className="summary-row">
           <span>Surge:</span>
-          <span><TickBoxes count={c.surge} /></span>
+          <span>{c.surge} <TickBoxes count={c.surge} /></span>
         </div>
         <div className="summary-row">
           <span>Physical Init:</span>
@@ -186,11 +193,15 @@ export function CharacterSheet() {
           <span>Mental Init:</span>
           <span>{dieNotation(c.diePools['Inspiration'].dice)} / {dieNotation(c.diePools['Intelligence'].dice)} (lower)</span>
         </div>
+        <div className="summary-row">
+          <span>Pace:</span>
+          <span>{character.pace.walking.mph}/{character.pace.sprinting.mph} mph ({character.pace.walking.kph}/{character.pace.sprinting.kph} kph)</span>
+        </div>
       </div>
 
       <div className="section">
         <h3>🩸 Aspects State</h3>
-        <table className="equipment-table">
+        <table className="equipment-table aspects-state-table">
           <thead>
             <tr>
               <th>Aspect</th>
@@ -219,7 +230,7 @@ export function CharacterSheet() {
               return (
                 <tr key={a.id}>
                   <td>{a.emoji} {a.name}</td>
-                  <td><TickBoxes count={8} /></td>
+                  <td><WoundBoxes /></td>
                   <td><TickBoxes count={parryDice} /> <span className="desc">{parryAttr}</span></td>
                   <td>
                     {dodgeAttr
@@ -232,6 +243,18 @@ export function CharacterSheet() {
             })}
           </tbody>
         </table>
+        <div className="wound-legend">
+          {Array.from({ length: 8 }, (_, i) => {
+            const level = (i + 1) as WoundLevel;
+            const pen = WOUND_PENALTIES[level];
+            return (
+              <span key={level}>
+                <strong>L{level}</strong> {WOUND_LABELS[level].label}
+                {pen !== 0 && <> {pen}/die</>}
+              </span>
+            );
+          })}
+        </div>
       </div>
 
       {/* Equipment Section */}
@@ -272,9 +295,9 @@ export function CharacterSheet() {
                                 : 0;
                             return (
                               <div key={attack.id} className="attack-detail">
-                                {ASPECTS.find(a => a.id === attack.aspect)?.emoji} {attack.magnitude} {attack.type}
+                                {ASPECTS.find(a => a.id === attack.aspect)?.emoji} {formatMagnitude(attack.magnitude)} {attack.type}
                                 {penValue > 0 && ` (Pen ${penValue})`}
-                                {attack.range && ` • ${attack.range}`}
+                                {attack.range && ` • ${formatRange(attack.range)}`}
                               </div>
                             );
                           })}
@@ -358,7 +381,7 @@ export function CharacterSheet() {
           {/* Skills */}
           {character.skills.length > 0 && (
             <div className="section">
-              <h3>🎓 Skills [{skillCostTotal} pts]</h3>
+              <h3>🎓 Skills [{skillCostTotal} pts] <span className="heading-note">Cap +{skillCap} / Max {skillMax}</span></h3>
               <ul className="skill-list">
                 {character.skills.map(skillEntry => {
                   const skill = SKILLS.find(s => s.id === skillEntry.skillId);
@@ -461,11 +484,19 @@ export function CharacterSheet() {
             </div>
             <div className="summary-row total">
               <span>Total:</span>
-              <span>{character.campaignLimit - c.stuff}</span>
+              <span>{c.totalPointsSpent} / {character.campaignLimit}</span>
             </div>
           </div>
-        </div>
+        </div>   {/* .right-column */}
+      </div>     {/* .two-column */}
+    </div>       {/* .sheet-cell */}
+    <div className="sheet-running-foot">
+      <div className="foot-row">
+        <span>{c.name || 'Unnamed Character'} — WarhAmber</span>
+        <span>{c.totalPointsSpent} / {character.campaignLimit} pts</span>
       </div>
     </div>
+      </div>         {/* .sheet-table */}
+    </div> 
   );
 }

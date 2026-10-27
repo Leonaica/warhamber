@@ -1,4 +1,6 @@
 import type { AspectName, AttackType, WeaponCapacity, WeaponCategory, WeaponHandedness, WeaponReloadTime } from '../types/character';
+import { WEAPON_RANGES, type WeaponRange } from '../types/character';
+import { DAMAGE_MAGNITUDE_TABLE } from './damageTable';
 
 export const WEAPON_CATEGORY_GROUPS: Record<string, WeaponCategory[]> = {
   'Physical Weapons': ['Melee', 'Pistol', 'Ranged', 'Heavy', 'Mounted', 'Thrown'],
@@ -94,4 +96,17 @@ export function formatWeaponLogistics(
   if (capStr) parts.push(`${capStr} capacity`);
   if (reloadTime) parts.push(`${reloadTime} reload`);
   return parts.join(', ');
+}
+
+/** Damage dice for a magnitude, e.g. "5 (2d12)". */
+export function formatMagnitude(magnitude: number): string {
+  const entry = DAMAGE_MAGNITUDE_TABLE.find(m => m.magnitude === magnitude);
+  return entry ? `${magnitude} (${entry.pool.notation})` : String(magnitude);
+}
+
+/** Range label plus its typical distance, e.g. "Beyond Horizon (~2 km)". */
+export function formatRange(range: WeaponRange | undefined): string {
+  if (!range) return '';
+  const entry = WEAPON_RANGES.find(r => r.value === range);
+  return entry ? `${entry.label} (${entry.distance})` : range;
 }

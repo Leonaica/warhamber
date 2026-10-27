@@ -19,6 +19,12 @@
 
 /* Print styles */
 @media print {
+
+  .app-shell {
+    background: white;
+    color: #1a1a1a;
+    min-height: 0;
+  }
     
   .character-sheet h2,
   .character-sheet h3 {

@@ -1399,9 +1399,7 @@ export function PlaysheetPage() {
           )}
         </div>
       </div>
-      <div className="hidden print:block">
-        <CharacterSheet />
-      </div>
+      <CharacterSheet />
     </>
   );
 }

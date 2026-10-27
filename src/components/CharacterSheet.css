@@ -1,294 +1,360 @@
-/* Print-only character sheet styles */
+/* ============================================================
+  Character sheet — print-only.
+  Hidden on screen; all styling lives inside @media print.
+  ============================================================ */
+
+@page {
+  size: A4;                /* change to letter if that is your paper */
+  margin: 12mm 8mm 20mm;   /* the bottom band is where the running foot lives */
+}
+
+/* Print-only: hidden on screen, revealed by the @media print block below. */
 .character-sheet {
-    display: none;
+  display: none;
+}
+
+@media print {
+
+  .character-sheet {
+    display: block;
+    width: 100%;
+    /* Side safe area (survives the dialog's margin being set to "None") plus
+        bottom padding, which stops the last child's margin collapsing out and
+        exposing the dark app shell behind the sheet. */
+    padding: 6mm 10mm;
+    font-family: 'Georgia', serif;
+    color: #1a1a1a;
+    background: white;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* ---------- Header ---------- */
+  .sheet-header {
+    text-align: center;
+    border-bottom: 3px double #8b4513;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+  }
+
+  .character-name {
+    font-size: 32px;
+    font-weight: bold;
+    color: #2c1810;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+  }
+
+  .character-campaign {
+    font-size: 14px;
+    color: #666;
+    margin-top: 5px;
+  }
+
+  /* position: fixed repeats on every printed page in Chrome and Firefox.
+    It takes no layout space, hence the reserved @page bottom margin. */
+  .sheet-running-foot {
+    position: fixed;
+    bottom: -8mm;
+    left: 10mm;
+    right: 10mm;
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: #8b4513;
+    border-top: 0.5px solid #d8cbb8;
+    padding-top: 2px;
+  }
+
+  /* ---------- Attributes ---------- */
+  .attributes-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+  }
+
+  .attributes-table th,
+  .attributes-table td {
+    border: 1px solid #ccc;
+    text-align: center;
+    padding: 8px 4px;
+  }
+
+  .attributes-table th {
+    background: #f5f0e8;
+    font-size: 12px;
+  }
+
+  .aspect-name {
+    font-weight: bold;
+    color: #8b4513;
+  }
+
+  .aspect-value {
+    font-size: 11px;
+    color: #666;
+  }
+
+  .func-name {
+    font-size: 16px;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .func-value {
+    text-align: left;
+    background: #f5f0e8;      /* match the column-header band */
+  }
+
+  .func-label {
+    display: block;
+    font-weight: bold;
+    color: #8b4513;
+    font-size: 12px;
   }
   
-  @media print {
-
-    .character-sheet {
-      display: block;
-      width: 100%;
-      padding: 20px;
-      font-family: 'Georgia', serif;
-      color: #1a1a1a;
-      background: white;
-    }
-  
-    /* Header */
-    .sheet-header {
-      text-align: center;
-      border-bottom: 3px double #8b4513;
-      padding-bottom: 15px;
-      margin-bottom: 20px;
-    }
-    
-    .character-name {
-      font-size: 32px;
-      font-weight: bold;
-      color: #2c1810;
-      text-transform: uppercase;
-      letter-spacing: 3px;
-    }
-    
-    .character-campaign {
-      font-size: 14px;
-      color: #666;
-      font-style: italic;
-      margin-top: 5px;
-    }
-  
-    /* Attributes Table */
-    .attributes-section h2 {
-      text-align: center;
-      font-size: 14px;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      color: #8b4513;
-      border-bottom: 1px solid #8b4513;
-      padding-bottom: 5px;
-      margin-bottom: 10px;
-    }
-    
-    .attributes-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 20px;
-    }
-    
-    .attributes-table th,
-    .attributes-table td {
-      border: 1px solid #ccc;
-      text-align: center;
-      padding: 8px 4px;
-    }
-    
-    .attributes-table th {
-      background: #f5f0e8;
-      font-size: 12px;
-    }
-    
-    .aspect-name {
-      font-weight: bold;
-      color: #8b4513;
-    }
-    
-    .aspect-value {
-      font-size: 11px;
-      color: #666;
-    }
-    
-    .func-name {
-      font-size: 18px;
-      padding-right: 5px;
-    }
-    
-    .func-label {
-      font-weight: bold;
-      color: #8b4513;
-    }
-    
-    .func-rating {
-      font-size: 12px;
-      color: #666;
-      margin-left: 5px;
-    }
-    
-    .attr-cell {
-      background: #fafafa;
-    }
-    
-    .attr-name {
-      font-size: 11px;
-      font-weight: bold;
-      color: #333;
-    }
-    
-    .attr-dice {
-      font-size: 13px;
-      color: #1a5f1a;
-      font-weight: bold;
-    }
-  
-    /* Stats Bar */
-    .stats-bar {
-      display: flex;
-      justify-content: space-around;
-      border: 2px solid #8b4513;
-      border-radius: 8px;
-      padding: 10px;
-      margin-bottom: 20px;
-      background: #f5f0e8;
-    }
-    
-    .stat {
-      text-align: center;
-    }
-    
-    .stat-label {
-      display: block;
-      font-size: 11px;
-      text-transform: uppercase;
-      color: #666;
-    }
-    
-    .stat-value {
-      display: block;
-      font-size: 16px;
-      font-weight: bold;
-      color: #2c1810;
-    }
-    
-    .stuff.good .stat-value {
-      color: #1a5f1a;
-    }
-    
-    .stuff.bad .stat-value {
-      color: #8b0000;
-    }
-  
-    /* Two Column Layout */
-    .two-column {
-      display: flex;
-      gap: 20px;
-    }
-    
-    .column {
-      flex: 1;
-    }
-  
-    /* Sections */
-    .section {
-      margin-bottom: 15px;
-    }
-    
-    .section h3 {
-      font-size: 14px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #8b4513;
-      border-bottom: 1px solid #8b4513;
-      padding-bottom: 3px;
-      margin-bottom: 8px;
-    }
-    
-    .section ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    
-    .section li {
-      padding: 4px 0;
-      border-bottom: 1px dotted #ddd;
-      font-size: 12px;
-    }
-    
-    .section li:last-child {
-      border-bottom: none;
-    }
-    
-    .cost {
-      color: #8b4513;
-      font-size: 11px;
-    }
-    
-    .modifier {
-      color: #1a5f1a;
-      font-size: 11px;
-    }
-    
-    .specialty,
-    .desc,
-    .label {
-      color: #666;
-      font-style: italic;
-    }
-
-    .specialtydescription,
-    .desc,
-    .label {
-      color: #666;
-      font-style: italic;
-    }
-  
-    /* Ally styling */
-    .ally-list li.ally {
-      border-left: 3px solid #1a5f1a;
-      padding-left: 8px;
-    }
-    
-    .ally-list li.enemy {
-      border-left: 3px solid #8b0000;
-      padding-left: 8px;
-    }
-    
-    .ally-list li.devotee {
-      border-left: 3px solid #daa520;
-      padding-left: 8px;
-    }
-  
-    /* Point Summary */
-    .point-summary {
-      background: #f5f0e8;
-      padding: 10px;
-      border-radius: 5px;
-      border: 1px solid #8b4513;
-    }
-    
-    .summary-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 12px;
-      padding: 2px 0;
-    }
-    
-    .summary-row.total {
-      border-top: 1px solid #8b4513;
-      margin-top: 5px;
-      padding-top: 5px;
-      font-weight: bold;
-    }
-  
-    /* Page setup */
-    @page {
-      size: letter;
-      margin: 0.5in;
-    }
-
-    .equipment-section {
-      margin-top: 1rem;
-      margin-bottom: 1rem;
-    }
-
-    .equipment-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.85rem;
-      margin-bottom: 1rem;
-    }
-
-    .equipment-table th,
-    .equipment-table td {
-      border: 1px solid #444;
-      padding: 0.25rem 0.5rem;
-      text-align: left;
-      vertical-align: top;
-    }
-
-    .equipment-table th {
-      background-color: #1e293b; /* slate-800 */
-      color: #fbbf24; /* amber-400 */
-      font-weight: bold;
-    }
-
-    .tag-entry {
-      display: flex;
-      align-items: baseline;
-      gap: 0.25rem;
-    }
-
-    .tag-effect {
-      font-style: italic;
-      color: #94a3b8; /* slate-400 */
-    }
+  .func-rating {
+    display: block;
+    font-size: 11px;
+    color: #666;
   }
+
+  .attr-cell {
+    background: #fafafa;
+  }
+
+  .attr-name {
+    font-size: 11px;
+    font-weight: bold;
+    color: #333;
+  }
+
+  .attr-dice {
+    font-size: 13px;
+    color: #1a5f1a;
+    font-weight: bold;
+  }
+
+  .heading-note {
+    font-size: 10px;
+    font-weight: normal;
+    letter-spacing: 0;
+    text-transform: none;
+    color: #666;
+  }
+
+  /* ---------- Sections ---------- */
+  .section {
+    margin-bottom: 15px;
+  }
+
+  .section h3 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #8b4513;
+    border-bottom: 1px solid #8b4513;
+    padding-bottom: 3px;
+    margin-bottom: 8px;
+  }
+
+  .section ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .section li {
+    padding: 4px 0;
+    border-bottom: 1px dotted #ddd;
+    font-size: 13px;
+  }
+
+  .section li:last-child {
+    border-bottom: none;
+  }
+
+  .cost {
+    color: #8b4513;
+    font-size: 11px;
+  }
+
+  .modifier {
+    color: #1a5f1a;
+    font-size: 11px;
+  }
+
+  .specialty,
+  .specialtydescription,
+  .label {
+    color: #666;
+    font-style: italic;
+  }
+
+  .desc {
+    color: #555;
+  }
+
+  .wound-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.9rem;
+    margin-top: 5px;
+    font-size: 10px;
+    color: #444;
+  }
+
+  .wound-legend strong {
+    color: #8b0000;
+  }
+
+  /* ---------- Allies ---------- */
+  .ally-list li.ally {
+    border-left: 3px solid #1a5f1a;
+    padding-left: 8px;
+  }
+
+  .ally-list li.enemy {
+    border-left: 3px solid #8b0000;
+    padding-left: 8px;
+  }
+
+  .ally-list li.devotee {
+    border-left: 3px solid #daa520;
+    padding-left: 8px;
+  }
+
+  /* ---------- Point summary ---------- */
+  .point-summary {
+    background: #f5f0e8;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #8b4513;
+  }
+
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    padding: 2px 0;
+  }
+
+  .summary-row.total {
+    border-top: 1px solid #8b4513;
+    margin-top: 5px;
+    padding-top: 5px;
+    font-weight: bold;
+  }
+
+  /* ---------- Equipment ---------- */
+  .equipment-section {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .equipment-table {
+    table-layout: fixed;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-bottom: 1rem;
+  }
+
+  .equipment-table th,
+  .equipment-table td {
+    overflow-wrap: break-word;
+    hyphens: auto;
+    border: 1px solid #444;
+    padding: 0.2rem 0.35rem;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .equipment-table th {
+    font-size: 11px;
+    background: #f5f0e8;
+    color: #8b4513;
+    font-weight: bold;
+  }
+
+  /* Column widths are per-table */
+  .aspects-state-table th:nth-child(1) { width: 15%; }  /* Aspect */
+  .aspects-state-table th:nth-child(2) { width: 40%; }  /* Wounds */
+  .aspects-state-table th:nth-child(3) { width: 16%; }  /* Parry */
+  .aspects-state-table th:nth-child(4) { width: 16%; }  /* Dodge */
+  .aspects-state-table th:nth-child(5) { width: 13%; }  /* Soak */
+
+  .weapons-block .equipment-table th:nth-child(2) { width: 12%; }  /* Category */
+  .weapons-block .equipment-table th:nth-child(3) { width: 14%; }  /* Handedness */
+  .weapons-block .equipment-table th:nth-child(4) { width: 28%; }  /* Attack Details */
+  .weapons-block .equipment-table th:nth-child(5) { width: 28%; }  /* Tags */
+
+  .armor-block .equipment-table th:nth-child(1) { width: 26%; }    /* Name */
+  .armor-block .equipment-table th:nth-child(2) { width: 22%; }    /* Aspects */
+  .armor-block .equipment-table th:nth-child(3) { width: 10%; }    /* Armor */
+  .armor-block .equipment-table th:nth-child(4) { width: 21%; }    /* Location */
+  .armor-block .equipment-table th:nth-child(5) { width: 21%; }    /* Notes */
+
+  /* ---------- Tag rows ---------- */
+  .tag-entry {
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .tag-effect {
+    color: #666;
+  }
+
+  /* ============================================================
+      Pagination
+      ============================================================ */
+
+  /* A two-column box taller than one page cannot break cleanly: the
+      browser splits the column container and the right column's content
+      surfaces between the left column's halves. One flow, correct
+      reading order, clean breaks. */
+  .character-sheet .two-column {
+    display: block;
+  }
+
+  .character-sheet .column {
+    display: block;
+    float: none;
+    width: 100%;
+  }
+
+  /* Atomic blocks — never split across a page boundary. */
+  .character-sheet li,
+  .character-sheet tr,
+  .character-sheet .tag-entry,
+  .character-sheet .tag-list,
+  .character-sheet .attack-detail,
+  .character-sheet .summary-row,
+  .character-sheet .sheet-header,
+  .character-sheet .point-summary,
+  .character-sheet .armor-block {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* A heading must never be stranded at the foot of a page. */
+  .character-sheet h2,
+  .character-sheet h3,
+  .character-sheet h4 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Repeat the header row on every page a table spans. */
+  .character-sheet thead {
+    display: table-header-group;
+  }
+
+  /* No single-line orphans in the multi-line entries. */
+  .character-sheet li {
+    orphans: 2;
+    widows: 2;
+  }
+}
