@@ -478,7 +478,7 @@ export function CombatPage() {
                       </div>
                     )}<div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide flex items-center gap-1">
                       <span>Qualities</span>
-                      <span className="text-amber-400/70 normal-case font-normal">(apply manually)</span>
+                      <span className="text-amber-400/70 normal-case font-normal">(apply manually when applicable)</span>
                     </div>
                     <div className="space-y-1">
                       {resolvedTags.map(({ ref, def, x }) => {
