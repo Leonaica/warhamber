@@ -515,7 +515,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
     label: 'Pattern-Etched',
     category: 'Metaphysical',
     description: 'Etched with the Pattern',
-    effect: 'Deals additional Mag {x} Spirit-Unmaking damage to anything without Pattern-blood; touch disrupts magic, Logrus, and Tarot',
+    effect: 'Deals additional Mag {x} Spirit-Unmaking damage to anything with Logrus-blood; touch disrupts magic, Logrus, and Tarot',
     variable: { min: 1, max: 11, default: 4 },
   },
   {
@@ -523,7 +523,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
     label: 'Primal Chaos',
     category: 'Metaphysical',
     description: 'Weapon is infused with raw, undifferentiated potential',
-    effect: 'Inflicts Mag {x} Form-Annihilation damage each round as target\'s material reality dissolves. Dissolution spreads from point of impact. Touch dissolves magic, Pattern, and Tarot effects on contact. Target killed by Primal Chaos doesn\'t leave a corpse — returns to unstructured potential',
+    effect: 'Inflicts Mag {x} Form-Annihilation damage each round as target\'s material reality dissolves. Dissolution spreads from point of impact. Touch dissolves magic effects on contact. Contact with Pattern is inadvisable',
     variable: { min: 1, max: 11, default: 4, step: 1 },
   },
   {
