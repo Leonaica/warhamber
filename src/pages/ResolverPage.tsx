@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useGameState } from '../context/useGameState';
+import { useTagResolveContext } from '../context/useTagResolveContext';
 import { useCharacter } from '../context/useCharacter';
 import type { AttributeName } from '../types/character';
 import { DIE_POOL_TABLE } from '../data/diePoolTable';
@@ -14,6 +15,10 @@ import {
   type PreviewResult
 } from '../utils/resolution';
 import { isBandAvailable, resultToScale } from '../data/actionEffortTable';
+import { resolveTagRef, formatTagLabel, idsToRefs } from '../data/weaponTags';
+import { TagToggle, type TagToggleState } from '../components/TagToggle';
+import { buildLedger, isDefaultActive, isInteractive } from '../utils/tagLedger';
+import { conditionMet } from '../data/tagVocabulary';
 import type { EffortBand, ActionResult, ContestResult } from '../types/resolution';
 import StepperInput from '../components/StepperInput';
 import type { ReactionPoolKey } from '../context/GameStateContext';
@@ -44,6 +49,7 @@ export function ResolverPage() {
   const playsheetState = location.state as PlaysheetState | undefined;
   const gameState = useGameState();
   const character = useCharacter();
+  const tagCtx = useTagResolveContext();
   
   const hasCharacter = character.hasCharacter;
   const currentSurge = hasCharacter 
@@ -90,6 +96,67 @@ export function ResolverPage() {
       best: better === 'primary' ? primary : secondary,
     };
   })();
+
+  // ---- weapon qualities that affect the attack roll ----
+  // Only `attack`-stage effects belong here; damage-side tags stay on the
+  // combat page.
+  const rollWeapon = playsheetState?.weaponId
+    ? character.weapons.find(w => w.id === playsheetState.weaponId)
+    : undefined;
+  const rollAttackIndex = playsheetState?.attackIndex ?? 0;
+  const rollSelectionKey = rollWeapon ? `${rollWeapon.id}:${rollAttackIndex}` : '';
+
+  const attackTagRefs = useMemo(() => {
+    if (!rollWeapon) return [];
+    const refs = rollWeapon.tags ?? idsToRefs(rollWeapon.tagIds ?? []);
+    return refs.filter(ref => {
+      const def = resolveTagRef(ref, character.customTags, tagCtx)?.def;
+      return (def?.effects ?? []).some(e => e.stage === 'attack');
+    });
+  }, [rollWeapon, character.customTags, tagCtx]);
+
+  const rollSelection = gameState.tagSelection[rollSelectionKey] ?? (() => {
+    const out: Record<string, string[] | undefined> = {};
+    for (const ref of attackTagRefs) {
+      const def = resolveTagRef(ref, character.customTags, tagCtx)?.def;
+      if (def && isDefaultActive(def)) out[ref.tagId] = undefined;
+    }
+    return out;
+  })();
+
+  const attackTags = attackTagRefs.flatMap(ref => {
+    if (!(ref.tagId in rollSelection)) return [];
+    const resolved = resolveTagRef(ref, character.customTags, tagCtx);
+    if (!resolved) return [];
+    return [{
+      tagId: ref.tagId,
+      label: formatTagLabel(resolved.def, resolved.x),
+      ref,
+      def: resolved.def,
+      activeChildren: rollSelection[ref.tagId],
+    }];
+  });
+
+  const attackLedger = buildLedger(
+    attackTags,
+    { raises: 0, allLow: false },
+    {
+      strengthRank: character.attributeDiePools.Strength.rank,
+      presenceRank: character.attributeDiePools.Presence.rank,
+      armorValue: 0,
+    },
+  );
+
+  const effectiveActorModifier = actorModifier + attackLedger.attack;
+
+  const toggleAttackTag = (tagId: string) => {
+    gameState.setTagSelection(prev => {
+      const sel = { ...(prev[rollSelectionKey] ?? rollSelection) };
+      if (tagId in sel) delete sel[tagId];
+      else sel[tagId] = undefined;
+      return { ...prev, [rollSelectionKey]: sel };
+    });
+  };
 
   // Sync state when playsheet data arrives
   if (playsheetState !== prevPlaysheetState) {
@@ -153,7 +220,7 @@ export function ResolverPage() {
         poolRank: secondaryPoolEntry.rank,
         skillBonus: actorSkillBonus,
         woundPenalty: actorWoundPenalty,
-        situationalModifier: actorModifier,
+        situationalModifier: effectiveActorModifier,
         isContest: testType === 'contest',
         ...(testType === 'contest' ? { opponentRank: opponentPoolEntry.rank } : {}),
         targetNumber,
@@ -193,7 +260,7 @@ export function ResolverPage() {
   };
 
   // Calculate total modifiers
-  const actorTotalModifier = (actorSkillBonus + actorWoundPenalty) * actorPoolEntry.pool.dice.length + actorModifier;
+  const actorTotalModifier = (actorSkillBonus + actorWoundPenalty) * actorPoolEntry.pool.dice.length + effectiveActorModifier;
   const opponentTotalModifier = (opponentSkillBonus + opponentWoundPenalty) * opponentPoolEntry.pool.dice.length + opponentModifier;
 
   // Define the band styles in a static lookup object so that Tailwind sees all the class names. 
@@ -281,7 +348,7 @@ export function ResolverPage() {
       approach: band === 'green' ? 'baseline' : 'surge',
       skillBonus: actorSkillBonus,
       woundPenalty: actorWoundPenalty,
-      situationalModifier: actorModifier,
+      situationalModifier: effectiveActorModifier,
     });
   }
 
@@ -318,7 +385,7 @@ export function ResolverPage() {
         poolRank: actorPoolEntry.rank,
         skillBonus: actorSkillBonus,
         woundPenalty: actorWoundPenalty,
-        situationalModifier: actorModifier,
+        situationalModifier: effectiveActorModifier,
         isContest: false,
         targetNumber,
         approach: 'baseline',
@@ -333,7 +400,7 @@ export function ResolverPage() {
           poolRank: actorPoolEntry.rank,
           skillBonus: actorSkillBonus,
           woundPenalty: actorWoundPenalty,
-          situationalModifier: actorModifier,
+          situationalModifier: effectiveActorModifier,
           targetNumber: 0,
           approach: 'baseline',
         },
@@ -361,7 +428,7 @@ export function ResolverPage() {
         poolRank: actorPoolEntry.rank,
         skillBonus: actorSkillBonus,
         woundPenalty: actorWoundPenalty,
-        situationalModifier: actorModifier,
+        situationalModifier: effectiveActorModifier,
         isContest: false,
         targetNumber,
         approach: 'roll',
@@ -376,7 +443,7 @@ export function ResolverPage() {
           poolRank: actorPoolEntry.rank,
           skillBonus: actorSkillBonus,
           woundPenalty: actorWoundPenalty,
-          situationalModifier: actorModifier,
+          situationalModifier: effectiveActorModifier,
           targetNumber: 0,
           approach: 'roll',
         },
@@ -407,7 +474,7 @@ export function ResolverPage() {
         poolRank: actorPoolEntry.rank,
         skillBonus: actorSkillBonus,
         woundPenalty: actorWoundPenalty,
-        situationalModifier: actorModifier,
+        situationalModifier: effectiveActorModifier,
         isContest: false,
         targetNumber,
         approach: 'surge',
@@ -423,7 +490,7 @@ export function ResolverPage() {
           poolRank: actorPoolEntry.rank,
           skillBonus: actorSkillBonus,
           woundPenalty: actorWoundPenalty,
-          situationalModifier: actorModifier,
+          situationalModifier: effectiveActorModifier,
           targetNumber: 0,
           approach: 'surge',
           surgeBand: band,
@@ -477,7 +544,7 @@ export function ResolverPage() {
               poolRank: actorPoolEntry.rank,
               skillBonus: actorSkillBonus,
               woundPenalty: actorWoundPenalty,
-              situationalModifier: actorModifier,
+              situationalModifier: effectiveActorModifier,
               isContest: false,
               targetNumber,
               approach: 'roll',
@@ -516,7 +583,7 @@ export function ResolverPage() {
                 poolRank: actorPoolEntry.rank,
                 skillBonus: actorSkillBonus,
                 woundPenalty: actorWoundPenalty,
-                situationalModifier: actorModifier,
+                situationalModifier: effectiveActorModifier,
                 targetNumber: 0,
                 approach: 'roll',
               },
@@ -786,6 +853,37 @@ export function ResolverPage() {
               </div>
             </div>
 
+            {attackTagRefs.length > 0 && (
+              <div className="bg-slate-700/40 rounded p-1.5 space-y-1">
+                <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">
+                  Qualities
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {attackTagRefs.map(ref => {
+                    const resolved = resolveTagRef(ref, character.customTags, tagCtx);
+                    if (!resolved) return null;
+                    const { def, x } = resolved;
+                    const isOn = ref.tagId in rollSelection;
+                    const dormant = (def.effects ?? []).some(
+                      e => e.stage === 'attack' && e.when && !conditionMet(e.when, { raises: 0, allLow: false }),
+                    );
+                    const state: TagToggleState = !isInteractive(def)
+                      ? 'flavor'
+                      : isOn ? (dormant ? 'dormant' : 'active') : 'available';
+                    return (
+                      <TagToggle
+                        key={ref.tagId}
+                        tag={def}
+                        x={x}
+                        state={state}
+                        onToggle={() => toggleAttackTag(ref.tagId)}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="block text-xs text-slate-400 mb-0.5">Situational Modifier</label>
               <StepperInput
@@ -944,7 +1042,7 @@ export function ResolverPage() {
                 approach: band === 'green' ? 'baseline' : 'surge',
                 skillBonus: actorSkillBonus,
                 woundPenalty: actorWoundPenalty,
-                situationalModifier: actorModifier,
+                situationalModifier: effectiveActorModifier,
               });
 
               return (

@@ -33,6 +33,12 @@ export interface ReactionPools {
   spiritParry: number;
 }
 
+/**
+ * Tag toggles keyed by `${weaponId}:${attackIndex}`, then by tag id.
+ * Undefined children means every child effect is on.
+ */
+export type TagSelection = Record<string, Record<string, string[] | undefined>>;
+
 export interface OpponentCombatData {
   attackAspect: AspectName;
   attackMagnitude: number;
@@ -73,6 +79,9 @@ export interface GameStateContextValue {
   opponentWounds: WoundState;
   setOpponentWound: (aspect: AspectName, level: WoundLevel) => void;
   opponentWoundPenalty: number;
+  tagSelection: TagSelection;
+  setTagSelection: (updater: (prev: TagSelection) => TagSelection) => void;
+  resetTagSelection: () => void;
   opponentCombatData: OpponentCombatData;
   updateOpponentCombatData: (updates: Partial<OpponentCombatData>) => void;
   resetOpponent: () => void;
