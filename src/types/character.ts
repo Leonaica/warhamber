@@ -342,6 +342,79 @@ export interface TagResolveContext {
   stuff?: number;
 }
   
+/**
+ * Stages a tag effect can act on. Order mirrors the resolution pipeline;
+ * the evaluator applies them in that order, not in declaration order.
+ */
+export type TagStage =
+  | 'attack'
+  | 'parry'
+  | 'raises'
+  | 'raiseDamage'
+  | 'magnitude'
+  | 'penetration'
+  | 'resistance'
+  | 'armour'
+  | 'damageModifier'
+  | 'reroll'
+  | 'override';
+
+export type TagOp =
+  | 'add'
+  | 'subtract'
+  | 'multiply'
+  | 'set'
+  | 'deny'
+  | 'flag';
+
+export type TagTarget =
+  | 'parry'
+  | 'pen'
+  | 'magnitude'
+  | 'resistance'
+  | 'armour'
+  | 'woundLevel';
+
+/**
+ * Facts a condition may reference.
+ *
+ * INVARIANT: these are produced by the roll itself. Never add scene state
+ * here (target alignment, range, "is it moving"). The moment a scene fact
+ * appears, this design has regressed into modelling the encounter.
+ */
+export interface TagWhen {
+  raisesAtLeast?: number;
+  allLow?: boolean;
+}
+
+/**
+ * A machine-readable tag effect.
+ *
+ * `child` groups independent effects under one quality so the UI can render
+ * one chip with sub-toggles rather than several sibling chips.
+ */
+export interface TagEffect {
+  stage: TagStage;
+  op: TagOp;
+  target?: TagTarget;
+  amount?: number | 'x' | 'strength' | 'presence' | 'armourValue' | 'deathBlow';
+  per?: 'flat' | 'success' | 'raise';
+  when?: TagWhen;
+  note?: string;
+  child?: string;
+}
+
+/**
+ * Interaction kind. `flavour` has no effects; `narrative` and `secondTest`
+ * produce a card instead of arithmetic.
+ */
+export type TagKind =
+  | 'arithmetic'
+  | 'conditional'
+  | 'narrative'
+  | 'secondTest'
+  | 'flavour';
+
 interface WeaponTagVariable {
   min: number;
   max: number;
@@ -358,7 +431,12 @@ export interface WeaponTagDefinition {
   category: string;
   description?: string;
   effect?: string;
-  variable?: WeaponTagVariable; 
+  variable?: WeaponTagVariable;
+  /** Optional in step 1; inferred by getTagKind() when absent. Required in step 2. */
+  kind?: TagKind;
+  effects?: TagEffect[];
+  /** Applied on selection. Penalties, weapon facts, near-always-relevant only. */
+  defaultActive?: boolean;
 }
 
 /**

@@ -519,7 +519,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-logrus',
-    label: 'Logrus ',
+    label: 'Logrus',
     category: 'Metaphysical',
     description: 'Weapon\'s surface twists and coils with the Logrus',
     effect: 'Touch dissolves magic effects on contact. Ignores Shadow armor (Pen 224) and inflicts primal damage to anything of Shadow: increase Mag by 4; touch disrupts magic and Tarot',
