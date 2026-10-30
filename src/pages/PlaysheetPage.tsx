@@ -47,6 +47,10 @@ export function PlaysheetPage() {
   const [healModifier, setHealModifier] = useState(0);
   const [healResult, setHealResult] = useState<{ aspect: AspectName; successes: number; roll: number } | null>(null);
   const [surgeExpanded, setSurgeExpanded] = useState(false);
+  // The attacker's weapon lives on another device, so the defender flags the
+  // qualities that forbid a parry rather than the app resolving them.
+  const [attackerEnergy, setAttackerEnergy] = useState(false);
+  const [attackerFlexible, setAttackerFlexible] = useState(false);
 
   const renderIcon = (icon: IconEntry) => {
     return icon.library === 'fontawesome' ? (
@@ -57,6 +61,7 @@ export function PlaysheetPage() {
   };
 
   const currentSurge = character.computedCharacter.surge - gameState.surgeSpent;
+  const parryDenied = attackerEnergy || attackerFlexible;
 
   // Map the rating scale into PowerLevels so getPowerDisplay can resolve the level name (e.g., "Incarnation")
   const mythicLevels = RATING_SCALE.map(cost => ({
@@ -860,6 +865,24 @@ export function PlaysheetPage() {
               {/* Reaction Pools - Surprise, Dodge, Parry */}
               <div className="bg-slate-800 rounded-lg p-3">
                 <h2 className="text-base font-bold text-amber-400">⚡ Reactions — Surprise, Dodge & Parry</h2>
+                <div className="flex flex-wrap items-center gap-2 mt-1.5 mb-2">
+                  <span className="text-xs text-slate-500">Incoming weapon:</span>
+                  <button
+                    onClick={() => setAttackerEnergy(!attackerEnergy)}
+                    className={`rounded border px-2 py-0.5 text-xs ${attackerEnergy ? 'bg-sky-900/50 border-sky-500 text-sky-300' : 'bg-slate-700/50 border-slate-600 text-slate-400'}`}
+                  >
+                    Energy
+                  </button>
+                  <button
+                    onClick={() => setAttackerFlexible(!attackerFlexible)}
+                    className={`rounded border px-2 py-0.5 text-xs ${attackerFlexible ? 'bg-sky-900/50 border-sky-500 text-sky-300' : 'bg-slate-700/50 border-slate-600 text-slate-400'}`}
+                  >
+                    Flexible
+                  </button>
+                  {parryDenied && (
+                    <span className="text-xs text-sky-300">Parry unavailable — must Dodge</span>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {ASPECTS.map(aspect => {
                     const dodgeAttr = DODGE_ATTRIBUTES[aspect.id];
@@ -932,7 +955,7 @@ export function PlaysheetPage() {
                           </div>
                           <button
                             onClick={() => goToDefenseResolver(parryAttr, parryKey, parryPoolSize)}
-                            disabled={parryRemaining <= 0}
+                            disabled={parryDenied || parryRemaining <= 0}
                             className="w-full bg-amber-900/50 hover:bg-amber-700/50 disabled:opacity-30 disabled:cursor-not-allowed text-amber-300 rounded px-2 py-1 text-xs font-medium transition-all"
                           >
                             🛡️ Parry
@@ -946,7 +969,7 @@ export function PlaysheetPage() {
                               dodgeAttr, dodgeKey, dodgePoolSize,
                               parryAttr, parryKey, parryPoolSize,
                             )}
-                            disabled={dodgeRemaining <= 0 || parryRemaining <= 0}
+                            disabled={parryDenied || dodgeRemaining <= 0 || parryRemaining <= 0}
                             className="w-full mt-1 bg-violet-900/50 hover:bg-violet-700/50 disabled:opacity-30 disabled:cursor-not-allowed text-violet-300 rounded px-2 py-1 text-xs font-medium transition-all"
                           >
                             🎯🛡️ Both — better result
@@ -958,7 +981,7 @@ export function PlaysheetPage() {
                 </div>
 
                 <div className="mt-2 text-xs text-slate-500">
-                  💡 Pool size = dice in the attribute. Refill each round. You may both Dodge and Parry a single attack (uses both pools, take the better result).
+                  💡 Pool size = dice in the attribute. Refill each round. You may both Dodge and Parry a single attack (uses both pools, take the better result). Energy and Flexible weapons cannot be parried.
                 </div>
               </div>
               
