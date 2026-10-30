@@ -10,6 +10,7 @@ import {
   type ReactionPoolKey,
   type ReactionPools,
   type OpponentCombatData,
+  type TagSelection,
   defaultOpponentCombatData,
   defaultWounds,
   defaultRestoration,
@@ -23,6 +24,13 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   // Opponent tracking
   const [opponentWounds, setOpponentWounds] = useState<WoundState>(defaultWounds);
   const [opponentCombatData, setOpponentCombatData] = useState<OpponentCombatData>(defaultOpponentCombatData);
+  const [tagSelection, setTagSelectionState] = useState<TagSelection>({});
+
+  const setTagSelection = useCallback((updater: (prev: TagSelection) => TagSelection) => {
+    setTagSelectionState(updater);
+  }, []);
+
+  const resetTagSelection = useCallback(() => setTagSelectionState({}), []);
 
   const setWound = useCallback((aspect: AspectName, level: WoundLevel) => {
     setWounds(prev => ({ ...prev, [aspect]: level }));
@@ -125,6 +133,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     setOpponentCombatData(defaultOpponentCombatData);
     resetReactionPools();
     clearInitiative();
+    setTagSelectionState({});
   }, [resetReactionPools, clearInitiative]);
 
   const value: GameStateContextValue = {
@@ -145,6 +154,9 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     opponentWounds,
     setOpponentWound,
     opponentWoundPenalty,
+    tagSelection,
+    setTagSelection,
+    resetTagSelection,
     opponentCombatData,
     updateOpponentCombatData,
     resetOpponent,

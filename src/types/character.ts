@@ -342,6 +342,66 @@ export interface TagResolveContext {
   stuff?: number;
 }
   
+/**
+ * Stage an effect acts on. Mirrors the resolution pipeline.
+ */
+export type TagStage =
+  | 'attack' | 'parry' | 'raises' | 'raiseDamage' | 'magnitude'
+  | 'penetration' | 'resistance' | 'armor' | 'damageModifier'
+  | 'reroll' | 'override' | 'flag';
+
+export type TagTarget = 'parry' | 'pen' | 'magnitude' | 'resistance' | 'armor' | 'woundLevel';
+
+/** A numeric source. Literals are fixed values; strings read a live value. */
+export type Amount = number | 'x' | 'strength' | 'presence' | 'armorValue' | 'deathBlow';
+
+/**
+ * Facts a condition may reference.
+ *
+ * INVARIANT: produced by the roll itself. Never add scene state here.
+ */
+export interface TagWhen {
+  raisesAtLeast?: number;
+  allLow?: boolean;
+}
+
+/**
+ * The closed vocabulary of effects. Each stage accepts only its own verbs,
+ * so an illegal combination is a compile error rather than a silent no-op.
+ */
+export interface EffectByStage {
+  attack: { op: 'add' | 'subtract'; amount: Amount };
+  parry: { op: 'add' | 'subtract' | 'deny'; amount?: Amount };
+  raises: { op: 'multiply' | 'add'; amount: Amount };
+  raiseDamage: { op: 'set' | 'add' | 'subtract'; amount: Amount };
+  magnitude: { op: 'add' | 'subtract'; amount: Amount };
+  penetration: { op: 'add' | 'subtract' | 'multiply' | 'set'; amount: Amount };
+  resistance: { op: 'add' | 'subtract' | 'set'; amount: Amount };
+  armor: { op: 'set'; amount: Amount };
+  damageModifier: { op: 'add' | 'subtract'; amount: Amount };
+  reroll: { op: 'flag' };
+  override: { op: 'set'; target: 'woundLevel'; amount: 'deathBlow' };
+  flag: { op: 'flag'; note: string };
+}
+
+export type TagEffect = {
+  [S in keyof EffectByStage]: { stage: S } & EffectByStage[S] & {
+    per?: 'flat' | 'success' | 'raise';
+    when?: TagWhen;
+    child?: string;
+    /** Short label for the child's sub-toggle, e.g. 'Medium+'. */
+    childLabel?: string;
+    /** Short qualifier shown beside the effect, e.g. 'When aiming'. */
+    note?: string;
+  };
+}[keyof EffectByStage];
+
+/**
+ * Interaction kind. 'flavor' has no effects; 'narrative' and 'secondTest'
+ * produce a card instead of arithmetic.
+ */
+export type TagKind = 'arithmetic' | 'conditional' | 'narrative' | 'secondTest' | 'flavor';
+
 interface WeaponTagVariable {
   min: number;
   max: number;
@@ -358,7 +418,12 @@ export interface WeaponTagDefinition {
   category: string;
   description?: string;
   effect?: string;
-  variable?: WeaponTagVariable; 
+  variable?: WeaponTagVariable;
+  /** Interaction kind. Required; flavor tags carry no effects. */
+  kind: TagKind;
+  effects?: TagEffect[];
+  /** Applied on selection: penalties, weapon facts, near-always-relevant only. */
+  defaultActive?: boolean;
 }
 
 /**

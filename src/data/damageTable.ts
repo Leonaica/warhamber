@@ -84,6 +84,6 @@ export const DAMAGE_MAGNITUDE_TABLE: DamageMagnitudeEntry[] = [
     label: 'Apocalyptic',
     pool: { dice: [4, 6, 8, 10, 12, 12, 12, 12, 12, 12, 12], notation: 'd4 + d6 + d8 + d10 + 7d12', min: 11, max: 112 },
     averageDamage: 68,
-    examples: '',
+    examples: 'Tactical nuclear warhead',
   },
 ];

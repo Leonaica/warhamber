@@ -61,6 +61,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   // === Damage & Injury ===
   {
     id: 'tag-burning',
+    kind: 'narrative',
+    defaultActive: true,
+    effects: [{ stage: 'flag', op: 'flag', note: "Mag X Form-Annihilation each round until extinguished" }],
     label: 'Burning',
     category: 'Damage & Injury',
     description: 'Sets targets ablaze; X is the Magnitude of ongoing fire damage',
@@ -69,6 +72,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-crippling',
+    kind: 'narrative',
+    defaultActive: true,
+    effects: [{ stage: 'flag', op: 'flag', note: "Injuries worsen 1 step each time Surge is used" }],
     label: 'Crippling',
     category: 'Damage & Injury',
     description: 'Injuries worsen with exertion',
@@ -76,6 +82,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-cruel',
+    kind: 'narrative',
+    defaultActive: true,
+    effects: [{ stage: 'flag', op: 'flag', note: "Injuries worsen 1 level if not stabilised this round" }],
     label: 'Cruel',
     category: 'Damage & Injury',
     description: 'Injuries worsen rapidly without treatment',
@@ -83,6 +92,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-devastating',
+    kind: 'arithmetic',
+    defaultActive: true,
+    effects: [{ stage: 'raiseDamage', op: 'set', amount: 'x' }],
     label: 'Devastating',
     category: 'Damage & Injury',
     description: 'Particularly deadly with critical hits',
@@ -91,6 +103,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-nonlethal',
+    kind: 'narrative',
+    defaultActive: true,
+    effects: [{ stage: 'flag', op: 'flag', note: "Injuries lead to unconsciousness, not death" }],
     label: 'Non-Lethal',
     category: 'Damage & Injury',
     description: 'Designed to incapacitate rather than kill',
@@ -98,6 +113,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-soul-drinking',
+    kind: 'narrative',
+    defaultActive: true,
+    effects: [{ stage: 'flag', op: 'flag', note: "Kills restore 1 Injury level from the most injured aspect" }],
     label: 'Soul-Drinking',
     category: 'Damage & Injury',
     description: 'Consumes the souls of the slain',
@@ -105,6 +123,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-strength-bonus',
+    kind: 'arithmetic',
+    defaultActive: true,
+    effects: [{ stage: 'damageModifier', op: 'add', amount: 'strength' }],
     label: 'Strength Bonus',
     category: 'Damage & Injury',
     description: 'Damage depends in part on the Strength of the user',
@@ -114,6 +135,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-tearing',
+    kind: 'arithmetic',
+    defaultActive: true,
+    effects: [{ stage: 'reroll', op: 'flag' }],
     label: 'Tearing',
     category: 'Damage & Injury',
     description: 'Weapon tears flesh for maximum damage',
@@ -121,6 +145,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-vampiric',
+    kind: 'narrative',
+    defaultActive: true,
+    effects: [{ stage: 'flag', op: 'flag', note: "Heal 1 Injury level per 2 levels inflicted" }],
     label: 'Vampiric',
     category: 'Damage & Injury',
     description: 'Drains life on every hit',
@@ -128,15 +155,40 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-wounding',
+    kind: 'narrative',
+    defaultActive: true,
+    effects: [{ stage: 'flag', op: 'flag', note: "Target loses 1 Injury level per round until healed" }],
     label: 'Wounding',
     category: 'Damage & Injury',
     description: 'Causes persistent bleeding',
     effect: 'Target loses 1 additional Injury level per round until healed (persistent Flesh damage)',
   },
 
+  {
+    id: 'tag-vorpal',
+    kind: 'conditional',
+    defaultActive: true,
+    effects: [{ stage: 'override', op: 'set', target: 'woundLevel', amount: 'deathBlow', when: { raisesAtLeast: 2 }, note: 'Necks are severed' }],
+    label: 'Vorpal',
+    category: 'Damage & Injury',
+    description: 'Edge honed to sever necks',
+    effect: 'Necks are severed: inflicts a Death Blow on 2+ Raises',
+  },
+  {
+    id: 'tag-haywire',
+    kind: 'arithmetic',
+    effects: [{ stage: 'magnitude', op: 'add', amount: 4, note: 'Against technological targets' }],
+    label: 'Haywire',
+    category: 'Damage & Injury',
+    description: 'Disrupts electronics and machine systems',
+    effect: 'Increase Mag by 4 against technological targets; struck technology is disabled until repaired',
+  },
   // === Armor & Penetration ===
   {
     id: 'tag-corrosive',
+    kind: 'narrative',
+    defaultActive: true,
+    effects: [{ stage: 'flag', op: 'flag', note: "Reduce opponent armor by X after the hit, permanently" }],
     label: 'Corrosive',
     category: 'Armor & Penetration',
     description: 'Degrades target armor on hit',
@@ -145,6 +197,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-felling',
+    kind: 'arithmetic',
+    defaultActive: true,
+    effects: [{ stage: 'resistance', op: 'subtract', amount: 'x' }],
     label: 'Felling',
     category: 'Armor & Penetration',
     description: 'Cuts through dense tissue and bone with ease',
@@ -153,6 +208,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-gravitic',
+    kind: 'arithmetic',
+    defaultActive: true,
+    effects: [{ stage: 'damageModifier', op: 'add', amount: 'armorValue' }],
     label: 'Gravitic',
     category: 'Armor & Penetration',
     description: 'Gravity-manipulating weapon',
@@ -160,6 +218,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-lance',
+    kind: 'arithmetic',
+    defaultActive: true,
+    effects: [{ stage: 'penetration', op: 'add', amount: 'x', per: 'success' }],
     label: 'Lance',
     category: 'Armor & Penetration',
     description: 'A focused beam of devastating energy, piercing armor with ease',
@@ -168,6 +229,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-melta',
+    kind: 'arithmetic',
+    effects: [{ stage: 'penetration', op: 'multiply', amount: 2 }],
     label: 'Melta',
     category: 'Armor & Penetration',
     description: 'Short-range high-penetration weapon',
@@ -175,6 +238,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-razor-sharp',
+    kind: 'conditional',
+    defaultActive: true,
+    effects: [{ stage: 'penetration', op: 'multiply', amount: 2, when: { raisesAtLeast: 1 } }],
     label: 'Razor Sharp',
     category: 'Armor & Penetration',
     description: 'Exceptionally sharp edge',
@@ -184,6 +250,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   // === Tactical & Control ===
   {
     id: 'tag-binding',
+    kind: 'secondTest',
+    effects: [{ stage: 'flag', op: 'flag', note: "Toughness vs TN X or frozen" }],
     label: 'Binding',
     category: 'Tactical & Control',
     description: 'Freezing or immobilizing effect on impact',
@@ -192,6 +260,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-compelling',
+    kind: 'secondTest',
+    effects: [{ stage: 'flag', op: 'flag', note: "Willpower vs TN X or compulsion implanted" }],
     label: 'Compelling',
     category: 'Tactical & Control',
     description: 'Implants a compulsion on hit',
@@ -200,6 +270,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-concussive',
+    kind: 'secondTest',
+    effects: [{ stage: 'flag', op: 'flag', note: "Willpower vs TN X or stunned/prone" }],
     label: 'Concussive',
     category: 'Tactical & Control',
     description: 'Stunning or knocking force on impact',
@@ -208,6 +280,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-disruptive',
+    kind: 'narrative',
+    defaultActive: true,
+    effects: [{ stage: 'flag', op: 'flag', note: "Target cannot Surge for 1 round" }],
     label: 'Disruptive',
     category: 'Tactical & Control',
     description: 'Disrupts the target\'s flow of energy',
@@ -215,6 +290,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-ensnaring',
+    kind: 'secondTest',
+    effects: [{ stage: 'flag', op: 'flag', note: "Test vs TN X each action or stay immobilised" }],
     label: 'Ensnaring',
     category: 'Tactical & Control',
     description: 'Entraps targets',
@@ -223,6 +300,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-intimidating',
+    kind: 'narrative',
+    defaultActive: true,
+    effects: [{ stage: 'flag', op: 'flag', note: "Nonlethal Mag X Mind-Shattering to witnesses" }],
     label: 'Intimidating',
     category: 'Tactical & Control',
     description: 'Frightening to behold',
@@ -231,6 +311,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-suppressive',
+    kind: 'narrative',
+    defaultActive: true,
+    effects: [{ stage: 'flag', op: 'flag', note: "-2 to all actions in the zone" }],
     label: 'Suppressive',
     category: 'Tactical & Control',
     description: 'Suppresses enemy action in an area',
@@ -238,6 +321,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-thundering',
+    kind: 'conditional',
+    defaultActive: true,
+    effects: [{ stage: 'flag', op: 'flag', when: { raisesAtLeast: 1 }, note: 'Deafened: cannot hear commands, -2 Perception' }],
     label: 'Thundering',
     category: 'Tactical & Control',
     description: 'Deafening strikes',
@@ -247,6 +333,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   // === Area & Delivery ===
   {
     id: 'tag-blast',
+    kind: 'narrative',
+    effects: [{ stage: 'flag', op: 'flag', note: "Hits all targets within Xm; roll separately" }],
     label: 'Blast',
     category: 'Area & Delivery',
     description: 'Area-effect weapon; X is the blast radius in meters',
@@ -255,6 +343,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-indirect',
+    kind: 'narrative',
+    effects: [{ stage: 'flag', op: 'flag', note: "No line of sight needed; target gains +2 to Dodge" }],
     label: 'Indirect',
     category: 'Area & Delivery',
     description: 'Can fire indirectly over obstacles',
@@ -262,6 +352,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-scatter',
+    kind: 'arithmetic',
+    effects: [{ stage: 'magnitude', op: 'add', amount: 2, child: 'close', childLabel: 'Close', note: 'Touch/Close' }, { stage: 'magnitude', op: 'subtract', amount: 2, child: 'far', childLabel: 'Medium+', note: 'Medium+' }],
     label: 'Scatter',
     category: 'Area & Delivery',
     description: 'Shotgun-style spread',
@@ -269,6 +361,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-seeking',
+    kind: 'narrative',
+    effects: [{ stage: 'flag', op: 'flag', note: "Reroll a missed attack; ignores cover" }],
     label: 'Seeking',
     category: 'Area & Delivery',
     description: 'Guided to target',
@@ -276,6 +370,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-spray',
+    kind: 'narrative',
+    effects: [{ stage: 'flag', op: 'flag', note: "Cone; all targets, roll separately" }],
     label: 'Spray',
     category: 'Area & Delivery',
     description: 'Cone attack affecting all targets in area',
@@ -283,6 +379,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-storm',
+    kind: 'arithmetic',
+    effects: [{ stage: 'magnitude', op: 'add', amount: 2, note: 'Firing full capacity' }],
     label: 'Storm',
     category: 'Area & Delivery',
     description: 'High rate of fire weapon',
@@ -290,6 +388,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-sympathetic',
+    kind: 'narrative',
+    effects: [{ stage: 'flag', op: 'flag', note: "Attacks through a link; ignores armor and cover" }],
     label: 'Sympathetic',
     category: 'Area & Delivery',
     description: 'Attacks through symbolic or spiritual connections',
@@ -297,6 +397,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-twin-linked',
+    kind: 'narrative',
+    effects: [{ stage: 'flag', op: 'flag', note: "Reroll failed attacks" }],
     label: 'Twin-Linked',
     category: 'Area & Delivery',
     description: 'Paired weapons linked to fire together',
@@ -306,6 +408,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   // === Range & Movement ===
   {
     id: 'tag-distance',
+    kind: 'narrative',
+    effects: [{ stage: 'flag', op: 'flag', note: "Doubles thrown range" }],
     label: 'Distance',
     category: 'Range & Movement',
     description: 'Extended throwing range',
@@ -313,6 +417,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-returning',
+    kind: 'narrative',
+    effects: [{ stage: 'flag', op: 'flag', note: "Returns to hand at end of round" }],
     label: 'Returning',
     category: 'Range & Movement',
     description: 'Returns to wielder when thrown',
@@ -320,6 +426,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-speed',
+    kind: 'narrative',
+    effects: [{ stage: 'flag', op: 'flag', note: "One extra attack per round" }],
     label: 'Speed',
     category: 'Range & Movement',
     description: 'Grants additional attacks',
@@ -327,6 +435,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-throwing',
+    kind: 'narrative',
+    effects: [{ stage: 'flag', op: 'flag', note: "Can be thrown at Short range" }],
     label: 'Throwing',
     category: 'Range & Movement',
     description: 'Melee weapon balanced for throwing',
@@ -336,6 +446,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   // === Combat Handling ===
   {
     id: 'tag-accurate',
+    kind: 'conditional',
+    effects: [{ stage: 'attack', op: 'add', amount: 2, note: 'When aiming' }, { stage: 'damageModifier', op: 'add', amount: 2, when: { raisesAtLeast: 1 } }],
     label: 'Accurate',
     category: 'Combat Handling',
     description: 'Well-balanced or precisely machined for accuracy',
@@ -343,6 +455,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-balanced',
+    kind: 'arithmetic',
+    defaultActive: true,
+    effects: [{ stage: 'parry', op: 'add', amount: 2 }],
     label: 'Balanced',
     category: 'Combat Handling',
     description: 'Well-balanced for parrying',
@@ -350,6 +465,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-clumsy',
+    kind: 'arithmetic',
+    effects: [{ stage: 'attack', op: 'subtract', amount: 2, note: 'Tight spaces, grapples, prone' }],
     label: 'Clumsy',
     category: 'Combat Handling',
     description: 'Awkward to use in confined spaces',
@@ -357,6 +474,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-cumbersome',
+    kind: 'arithmetic',
+    defaultActive: true,
+    effects: [{ stage: 'attack', op: 'subtract', amount: 2 }],
     label: 'Cumbersome',
     category: 'Combat Handling',
     description: 'Heavy or awkward to wield',
@@ -364,6 +484,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-defensive',
+    kind: 'arithmetic',
+    effects: [{ stage: 'parry', op: 'add', amount: 3 }, { stage: 'attack', op: 'subtract', amount: 2 }],
     label: 'Defensive',
     category: 'Combat Handling',
     description: 'Shields, bucklers, and the like',
@@ -371,6 +493,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-energy',
+    kind: 'arithmetic',
+    defaultActive: true,
+    effects: [{ stage: 'parry', op: 'deny', note: 'Cannot be physically parried' }],
     label: 'Energy',
     category: 'Combat Handling',
     description: 'Energy blade',
@@ -378,6 +503,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-flexible',
+    kind: 'arithmetic',
+    defaultActive: true,
+    effects: [{ stage: 'parry', op: 'deny' }],
     label: 'Flexible',
     category: 'Combat Handling',
     description: 'Made of linked metal, rope, or other non-rigid materials that deny defensive counters',
@@ -385,6 +513,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-guardian',
+    kind: 'arithmetic',
+    effects: [{ stage: 'resistance', op: 'add', amount: 2, note: 'When not attacking this round' }],
     label: 'Guardian',
     category: 'Combat Handling',
     description: 'Protective when wielded',
@@ -392,6 +522,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-power-field',
+    kind: 'narrative',
+    defaultActive: true,
+    effects: [{ stage: 'flag', op: 'flag', note: "3-in-4 chance to destroy a parried weapon" }],
     label: 'Power Field',
     category: 'Combat Handling',
     description: 'Disruptive energy field around the weapon',
@@ -399,6 +532,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-recoil',
+    kind: 'arithmetic',
+    effects: [{ stage: 'attack', op: 'subtract', amount: 2, note: 'Moving, prone, or one-handed' }],
     label: 'Recoil',
     category: 'Combat Handling',
     description: 'Poor recoil management (negative)',
@@ -406,15 +541,30 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-unbalanced',
+    kind: 'arithmetic',
+    defaultActive: true,
+    effects: [{ stage: 'parry', op: 'subtract', amount: 2 }],
     label: 'Unbalanced',
     category: 'Combat Handling',
     description: 'Poorly balanced for defensive use',
     effect: '-2 to parry attempts',
   },
 
+  {
+    id: 'tag-inaccurate',
+    kind: 'arithmetic',
+    defaultActive: true,
+    effects: [{ stage: 'attack', op: 'subtract', amount: 2, note: 'Cannot aim' }],
+    label: 'Inaccurate',
+    category: 'Combat Handling',
+    description: 'Unwieldy to aim (negative)',
+    effect: 'Cannot aim; -2 to ranged attacks',
+  },
   // === Material ===
   {
     id: 'tag-adamantine',
+    kind: 'narrative',
+    effects: [{ stage: 'flag', op: 'flag', note: "All hits count as criticals against objects" }],
     label: 'Adamantine',
     category: 'Material',
     description: 'Forged from adamantine alloy',
@@ -422,6 +572,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-cold-iron',
+    kind: 'narrative',
+    effects: [{ stage: 'flag', op: 'flag', note: "Bypasses fey and fiend resistance" }],
     label: 'Cold Iron',
     category: 'Material',
     description: 'Forged from cold-worked iron, worked without heat',
@@ -429,6 +581,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-mithral',
+    kind: 'flavor',
     label: 'Mithral',
     category: 'Material',
     description: 'Forged from mithral silver',
@@ -436,6 +589,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-silvered',
+    kind: 'narrative',
+    effects: [{ stage: 'flag', op: 'flag', note: "Full damage to silver-vulnerable creatures" }],
     label: 'Silvered',
     category: 'Material',
     description: 'Coated or alloyed with silver',
@@ -445,6 +600,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   // === Alignment ===
   {
     id: 'tag-anarchic',
+    kind: 'arithmetic',
+    effects: [{ stage: 'attack', op: 'add', amount: 2, note: 'vs lawful/ordered' }],
     label: 'Anarchic',
     category: 'Alignment',
     description: 'Chaos-aligned',
@@ -452,6 +609,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-axiomatic',
+    kind: 'arithmetic',
+    effects: [{ stage: 'attack', op: 'add', amount: 2, note: 'vs chaotic' }],
     label: 'Axiomatic',
     category: 'Alignment',
     description: 'Lawful-aligned',
@@ -459,6 +618,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-bane',
+    kind: 'arithmetic',
+    effects: [{ stage: 'damageModifier', op: 'add', amount: 2, child: 'damage', childLabel: '+2 dmg' }, { stage: 'raises', op: 'multiply', amount: 2, child: 'raises', childLabel: 'x2 raises' }],
     label: 'Bane',
     category: 'Alignment',
     description: 'Specific enemy slayer',
@@ -466,6 +627,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-holy',
+    kind: 'arithmetic',
+    effects: [{ stage: 'attack', op: 'add', amount: 1, note: 'vs evil/corrupted' }, { stage: 'magnitude', op: 'add', amount: 1 }],
     label: 'Holy',
     category: 'Alignment',
     description: 'Blessed against evil',
@@ -473,6 +636,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-unholy',
+    kind: 'arithmetic',
+    effects: [{ stage: 'attack', op: 'add', amount: 1, note: 'vs good/sacred' }, { stage: 'magnitude', op: 'add', amount: 1 }],
     label: 'Unholy',
     category: 'Alignment',
     description: 'Cursed against good',
@@ -482,6 +647,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   // === Metaphysical ===
   {
     id: 'tag-emprean',
+    kind: 'narrative',
+    effects: [{ stage: 'flag', op: 'flag', note: "Damage counts as Spirit-type" }],
     label: 'Empyrean',
     category: 'Metaphysical',
     description: 'Channels the Sea of Souls directly',
@@ -489,6 +656,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-force',
+    kind: 'arithmetic',
+    effects: [{ stage: 'damageModifier', op: 'add', amount: 'presence', note: 'Once charged' }],
     label: 'Force',
     category: 'Metaphysical',
     description: 'Psyker weapon, applies only if character possesses Psionics or any Magic Power',
@@ -498,6 +667,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-ghost-touch',
+    kind: 'narrative',
+    effects: [{ stage: 'flag', op: 'flag', note: "Strikes immaterial targets" }],
     label: 'Ghost Touch',
     category: 'Metaphysical',
     description: 'Can strike immaterial targets',
@@ -505,6 +676,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-null',
+    kind: 'narrative',
+    effects: [{ stage: 'flag', op: 'flag', note: "Powers within Point Blank roll at -6" }],
     label: 'Null',
     category: 'Metaphysical',
     description: 'Suppresses supernatural effects',
@@ -512,6 +685,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-pattern',
+    kind: 'arithmetic',
+    effects: [{ stage: 'penetration', op: 'set', amount: 224, child: 'pen', childLabel: 'Pen 224', note: 'Ignores Shadow armor' }, { stage: 'magnitude', op: 'add', amount: 4, child: 'mag', childLabel: '+4 Mag' }],
     label: 'Pattern-Etched',
     category: 'Metaphysical',
     description: 'Etched with the true Pattern',
@@ -519,13 +694,18 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-logrus',
-    label: 'Logrus ',
+    kind: 'arithmetic',
+    effects: [{ stage: 'penetration', op: 'set', amount: 224, child: 'pen', childLabel: 'Pen 224', note: 'Ignores Shadow armor' }, { stage: 'magnitude', op: 'add', amount: 4, child: 'mag', childLabel: '+4 Mag' }],
+    label: 'Logrus',
     category: 'Metaphysical',
     description: 'Weapon\'s surface twists and coils with the Logrus',
     effect: 'Touch dissolves magic effects on contact. Ignores Shadow armor (Pen 224) and inflicts primal damage to anything of Shadow: increase Mag by 4; touch disrupts magic and Tarot',
   },
   {
     id: 'tag-primal-chaos',
+    kind: 'narrative',
+    defaultActive: true,
+    effects: [{ stage: 'flag', op: 'flag', note: "Mag X Form-Annihilation each round" }],
     label: 'Primal Chaos',
     category: 'Metaphysical',
     description: 'Weapon is infused with raw, undifferentiated potential',
@@ -534,6 +714,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-shapeshifting',
+    kind: 'narrative',
+    effects: [{ stage: 'flag', op: 'flag', note: "Change form as an action" }],
     label: 'Shapeshifting',
     category: 'Metaphysical',
     description: 'Weapon can change its form',
@@ -541,6 +723,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-transmuting',
+    kind: 'secondTest',
+    effects: [{ stage: 'flag', op: 'flag', note: "Toughness vs TN X or struck material transforms" }],
     label: 'Transmuting',
     category: 'Metaphysical',
     description: 'Transforms struck material on hit',
@@ -549,6 +733,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-true-name',
+    kind: 'arithmetic',
+    effects: [{ stage: 'resistance', op: 'set', amount: 4, child: 'resist', childLabel: 'Resist 4' }, { stage: 'armor', op: 'set', amount: 0, child: 'armor', childLabel: 'Armor 0' }],
     label: 'True Name',
     category: 'Metaphysical',
     description: 'Weapon is attuned to the True Name of a specific being',
@@ -558,6 +744,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   // === Reliability & Maintenance ===
   {
     id: 'tag-fragile',
+    kind: 'narrative',
+    defaultActive: true,
+    effects: [{ stage: 'flag', op: 'flag', note: "Breaks on a critical failure" }],
     label: 'Fragile',
     category: 'Reliability & Maintenance',
     description: 'Easily broken on mishandling',
@@ -565,6 +754,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-overheats',
+    kind: 'narrative',
+    defaultActive: true,
+    effects: [{ stage: 'flag', op: 'flag', note: "Overheats on repeated use; GM adjudicates" }],
     label: 'Overheats',
     category: 'Reliability & Maintenance',
     description: 'Overheats on failure (negative)',
@@ -572,6 +764,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-reliable',
+    kind: 'flavor',
     label: 'Reliable',
     category: 'Reliability & Maintenance',
     description: 'Well-made and dependable',
@@ -579,6 +772,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-reloading',
+    kind: 'narrative',
+    effects: [{ stage: 'flag', op: 'flag', note: "Reloads itself at its reload rate" }],
     label: 'Self Loading',
     category: 'Reliability & Maintenance',
     description: 'Weapon reloads/recharges automatically',
@@ -586,6 +781,9 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-unreliable',
+    kind: 'conditional',
+    defaultActive: true,
+    effects: [{ stage: 'flag', op: 'flag', when: { allLow: true }, note: 'Jams - weapon unusable until cleared' }],
     label: 'Unreliable',
     category: 'Reliability & Maintenance',
     description: 'Prone to malfunction',
@@ -595,6 +793,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   // === Utility ===
   {
     id: 'tag-dancing',
+    kind: 'narrative',
+    effects: [{ stage: 'flag', op: 'flag', note: "Attacks independently on command" }],
     label: 'Dancing',
     category: 'Utility',
     description: 'Weapon fights independently',
@@ -602,6 +802,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-evolutionary',
+    kind: 'arithmetic',
+    effects: [{ stage: 'magnitude', op: 'add', amount: 1, note: 'vs a species already killed' }],
     label: 'Evolutionary',
     category: 'Utility',
     description: 'Bio-adaptation',
@@ -609,6 +811,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-integrated',
+    kind: 'narrative',
+    effects: [{ stage: 'flag', op: 'flag', note: "Cannot be disarmed" }],
     label: 'Integrated',
     category: 'Utility',
     description: 'Built into the body',
@@ -616,6 +820,8 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-oathbound',
+    kind: 'arithmetic',
+    effects: [{ stage: 'attack', op: 'subtract', amount: 4, note: 'When wielded by someone else' }],
     label: 'Oathbound',
     category: 'Utility',
     description: 'Bound to a specific wielder',
@@ -623,6 +829,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-shadow-adaptive',
+    kind: 'flavor',
     label: 'Shadow-Adaptive',
     category: 'Utility',
     description: 'Adjusts to local physics',
@@ -630,6 +837,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   },
   {
     id: 'tag-silent',
+    kind: 'flavor',
     label: 'Silent',
     category: 'Utility',
     description: 'Makes no sound when used',

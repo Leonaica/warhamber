@@ -3,14 +3,26 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useCharacter } from '../context/useCharacter';
 import { useGameState } from '../context/useGameState';
 import { WOUND_LABELS, WOUND_PENALTIES } from '../data/wounds';
-import { ASPECTS, type AspectName, type WeaponAttack, type ArmorAspect, type WeaponTagRef, type WeaponTagDefinition } from '../types/character';
+import { ASPECTS, type AspectName, type WeaponAttack, type ArmorAspect } from '../types/character';
 import type { CombatPageState } from '../types/navigation';
 import { DAMAGE_MAGNITUDE_TABLE, type DamageMagnitudeEntry } from '../data/damageTable';
 import { calculateDamage, getResistanceAttribute } from '../utils/damage';
 import type { DamageResult, WoundLevel } from '../utils/damage';
 import { calculateWoundProbabilities, type WoundProbabilities } from '../utils/probability';
-import { resolveTagRef, formatTagEffect, idsToRefs } from '../data/weaponTags';
-import { TagChip } from '../components/TagChip';
+import { resolveTagRef, formatTagLabel, formatTagEffect, idsToRefs } from '../data/weaponTags';
+import { TagToggle, type TagToggleState } from '../components/TagToggle';
+import {
+  buildLedger,
+  effectiveMagnitude,
+  effectivePenetration,
+  effectiveRaises,
+  effectiveResistance,
+  isDefaultActive,
+  isInteractive,
+  getTagKind,
+  type SelectedTag,
+} from '../utils/tagLedger';
+import { conditionMet } from '../data/tagVocabulary';
 import StepperInput from '../components/StepperInput';
 import { useTagResolveContext } from '../context/useTagResolveContext'
 import { calculateStacking } from '../data/wounds'
@@ -105,7 +117,7 @@ export function CombatPage() {
       ? (Array.isArray(initialAttack.penetration) ? initialAttack.penetration[0] : initialAttack.penetration)
       : gameState.opponentCombatData.attackPenetration
   );
-  const [successes, setSuccesses] = useState(Math.max(1, state?.successes ?? 1));
+  const [successes, setSuccesses] = useState(state?.successes ?? 1);
   const [damageModifier, setDamageModifier] = useState(
     gameState.opponentCombatData.damageModifier
   );
@@ -124,6 +136,11 @@ export function CombatPage() {
 
   // Results
   const [damageResult, setDamageResult] = useState<DamageResult | null>(null);
+
+  // Toggles are keyed per weapon+attack so each mode remembers its own set.
+  const [tagSelection, setTagSelection] = useState<
+    Record<string, Record<string, string[] | undefined>>
+  >({});
 
   const attackedAspect = attackAspect;
 
@@ -184,23 +201,109 @@ export function CombatPage() {
   // Total resistance
   const totalResistance = resistanceRank + effectiveSizeModifier + resistanceModifier;
 
-  // Effective armor
-  const effectiveArmor = Math.max(0, armorValue - attackPenetration);
+
+  // ---- qualities ----
+  const selectionKey = `${selectedWeaponId}:${selectedAttackIndex}`;
+  const weaponTagRefs = useMemo(
+    () => (selectedWeapon ? (selectedWeapon.tags ?? idsToRefs(selectedWeapon.tagIds ?? [])) : []),
+    [selectedWeapon],
+  );
+
+  const defaultSelection = (): Record<string, string[] | undefined> => {
+    const out: Record<string, string[] | undefined> = {};
+    for (const ref of weaponTagRefs) {
+      const def = resolveTagRef(ref, character.customTags, tagCtx)?.def;
+      if (def && isDefaultActive(def)) out[ref.tagId] = undefined;
+    }
+    return out;
+  };
+
+  const currentSelection = tagSelection[selectionKey] ?? defaultSelection();
+
+  const selectedTags: SelectedTag[] = weaponTagRefs.flatMap(ref => {
+    if (!(ref.tagId in currentSelection)) return [];
+    const resolved = resolveTagRef(ref, character.customTags, tagCtx);
+    if (!resolved) return [];
+    return [{
+      tagId: ref.tagId,
+      label: formatTagLabel(resolved.def, resolved.x),
+      ref,
+      def: resolved.def,
+      activeChildren: currentSelection[ref.tagId],
+    }];
+  });
+
+  const raises = Math.max(0, successes - 1);
+
+  // Units keep a magnitude shift from reading like a damage bonus.
+  const STAGE_UNIT: Record<string, string> = {
+    magnitude: 'Mag',
+    penetration: 'Pen',
+    attack: 'atk',
+    parry: 'par',
+    resistance: 'res',
+    damageModifier: 'dmg',
+    armor: 'arm',
+    raiseDamage: 'dmg/raise',
+  };
+
+  // Narrative and second-test tags produce a card rather than arithmetic.
+  const cardTags = selectedTags.flatMap(t => {
+    const kind = getTagKind(t.def);
+    if (kind !== 'narrative' && kind !== 'secondTest') return [];
+    return [{ ...t, kind, effect: formatTagEffect(t.def, t.ref.x) }];
+  });
+
+  const ledger = buildLedger(
+    selectedTags,
+    { raises, allLow: false },
+    {
+      strengthRank: character.attributeDiePools.Strength.rank,
+      presenceRank: character.attributeDiePools.Presence.rank,
+      armorValue,
+    },
+  );
+
+  const ledgerPen = effectivePenetration(attackPenetration, ledger);
+  const ledgerArmor = ledger.armorSet !== null
+    ? ledger.armorSet
+    : Math.max(0, armorValue - ledgerPen);
+
+  const ledgerResistance = effectiveResistance(totalResistance, ledger);
+  const ledgerMagnitude = effectiveMagnitude(attackMagnitude, ledger);
+  const ledgerDamageModifier =
+    damageModifier + ledger.damageModifier + effectiveRaises(raises, ledger) * ledger.raiseDamage;
+
+  const toggleTag = (tagId: string) => {
+    setTagSelection(prev => {
+      const sel = { ...(prev[selectionKey] ?? defaultSelection()) };
+      if (tagId in sel) delete sel[tagId];
+      else sel[tagId] = undefined;
+      return { ...prev, [selectionKey]: sel };
+    });
+  };
+
+  const toggleChild = (tagId: string, childId: string, allChildIds: string[]) => {
+    setTagSelection(prev => {
+      const sel = { ...(prev[selectionKey] ?? defaultSelection()) };
+      const on = sel[tagId] ?? allChildIds;
+      sel[tagId] = on.includes(childId) ? on.filter(c => c !== childId) : [...on, childId];
+      return { ...prev, [selectionKey]: sel };
+    });
+  };
 
   // Derived damage modifier from successes (raises)
-  const successesDamageModifier = (successes - 1) * 2;
-  const totalDamageModifier = damageModifier + successesDamageModifier;
 
   // Calculate wound probabilities
   const woundProbabilities = useMemo(() => {
     return calculateWoundProbabilities({
-      weaponMagnitude: attackMagnitude,
-      damageModifier: totalDamageModifier,
-      resistance: totalResistance,
-      armor: armorValue,
-      penetration: attackPenetration,
+      weaponMagnitude: ledgerMagnitude,
+      damageModifier: ledgerDamageModifier,
+      resistance: ledgerResistance,
+      armor: ledgerArmor,
+      penetration: 0,
     });
-  }, [attackMagnitude, totalDamageModifier, totalResistance, armorValue, attackPenetration]);
+  }, [ledgerMagnitude, ledgerDamageModifier, ledgerResistance, ledgerArmor]);
 
   // Handlers
   const handleAspectChange = (aspect: AspectName) => {
@@ -250,7 +353,9 @@ export function CombatPage() {
       resistanceRank: resistanceRank,
       sizeModifier: effectiveSizeModifier,
       armorValue,
-      damageModifier: totalDamageModifier,
+      raises,
+      ledger,
+      damageModifier,
       resistanceModifier,
     });
     setDamageResult(result);
@@ -455,49 +560,86 @@ export function CombatPage() {
                 </div>
               )}
 
-              {/* Qualities reminder — shown when a weapon with tags is selected */}
-              {selectedWeapon && (() => {
-                const refs: WeaponTagRef[] = selectedWeapon.tags ?? idsToRefs(selectedWeapon.tagIds ?? []);
-                if (refs.length === 0) return null;
-
-                const resolvedTags = refs
-                  .map(ref => {
-                    const r = resolveTagRef(ref, character.customTags, tagCtx);
-                    return r ? { ref, def: r.def, x: r.x } : null;
-                  })
-                  .filter((t): t is { ref: WeaponTagRef; def: WeaponTagDefinition; x: number | undefined } => t !== null);
-
-                if (resolvedTags.length === 0) return null;
-
-                return (
-                  <div className="bg-slate-700/30 rounded p-1.5 space-y-1">
-                    {!isPlayerDefender && weaponAttack?.isConditional && (
-                      <div className="bg-amber-900/20 border border-amber-500/30 rounded p-1.5">
-                        <div className="text-[10px] text-amber-400 font-medium">➡️ Conditional Attack</div>
-                        <div className="text-[10px] text-slate-300">{weaponAttack.condition || 'Has conditional requirements.'}</div>
-                      </div>
-                    )}<div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide flex items-center gap-1">
-                      <span>Qualities</span>
-                      <span className="text-amber-400/70 normal-case font-normal">(apply manually when applicable)</span>
+              {selectedWeapon && weaponTagRefs.length > 0 && (
+                <div className="bg-slate-700/30 rounded p-1.5 space-y-1">
+                  {!isPlayerDefender && weaponAttack?.isConditional && (
+                    <div className="bg-amber-900/20 border border-amber-500/30 rounded p-1.5">
+                      <div className="text-[10px] text-amber-400 font-medium">➡️ Conditional Attack</div>
+                      <div className="text-[10px] text-slate-300">{weaponAttack.condition || 'Has conditional requirements.'}</div>
                     </div>
-                    <div className="space-y-1">
-                      {resolvedTags.map(({ ref, def, x }) => {
-                        const effectText = formatTagEffect(def, x);
-                        return (
-                          <div key={ref.tagId} className="flex items-start gap-1.5">
-                            <TagChip tag={def} x={x} size="sm" />
-                            {effectText && (
-                              <span className="text-[10px] text-slate-400 leading-tight pt-0.5 flex-1">
-                                {effectText}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                  )}
+                  <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">
+                    Qualities
                   </div>
-                );
-              })()}
+                  <div className="flex flex-wrap gap-1">
+                    {weaponTagRefs.map(ref => {
+                      const resolved = resolveTagRef(ref, character.customTags, tagCtx);
+                      if (!resolved) return null;
+                      const { def, x } = resolved;
+                      const isOn = ref.tagId in currentSelection;
+                      const allChildIds = (def.effects ?? []).flatMap(e => (e.child ? [e.child] : []));
+                      const childLabels = new Map(
+                        (def.effects ?? []).flatMap(e => (e.child ? [[e.child, e.childLabel ?? e.child] as const] : [])),
+                      );
+                      const dormant = (def.effects ?? []).some(e => e.when && !conditionMet(e.when, { raises, allLow: false }));
+                      const state: TagToggleState = !isInteractive(def)
+                        ? 'flavor'
+                        : isOn
+                          ? (dormant ? 'dormant' : 'active')
+                          : 'available';
+                      const contributed = ledger.entries
+                        .filter(e => e.tagId === ref.tagId && !e.dormant && typeof e.value === 'number')
+                        .map(e => {
+                          const v = e.value as number;
+                          const unit = STAGE_UNIT[e.stage];
+                          return unit ? `${v > 0 ? '+' : ''}${v} ${unit}` : null;
+                        })
+                        .filter(Boolean)
+                        .join(' ');
+                      return (
+                        <TagToggle
+                          key={ref.tagId}
+                          tag={def}
+                          x={x}
+                          state={state}
+                          contribution={contributed || undefined}
+                          onToggle={() => toggleTag(ref.tagId)}
+                          children={[...new Set(allChildIds)].map(id => ({
+                            id,
+                            label: childLabels.get(id) ?? id,
+                            on: (currentSelection[ref.tagId] ?? allChildIds).includes(id),
+                            onToggle: () => toggleChild(ref.tagId, id, allChildIds),
+                          }))}
+                        />
+                      );
+                    })}
+                  </div>
+                  {ledger.parryDenied && (
+                    <div className="text-[10px] text-sky-300">Cannot be parried — {ledger.deniedBy.join(', ')}</div>
+                  )}
+                </div>
+              )}
+
+              {cardTags.length > 0 && (
+                <div className="space-y-1">
+                  {cardTags.map(card => (
+                    <div
+                      key={card.tagId}
+                      className="bg-slate-800 border border-slate-600 rounded p-1.5"
+                    >
+                      <div className="flex items-center gap-1 text-[10px] font-medium text-amber-300">
+                        {card.kind === 'secondTest' ? '🎲' : '📖'} {card.label}
+                      </div>
+                      <div className="text-[10px] text-slate-300 leading-tight">{card.effect}</div>
+                      {card.kind === 'secondTest' && (
+                        <div className="text-[9px] text-slate-500 mt-0.5">
+                          Resolve as a separate test against TN {card.ref.x ?? '—'}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </>
           )}
 
@@ -574,16 +716,16 @@ export function CombatPage() {
                <StepperInput
                  value={successes}
                  onChange={(delta) => {
-                   const newVal = Math.min(Math.max(successes + delta, 1), 20);
+                   const newVal = Math.min(Math.max(successes + delta, 0), 20);
                    setSuccesses(newVal);
                  }}
-                 min={1}
+                 min={0}
                  max={20}
                  className={successes > 1 ? 'text-green-400' : 'text-white'}
                />
-               {successes > 1 && (
+               {raises > 0 && (
                  <span className="text-[10px] text-green-400">
-                   +{successesDamageModifier} dmg
+                   +{effectiveRaises(raises, ledger) * ledger.raiseDamage} dmg
                  </span>
                )}
              </div>
@@ -682,7 +824,7 @@ export function CombatPage() {
             <div className="bg-slate-700/50 rounded p-2 space-y-1.5">
               <div className="flex justify-between items-center">
                 <span className="text-xs text-slate-400">Resistance</span>
-                <span className="text-cyan-400 font-bold text-sm">{totalResistance}</span>
+                <span className="text-cyan-400 font-bold text-sm">{ledgerResistance}</span>
               </div>
               <div className="grid grid-cols-3 gap-x-3 gap-y-1 text-xs">
                 <div className="flex justify-between">
@@ -852,9 +994,9 @@ export function CombatPage() {
                   }
                 />
                 <div className="flex justify-between text-[10px]">
-                  <span className="text-slate-500">Pen −{attackPenetration}</span>
-                  <span className={`font-medium ${effectiveArmor === 0 ? 'text-slate-500' : 'text-green-400'}`}>
-                    = {effectiveArmor}
+                  <span className="text-slate-500">Pen −{ledgerPen}</span>
+                  <span className={`font-medium ${ledgerArmor === 0 ? 'text-slate-500' : 'text-green-400'}`}>
+                    = {ledgerArmor}
                   </span>
                 </div>
               </div>
@@ -879,6 +1021,15 @@ export function CombatPage() {
 
               {/* Damage Breakdown */}
               <div className="bg-slate-700/50 rounded p-2 space-y-1 text-xs">
+                {damageResult.effectiveMagnitude !== attackMagnitude && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Magnitude:</span>
+                    <span className="text-amber-400">
+                      {attackMagnitude} → {damageResult.effectiveMagnitude}
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex justify-between">
                   <span className="text-slate-400">Roll:</span>
                   <span className="text-white">
@@ -891,15 +1042,30 @@ export function CombatPage() {
                   </span>
                 </div>
 
-                {successes > 1 && (
+                {damageResult.raises > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Successes ({successes}):</span>
+                    <span className="text-slate-400">Raises ({damageResult.raises}):</span>
                     <span className="text-green-400">
-                      +{successesDamageModifier}
+                      +{damageResult.raiseDamage}
                       <span className="text-slate-500 ml-1 text-[10px]">
-                        ({successes - 1} raise{successes - 1 > 1 ? 's' : ''} × 2)
+                        (× {damageResult.ledger.raiseDamage} each)
                       </span>
                     </span>
+                  </div>
+                )}
+
+                {damageResult.ledgerModifier !== 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Qualities (dmg):</span>
+                    <span className={damageResult.ledgerModifier > 0 ? 'text-green-400' : 'text-red-400'}>
+                      {damageResult.ledgerModifier > 0 ? '+' : ''}{damageResult.ledgerModifier}
+                    </span>
+                  </div>
+                )}
+
+                {damageResult.bypassed && (
+                  <div className="text-amber-400">
+                    {damageResult.bypassed === 'vorpal' ? 'Vorpal — armor and resistance bypassed' : damageResult.bypassed}
                   </div>
                 )}
 

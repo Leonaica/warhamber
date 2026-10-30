@@ -291,7 +291,8 @@ const removeArmor = useCallback((id: string) => {
     if (data.personalShadows) setPersonalShadowsState(data.personalShadows);
     if (data.weapons) setWeapons(data.weapons);
     if (data.armor) setArmorState(data.armor);
-    setCustomTagsState(data.customTags ?? []);
+    // Saved custom tags predate the required `kind`; treat them as flavor.
+    setCustomTagsState((data.customTags ?? []).map(t => ({ ...t, kind: t.kind ?? 'flavor' })));
     if (data.size !== undefined) setSizeState(data.size);
     if (data.paceMultiplier !== undefined) setPaceMultiplierState(data.paceMultiplier);
   }, []);

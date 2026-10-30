@@ -47,6 +47,14 @@ export function PlaysheetPage() {
   const [healModifier, setHealModifier] = useState(0);
   const [healResult, setHealResult] = useState<{ aspect: AspectName; successes: number; roll: number } | null>(null);
   const [surgeExpanded, setSurgeExpanded] = useState(false);
+  // The attacker's weapon lives on another device, so the defender flags the
+  // qualities that forbid a parry rather than the app resolving them.
+  const [attackerEnergy, setAttackerEnergy] = useState(false);
+  const [attackerFlexible, setAttackerFlexible] = useState(false);
+  // One skill per aspect, applied to whichever reaction is pressed. A
+  // combined Dodge+Parry is a single defence resolved twice, so it uses the
+  // one skill rather than two.
+  const [defenceSkill, setDefenceSkill] = useState<Partial<Record<AspectName, string>>>({});
 
   const renderIcon = (icon: IconEntry) => {
     return icon.library === 'fontawesome' ? (
@@ -57,6 +65,13 @@ export function PlaysheetPage() {
   };
 
   const currentSurge = character.computedCharacter.surge - gameState.surgeSpent;
+  const parryDenied = attackerEnergy || attackerFlexible;
+
+  const skillBonusFor = (skillId?: string) => {
+    if (!skillId) return 0;
+    const entry = character.skills.find(k => k.skillId === skillId);
+    return entry ? getSkillModifier(entry.rating) : 0;
+  };
 
   // Map the rating scale into PowerLevels so getPowerDisplay can resolve the level name (e.g., "Incarnation")
   const mythicLevels = RATING_SCALE.map(cost => ({
@@ -292,13 +307,14 @@ export function PlaysheetPage() {
   const goToDefenseResolver = (
     attribute: AttributeName,
     poolKey: ReactionPoolKey,
-    maxPool: number
+    maxPool: number,
+    skillBonus: number,
   ) => {
     const attrEntry = character.attributeDiePools[attribute];
     navigate('/resolver', {
       state: {
         poolRank: attrEntry.rank,
-        skillBonus: 0,
+        skillBonus,
         woundPenalty: gameState.woundPenalty,
         attributeName: attribute,
         targetNumber: 4,
@@ -310,15 +326,15 @@ export function PlaysheetPage() {
   };
 
   const goToDefenseResolverCombined = (
-    primaryAttr: AttributeName, primaryKey: ReactionPoolKey, primaryMax: number,
-    secondaryAttr: AttributeName, secondaryKey: ReactionPoolKey, secondaryMax: number,
+    primaryAttr: AttributeName, primaryKey: ReactionPoolKey, primaryMax: number, primaryBonus: number,
+    secondaryAttr: AttributeName, secondaryKey: ReactionPoolKey, secondaryMax: number, secondaryBonus: number,
   ) => {
     const primaryEntry = character.attributeDiePools[primaryAttr];
     const secondaryEntry = character.attributeDiePools[secondaryAttr];
     navigate('/resolver', {
       state: {
         poolRank: primaryEntry.rank,
-        skillBonus: 0,
+        skillBonus: primaryBonus,
         woundPenalty: gameState.woundPenalty,
         attributeName: primaryAttr,
         targetNumber: 4,
@@ -327,6 +343,7 @@ export function PlaysheetPage() {
         reactionPoolMax: primaryMax,
         secondaryAttributeName: secondaryAttr,
         secondaryPoolRank: secondaryEntry.rank,
+        secondarySkillBonus: secondaryBonus,
         secondaryReactionPoolKey: secondaryKey,
         secondaryReactionPoolMax: secondaryMax,
         defenseCombined: true,
@@ -334,12 +351,12 @@ export function PlaysheetPage() {
     });
   };
 
-  const goToSurpriseRoll = (attribute: AttributeName) => {
+  const goToSurpriseRoll = (attribute: AttributeName, skillBonus: number) => {
     const attrEntry = character.attributeDiePools[attribute];
     navigate('/resolver', {
       state: {
         poolRank: attrEntry.rank,
-        skillBonus: 0,
+        skillBonus,
         woundPenalty: gameState.woundPenalty,
         attributeName: attribute,
         skillName: 'Surprise Roll',
@@ -860,6 +877,24 @@ export function PlaysheetPage() {
               {/* Reaction Pools - Surprise, Dodge, Parry */}
               <div className="bg-slate-800 rounded-lg p-3">
                 <h2 className="text-base font-bold text-amber-400">⚡ Reactions — Surprise, Dodge & Parry</h2>
+                <div className="flex flex-wrap items-center gap-2 mt-1.5 mb-2">
+                  <span className="text-xs text-slate-500">Incoming weapon:</span>
+                  <button
+                    onClick={() => setAttackerEnergy(!attackerEnergy)}
+                    className={`rounded border px-2 py-0.5 text-xs ${attackerEnergy ? 'bg-sky-900/50 border-sky-500 text-sky-300' : 'bg-slate-700/50 border-slate-600 text-slate-400'}`}
+                  >
+                    Energy
+                  </button>
+                  <button
+                    onClick={() => setAttackerFlexible(!attackerFlexible)}
+                    className={`rounded border px-2 py-0.5 text-xs ${attackerFlexible ? 'bg-sky-900/50 border-sky-500 text-sky-300' : 'bg-slate-700/50 border-slate-600 text-slate-400'}`}
+                  >
+                    Flexible
+                  </button>
+                  {parryDenied && (
+                    <span className="text-xs text-sky-300">Parry unavailable — must Dodge</span>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {ASPECTS.map(aspect => {
                     const dodgeAttr = DODGE_ATTRIBUTES[aspect.id];
@@ -883,6 +918,26 @@ export function PlaysheetPage() {
                           <span className="font-medium text-white text-sm">{aspect.name}</span>
                         </div>
 
+                        {character.skills.length > 0 && (
+                          <select
+                            value={defenceSkill[aspect.id] ?? ''}
+                            onChange={e => setDefenceSkill(prev => ({ ...prev, [aspect.id]: e.target.value }))}
+                            className="w-full bg-slate-600 border border-slate-500 rounded px-1 py-0.5 text-xs mb-2"
+                            title="Skill applied to this defence"
+                          >
+                            <option value="">No skill</option>
+                            {character.skills.map(entry => {
+                              const def = SKILLS.find(k => k.id === entry.skillId);
+                              const bonus = getSkillModifier(entry.rating);
+                              return (
+                                <option key={entry.skillId} value={entry.skillId}>
+                                  {entry.specialty || def?.name || entry.skillId} ({bonus >= 0 ? '+' : ''}{bonus})
+                                </option>
+                              );
+                            })}
+                          </select>
+                        )}
+
                         {/* Dodge (or Surprise Roll for Flesh) */}
                         {dodgeAttr && dodgeKey ? (
                           <div className="mb-2">
@@ -896,7 +951,7 @@ export function PlaysheetPage() {
                               {dodgeAttr} — {character.attributeDiePools[dodgeAttr].pool.notation}
                             </div>
                             <button
-                              onClick={() => goToDefenseResolver(dodgeAttr, dodgeKey, dodgePoolSize)}
+                              onClick={() => goToDefenseResolver(dodgeAttr, dodgeKey, dodgePoolSize, skillBonusFor(defenceSkill[aspect.id]))}
                               disabled={dodgeRemaining <= 0}
                               className="w-full bg-cyan-900/50 hover:bg-cyan-700/50 disabled:opacity-30 disabled:cursor-not-allowed text-cyan-300 rounded px-2 py-1 text-xs font-medium transition-all"
                             >
@@ -910,7 +965,7 @@ export function PlaysheetPage() {
                               Reflexes — {character.attributeDiePools['Reflexes'].pool.notation}
                             </div>
                             <button
-                              onClick={() => goToSurpriseRoll('Reflexes')}
+                              onClick={() => goToSurpriseRoll('Reflexes', skillBonusFor(defenceSkill['Flesh']))}
                               className="w-full bg-amber-900/40 hover:bg-amber-700/40 text-amber-300 rounded px-2 py-1 text-xs font-medium transition-all"
                             >
                               ⚠️ Surprise Roll
@@ -931,8 +986,8 @@ export function PlaysheetPage() {
                             <span className="text-slate-600"> · {parryFinesse} ({parryPoolSize})</span>
                           </div>
                           <button
-                            onClick={() => goToDefenseResolver(parryAttr, parryKey, parryPoolSize)}
-                            disabled={parryRemaining <= 0}
+                            onClick={() => goToDefenseResolver(parryAttr, parryKey, parryPoolSize, skillBonusFor(defenceSkill[aspect.id]))}
+                            disabled={parryDenied || parryRemaining <= 0}
                             className="w-full bg-amber-900/50 hover:bg-amber-700/50 disabled:opacity-30 disabled:cursor-not-allowed text-amber-300 rounded px-2 py-1 text-xs font-medium transition-all"
                           >
                             🛡️ Parry
@@ -943,10 +998,10 @@ export function PlaysheetPage() {
                         {dodgeAttr && dodgeKey && (
                           <button
                             onClick={() => goToDefenseResolverCombined(
-                              dodgeAttr, dodgeKey, dodgePoolSize,
-                              parryAttr, parryKey, parryPoolSize,
+                              dodgeAttr, dodgeKey, dodgePoolSize, skillBonusFor(defenceSkill[aspect.id]),
+                              parryAttr, parryKey, parryPoolSize, skillBonusFor(defenceSkill[aspect.id]),
                             )}
-                            disabled={dodgeRemaining <= 0 || parryRemaining <= 0}
+                            disabled={parryDenied || dodgeRemaining <= 0 || parryRemaining <= 0}
                             className="w-full mt-1 bg-violet-900/50 hover:bg-violet-700/50 disabled:opacity-30 disabled:cursor-not-allowed text-violet-300 rounded px-2 py-1 text-xs font-medium transition-all"
                           >
                             🎯🛡️ Both — better result
@@ -958,7 +1013,7 @@ export function PlaysheetPage() {
                 </div>
 
                 <div className="mt-2 text-xs text-slate-500">
-                  💡 Pool size = dice in the attribute. Refill each round. You may both Dodge and Parry a single attack (uses both pools, take the better result).
+                  💡 Pool size = dice in the attribute. Refill each round. You may both Dodge and Parry a single attack (uses both pools, take the better result). Energy and Flexible weapons cannot be parried.
                 </div>
               </div>
               

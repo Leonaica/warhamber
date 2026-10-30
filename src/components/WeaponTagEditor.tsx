@@ -128,6 +128,7 @@ export function WeaponTagEditor({
     const newTag: WeaponTagDefinition = {
       id: crypto.randomUUID(),
       label: ctLabel.trim(),
+      kind: 'flavor',
       category,
       ...(ctDescription.trim() && { description: ctDescription.trim() }),
       ...(ctEffect.trim() && { effect: ctEffect.trim() }),

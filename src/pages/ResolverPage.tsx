@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useGameState } from '../context/useGameState';
+import { useTagResolveContext } from '../context/useTagResolveContext';
 import { useCharacter } from '../context/useCharacter';
 import type { AttributeName } from '../types/character';
 import { DIE_POOL_TABLE } from '../data/diePoolTable';
@@ -14,6 +15,10 @@ import {
   type PreviewResult
 } from '../utils/resolution';
 import { isBandAvailable, resultToScale } from '../data/actionEffortTable';
+import { resolveTagRef, formatTagLabel, idsToRefs } from '../data/weaponTags';
+import { TagToggle, type TagToggleState } from '../components/TagToggle';
+import { buildLedger, isDefaultActive, isInteractive } from '../utils/tagLedger';
+import { conditionMet } from '../data/tagVocabulary';
 import type { EffortBand, ActionResult, ContestResult } from '../types/resolution';
 import StepperInput from '../components/StepperInput';
 import type { ReactionPoolKey } from '../context/GameStateContext';
@@ -33,6 +38,7 @@ interface PlaysheetState {
   secondaryPoolRank?: number;
   secondaryReactionPoolKey?: ReactionPoolKey;
   secondaryReactionPoolMax?: number;
+  secondarySkillBonus?: number;
   defenseCombined?: boolean;
   weaponId?: string;
   attackIndex?: number;
@@ -44,6 +50,7 @@ export function ResolverPage() {
   const playsheetState = location.state as PlaysheetState | undefined;
   const gameState = useGameState();
   const character = useCharacter();
+  const tagCtx = useTagResolveContext();
   
   const hasCharacter = character.hasCharacter;
   const currentSurge = hasCharacter 
@@ -90,6 +97,67 @@ export function ResolverPage() {
       best: better === 'primary' ? primary : secondary,
     };
   })();
+
+  // ---- weapon qualities that affect the attack roll ----
+  // Only `attack`-stage effects belong here; damage-side tags stay on the
+  // combat page.
+  const rollWeapon = playsheetState?.weaponId
+    ? character.weapons.find(w => w.id === playsheetState.weaponId)
+    : undefined;
+  const rollAttackIndex = playsheetState?.attackIndex ?? 0;
+  const rollSelectionKey = rollWeapon ? `${rollWeapon.id}:${rollAttackIndex}` : '';
+
+  const attackTagRefs = useMemo(() => {
+    if (!rollWeapon) return [];
+    const refs = rollWeapon.tags ?? idsToRefs(rollWeapon.tagIds ?? []);
+    return refs.filter(ref => {
+      const def = resolveTagRef(ref, character.customTags, tagCtx)?.def;
+      return (def?.effects ?? []).some(e => e.stage === 'attack');
+    });
+  }, [rollWeapon, character.customTags, tagCtx]);
+
+  const rollSelection = gameState.tagSelection[rollSelectionKey] ?? (() => {
+    const out: Record<string, string[] | undefined> = {};
+    for (const ref of attackTagRefs) {
+      const def = resolveTagRef(ref, character.customTags, tagCtx)?.def;
+      if (def && isDefaultActive(def)) out[ref.tagId] = undefined;
+    }
+    return out;
+  })();
+
+  const attackTags = attackTagRefs.flatMap(ref => {
+    if (!(ref.tagId in rollSelection)) return [];
+    const resolved = resolveTagRef(ref, character.customTags, tagCtx);
+    if (!resolved) return [];
+    return [{
+      tagId: ref.tagId,
+      label: formatTagLabel(resolved.def, resolved.x),
+      ref,
+      def: resolved.def,
+      activeChildren: rollSelection[ref.tagId],
+    }];
+  });
+
+  const attackLedger = buildLedger(
+    attackTags,
+    { raises: 0, allLow: false },
+    {
+      strengthRank: character.attributeDiePools.Strength.rank,
+      presenceRank: character.attributeDiePools.Presence.rank,
+      armorValue: 0,
+    },
+  );
+
+  const effectiveActorModifier = actorModifier + attackLedger.attack;
+
+  const toggleAttackTag = (tagId: string) => {
+    gameState.setTagSelection(prev => {
+      const sel = { ...(prev[rollSelectionKey] ?? rollSelection) };
+      if (tagId in sel) delete sel[tagId];
+      else sel[tagId] = undefined;
+      return { ...prev, [rollSelectionKey]: sel };
+    });
+  };
 
   // Sync state when playsheet data arrives
   if (playsheetState !== prevPlaysheetState) {
@@ -151,9 +219,9 @@ export function ResolverPage() {
       secondary: resolveTest({
         attributePool: secondaryPoolEntry.pool,
         poolRank: secondaryPoolEntry.rank,
-        skillBonus: actorSkillBonus,
+        skillBonus: playsheetState?.secondarySkillBonus ?? actorSkillBonus,
         woundPenalty: actorWoundPenalty,
-        situationalModifier: actorModifier,
+        situationalModifier: effectiveActorModifier,
         isContest: testType === 'contest',
         ...(testType === 'contest' ? { opponentRank: opponentPoolEntry.rank } : {}),
         targetNumber,
@@ -193,7 +261,7 @@ export function ResolverPage() {
   };
 
   // Calculate total modifiers
-  const actorTotalModifier = (actorSkillBonus + actorWoundPenalty) * actorPoolEntry.pool.dice.length + actorModifier;
+  const actorTotalModifier = (actorSkillBonus + actorWoundPenalty) * actorPoolEntry.pool.dice.length + effectiveActorModifier;
   const opponentTotalModifier = (opponentSkillBonus + opponentWoundPenalty) * opponentPoolEntry.pool.dice.length + opponentModifier;
 
   // Define the band styles in a static lookup object so that Tailwind sees all the class names. 
@@ -281,7 +349,7 @@ export function ResolverPage() {
       approach: band === 'green' ? 'baseline' : 'surge',
       skillBonus: actorSkillBonus,
       woundPenalty: actorWoundPenalty,
-      situationalModifier: actorModifier,
+      situationalModifier: effectiveActorModifier,
     });
   }
 
@@ -318,7 +386,7 @@ export function ResolverPage() {
         poolRank: actorPoolEntry.rank,
         skillBonus: actorSkillBonus,
         woundPenalty: actorWoundPenalty,
-        situationalModifier: actorModifier,
+        situationalModifier: effectiveActorModifier,
         isContest: false,
         targetNumber,
         approach: 'baseline',
@@ -333,7 +401,7 @@ export function ResolverPage() {
           poolRank: actorPoolEntry.rank,
           skillBonus: actorSkillBonus,
           woundPenalty: actorWoundPenalty,
-          situationalModifier: actorModifier,
+          situationalModifier: effectiveActorModifier,
           targetNumber: 0,
           approach: 'baseline',
         },
@@ -361,7 +429,7 @@ export function ResolverPage() {
         poolRank: actorPoolEntry.rank,
         skillBonus: actorSkillBonus,
         woundPenalty: actorWoundPenalty,
-        situationalModifier: actorModifier,
+        situationalModifier: effectiveActorModifier,
         isContest: false,
         targetNumber,
         approach: 'roll',
@@ -376,7 +444,7 @@ export function ResolverPage() {
           poolRank: actorPoolEntry.rank,
           skillBonus: actorSkillBonus,
           woundPenalty: actorWoundPenalty,
-          situationalModifier: actorModifier,
+          situationalModifier: effectiveActorModifier,
           targetNumber: 0,
           approach: 'roll',
         },
@@ -407,7 +475,7 @@ export function ResolverPage() {
         poolRank: actorPoolEntry.rank,
         skillBonus: actorSkillBonus,
         woundPenalty: actorWoundPenalty,
-        situationalModifier: actorModifier,
+        situationalModifier: effectiveActorModifier,
         isContest: false,
         targetNumber,
         approach: 'surge',
@@ -423,7 +491,7 @@ export function ResolverPage() {
           poolRank: actorPoolEntry.rank,
           skillBonus: actorSkillBonus,
           woundPenalty: actorWoundPenalty,
-          situationalModifier: actorModifier,
+          situationalModifier: effectiveActorModifier,
           targetNumber: 0,
           approach: 'surge',
           surgeBand: band,
@@ -477,7 +545,7 @@ export function ResolverPage() {
               poolRank: actorPoolEntry.rank,
               skillBonus: actorSkillBonus,
               woundPenalty: actorWoundPenalty,
-              situationalModifier: actorModifier,
+              situationalModifier: effectiveActorModifier,
               isContest: false,
               targetNumber,
               approach: 'roll',
@@ -516,7 +584,7 @@ export function ResolverPage() {
                 poolRank: actorPoolEntry.rank,
                 skillBonus: actorSkillBonus,
                 woundPenalty: actorWoundPenalty,
-                situationalModifier: actorModifier,
+                situationalModifier: effectiveActorModifier,
                 targetNumber: 0,
                 approach: 'roll',
               },
@@ -683,6 +751,14 @@ export function ResolverPage() {
     </div>
   );
 
+  // Successes carried to the damage page. Zero on a miss.
+  const handOffSuccesses = (() => {
+    if (!result) return 0;
+    if (combinedActions) return combinedActions.best.successes;
+    if ('winner' in result) return result.winner === 'opponent' ? 0 : (result.actor?.successes ?? 0);
+    return result.successes;
+  })();
+
   // Determine skill restrictions for available resolution options
   const isPoorSkill = actorSkillBonus === -1;
   const isTerribleSkill = actorSkillBonus === -2;
@@ -777,6 +853,37 @@ export function ResolverPage() {
                 />
               </div>
             </div>
+
+            {attackTagRefs.length > 0 && (
+              <div className="bg-slate-700/40 rounded p-1.5 space-y-1">
+                <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">
+                  Qualities
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {attackTagRefs.map(ref => {
+                    const resolved = resolveTagRef(ref, character.customTags, tagCtx);
+                    if (!resolved) return null;
+                    const { def, x } = resolved;
+                    const isOn = ref.tagId in rollSelection;
+                    const dormant = (def.effects ?? []).some(
+                      e => e.stage === 'attack' && e.when && !conditionMet(e.when, { raises: 0, allLow: false }),
+                    );
+                    const state: TagToggleState = !isInteractive(def)
+                      ? 'flavor'
+                      : isOn ? (dormant ? 'dormant' : 'active') : 'available';
+                    return (
+                      <TagToggle
+                        key={ref.tagId}
+                        tag={def}
+                        x={x}
+                        state={state}
+                        onToggle={() => toggleAttackTag(ref.tagId)}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="block text-xs text-slate-400 mb-0.5">Situational Modifier</label>
@@ -936,7 +1043,7 @@ export function ResolverPage() {
                 approach: band === 'green' ? 'baseline' : 'surge',
                 skillBonus: actorSkillBonus,
                 woundPenalty: actorWoundPenalty,
-                situationalModifier: actorModifier,
+                situationalModifier: effectiveActorModifier,
               });
 
               return (
@@ -1103,6 +1210,11 @@ export function ResolverPage() {
                   // If Dodge and Parry were both rolled, the better of the two
                   // is the defence the attack actually has to beat.
                   const shown = combinedActions ? combinedActions.best : result;
+                  // A parry that beats the attack by 4+ earns the defender a
+                  // free counter-action.
+                  const reverseRaises = !isDefenseMode && targetNumber > 4 && shown.result <= targetNumber
+                    ? Math.floor((targetNumber - shown.result) / 4)
+                    : 0;
                   const label = combinedActions
                     ? `Result — ${combinedActions.betterLabel} (better of Dodge/Parry)`
                     : 'Result';
@@ -1121,6 +1233,11 @@ export function ResolverPage() {
                               ? `✓ Success! Beat TN ${targetNumber} by ${shown.result - targetNumber}`
                               : `✗ Failed by ${targetNumber - shown.result}`)}
                         </div>
+                        {reverseRaises > 0 && (
+                          <div className="text-xs text-violet-300 text-center">
+                            ⚔️ {reverseRaises} reverse raise{reverseRaises > 1 ? 's' : ''} for the defender
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -1128,20 +1245,15 @@ export function ResolverPage() {
               )}
             </div>
           )}
-          {result && playsheetState?.weaponId && (
+          {result && playsheetState?.weaponId && handOffSuccesses > 0 && (
             <button
               onClick={() => {
-                const successes = combinedActions
-                  ? combinedActions.best.successes
-                  : 'winner' in result
-                    ? (result.winner === 'opponent' ? 0 : (result.actor?.successes ?? 0))
-                    : result.successes;
                 navigate('/combat', {
                   state: {
                     mode: 'attacker',
                     weaponId: playsheetState.weaponId,
                     attackIndex: playsheetState.attackIndex ?? 0,
-                    successes: Math.max(1, successes),
+                    successes: handOffSuccesses,
                   },
                 });
               }}
