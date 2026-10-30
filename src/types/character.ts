@@ -343,44 +343,22 @@ export interface TagResolveContext {
 }
   
 /**
- * Stages a tag effect can act on. Order mirrors the resolution pipeline;
- * the evaluator applies them in that order, not in declaration order.
+ * Stage an effect acts on. Mirrors the resolution pipeline.
  */
 export type TagStage =
-  | 'attack'
-  | 'parry'
-  | 'raises'
-  | 'raiseDamage'
-  | 'magnitude'
-  | 'penetration'
-  | 'resistance'
-  | 'armour'
-  | 'damageModifier'
-  | 'reroll'
-  | 'override';
+  | 'attack' | 'parry' | 'raises' | 'raiseDamage' | 'magnitude'
+  | 'penetration' | 'resistance' | 'armor' | 'damageModifier'
+  | 'reroll' | 'override' | 'flag';
 
-export type TagOp =
-  | 'add'
-  | 'subtract'
-  | 'multiply'
-  | 'set'
-  | 'deny'
-  | 'flag';
+export type TagTarget = 'parry' | 'pen' | 'magnitude' | 'resistance' | 'armor' | 'woundLevel';
 
-export type TagTarget =
-  | 'parry'
-  | 'pen'
-  | 'magnitude'
-  | 'resistance'
-  | 'armour'
-  | 'woundLevel';
+/** A numeric source. Literals are fixed values; strings read a live value. */
+export type Amount = number | 'x' | 'strength' | 'presence' | 'armorValue' | 'deathBlow';
 
 /**
  * Facts a condition may reference.
  *
- * INVARIANT: these are produced by the roll itself. Never add scene state
- * here (target alignment, range, "is it moving"). The moment a scene fact
- * appears, this design has regressed into modelling the encounter.
+ * INVARIANT: produced by the roll itself. Never add scene state here.
  */
 export interface TagWhen {
   raisesAtLeast?: number;
@@ -388,32 +366,39 @@ export interface TagWhen {
 }
 
 /**
- * A machine-readable tag effect.
- *
- * `child` groups independent effects under one quality so the UI can render
- * one chip with sub-toggles rather than several sibling chips.
+ * The closed vocabulary of effects. Each stage accepts only its own verbs,
+ * so an illegal combination is a compile error rather than a silent no-op.
  */
-export interface TagEffect {
-  stage: TagStage;
-  op: TagOp;
-  target?: TagTarget;
-  amount?: number | 'x' | 'strength' | 'presence' | 'armourValue' | 'deathBlow';
-  per?: 'flat' | 'success' | 'raise';
-  when?: TagWhen;
-  note?: string;
-  child?: string;
+export interface EffectByStage {
+  attack: { op: 'add' | 'subtract'; amount: Amount };
+  parry: { op: 'add' | 'subtract' | 'deny'; amount?: Amount };
+  raises: { op: 'multiply' | 'add'; amount: Amount };
+  raiseDamage: { op: 'set' | 'add' | 'subtract'; amount: Amount };
+  magnitude: { op: 'add' | 'subtract'; amount: Amount };
+  penetration: { op: 'add' | 'subtract' | 'multiply' | 'set'; amount: Amount };
+  resistance: { op: 'add' | 'subtract' | 'set'; amount: Amount };
+  armor: { op: 'set'; amount: Amount };
+  damageModifier: { op: 'add' | 'subtract'; amount: Amount };
+  reroll: { op: 'flag' };
+  override: { op: 'set'; target: 'woundLevel'; amount: 'deathBlow' };
+  flag: { op: 'flag'; note: string };
 }
 
+export type TagEffect = {
+  [S in keyof EffectByStage]: { stage: S } & EffectByStage[S] & {
+    per?: 'flat' | 'success' | 'raise';
+    when?: TagWhen;
+    child?: string;
+    /** Short qualifier shown beside the effect, e.g. 'When aiming'. */
+    note?: string;
+  };
+}[keyof EffectByStage];
+
 /**
- * Interaction kind. `flavour` has no effects; `narrative` and `secondTest`
+ * Interaction kind. 'flavor' has no effects; 'narrative' and 'secondTest'
  * produce a card instead of arithmetic.
  */
-export type TagKind =
-  | 'arithmetic'
-  | 'conditional'
-  | 'narrative'
-  | 'secondTest'
-  | 'flavour';
+export type TagKind = 'arithmetic' | 'conditional' | 'narrative' | 'secondTest' | 'flavor';
 
 interface WeaponTagVariable {
   min: number;
@@ -432,10 +417,10 @@ export interface WeaponTagDefinition {
   description?: string;
   effect?: string;
   variable?: WeaponTagVariable;
-  /** Optional in step 1; inferred by getTagKind() when absent. Required in step 2. */
-  kind?: TagKind;
+  /** Interaction kind. Required; flavor tags carry no effects. */
+  kind: TagKind;
   effects?: TagEffect[];
-  /** Applied on selection. Penalties, weapon facts, near-always-relevant only. */
+  /** Applied on selection: penalties, weapon facts, near-always-relevant only. */
   defaultActive?: boolean;
 }
 
