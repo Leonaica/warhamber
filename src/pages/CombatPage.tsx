@@ -116,7 +116,7 @@ export function CombatPage() {
       ? (Array.isArray(initialAttack.penetration) ? initialAttack.penetration[0] : initialAttack.penetration)
       : gameState.opponentCombatData.attackPenetration
   );
-  const [successes, setSuccesses] = useState(Math.max(1, state?.successes ?? 1));
+  const [successes, setSuccesses] = useState(state?.successes ?? 1);
   const [damageModifier, setDamageModifier] = useState(
     gameState.opponentCombatData.damageModifier
   );
@@ -667,10 +667,10 @@ export function CombatPage() {
                <StepperInput
                  value={successes}
                  onChange={(delta) => {
-                   const newVal = Math.min(Math.max(successes + delta, 1), 20);
+                   const newVal = Math.min(Math.max(successes + delta, 0), 20);
                    setSuccesses(newVal);
                  }}
-                 min={1}
+                 min={0}
                  max={20}
                  className={successes > 1 ? 'text-green-400' : 'text-white'}
                />

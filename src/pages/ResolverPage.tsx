@@ -683,6 +683,14 @@ export function ResolverPage() {
     </div>
   );
 
+  // Successes carried to the damage page. Zero on a miss.
+  const handOffSuccesses = (() => {
+    if (!result) return 0;
+    if (combinedActions) return combinedActions.best.successes;
+    if ('winner' in result) return result.winner === 'opponent' ? 0 : (result.actor?.successes ?? 0);
+    return result.successes;
+  })();
+
   // Determine skill restrictions for available resolution options
   const isPoorSkill = actorSkillBonus === -1;
   const isTerribleSkill = actorSkillBonus === -2;
@@ -1103,6 +1111,11 @@ export function ResolverPage() {
                   // If Dodge and Parry were both rolled, the better of the two
                   // is the defence the attack actually has to beat.
                   const shown = combinedActions ? combinedActions.best : result;
+                  // A parry that beats the attack by 4+ earns the defender a
+                  // free counter-action.
+                  const reverseRaises = !isDefenseMode && targetNumber > 4 && shown.result <= targetNumber
+                    ? Math.floor((targetNumber - shown.result) / 4)
+                    : 0;
                   const label = combinedActions
                     ? `Result — ${combinedActions.betterLabel} (better of Dodge/Parry)`
                     : 'Result';
@@ -1121,6 +1134,11 @@ export function ResolverPage() {
                               ? `✓ Success! Beat TN ${targetNumber} by ${shown.result - targetNumber}`
                               : `✗ Failed by ${targetNumber - shown.result}`)}
                         </div>
+                        {reverseRaises > 0 && (
+                          <div className="text-xs text-violet-300 text-center">
+                            ⚔️ {reverseRaises} reverse raise{reverseRaises > 1 ? 's' : ''} for the defender
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -1128,20 +1146,15 @@ export function ResolverPage() {
               )}
             </div>
           )}
-          {result && playsheetState?.weaponId && (
+          {result && playsheetState?.weaponId && handOffSuccesses > 0 && (
             <button
               onClick={() => {
-                const successes = combinedActions
-                  ? combinedActions.best.successes
-                  : 'winner' in result
-                    ? (result.winner === 'opponent' ? 0 : (result.actor?.successes ?? 0))
-                    : result.successes;
                 navigate('/combat', {
                   state: {
                     mode: 'attacker',
                     weaponId: playsheetState.weaponId,
                     attackIndex: playsheetState.attackIndex ?? 0,
-                    successes: Math.max(1, successes),
+                    successes: handOffSuccesses,
                   },
                 });
               }}
