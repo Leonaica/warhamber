@@ -217,3 +217,22 @@ describe('aiming', () => {
     expect(buildLedger([sel(accurate)], { raises: 0, allLow: false, aiming: true }, SRC).attack).toBe(2);
   });
 });
+
+describe('aiming', () => {
+  const accurate = tag({
+    id: 'acc',
+    kind: 'conditional',
+    effects: [
+      { stage: 'attack', op: 'add', amount: 2, when: { aiming: true } },
+      { stage: 'damageModifier', op: 'add', amount: 2, when: { raisesAtLeast: 1 } },
+    ],
+  });
+
+  it('withholds the attack bonus when not aiming', () => {
+    expect(buildLedger([sel(accurate)], { raises: 0, allLow: false, aiming: false }, SRC).attack).toBe(0);
+  });
+
+  it('grants it when aiming', () => {
+    expect(buildLedger([sel(accurate)], { raises: 0, allLow: false, aiming: true }, SRC).attack).toBe(2);
+  });
+});
