@@ -2,15 +2,22 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { CharacterProvider } from './context/CharacterProvider';
 import { GameStateProvider } from './context/GameStateProvider';
 import { Layout } from './components/Layout';
-import { AvatarBuilderPage } from './pages/AvatarBuilderPage';
-import { PlaysheetPage } from './pages/PlaysheetPage';
-import { ResolverPage } from './pages/ResolverPage';
-import { CombatPage } from './pages/CombatPage';
+import { lazy, Suspense } from 'react';
+
+const AvatarBuilderPage = lazy(() =>
+  import('./pages/AvatarBuilderPage').then(m => ({ default: m.AvatarBuilderPage })));
+const PlaysheetPage = lazy(() =>
+  import('./pages/PlaysheetPage').then(m => ({ default: m.PlaysheetPage })));
+const ResolverPage = lazy(() =>
+  import('./pages/ResolverPage').then(m => ({ default: m.ResolverPage })));
+const CombatPage = lazy(() =>
+  import('./pages/CombatPage').then(m => ({ default: m.CombatPage })));
 
 function App() {
   return (
     <CharacterProvider>
       <BrowserRouter basename={import.meta.env.BASE_URL}>
+        <Suspense fallback={<div className="max-w-7xl mx-auto px-4 py-8 text-slate-500 text-sm">Loading…</div>}>
         <Routes>
           <Route path="/" element={<Layout><AvatarBuilderPage /></Layout>} />
           <Route path="/playsheet" element={
@@ -29,6 +36,7 @@ function App() {
             </GameStateProvider>
           } />
         </Routes>
+        </Suspense>
       </BrowserRouter>
     </CharacterProvider>
   );

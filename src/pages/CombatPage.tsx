@@ -295,15 +295,16 @@ export function CombatPage() {
   // Derived damage modifier from successes (raises)
 
   // Calculate wound probabilities
-  const woundProbabilities = useMemo(() => {
-    return calculateWoundProbabilities({
-      weaponMagnitude: ledgerMagnitude,
-      damageModifier: ledgerDamageModifier,
-      resistance: ledgerResistance,
-      armor: ledgerArmor,
-      penetration: 0,
-    });
-  }, [ledgerMagnitude, ledgerDamageModifier, ledgerResistance, ledgerArmor]);
+  // No manual memo: the ledger is rebuilt each render, which widens the
+  // mutable range of anything derived from it and blocks the compiler from
+  // preserving one. The convolution is cheap; let the compiler decide.
+  const woundProbabilities = calculateWoundProbabilities({
+    weaponMagnitude: ledgerMagnitude,
+    damageModifier: ledgerDamageModifier,
+    resistance: ledgerResistance,
+    armor: ledgerArmor,
+    penetration: 0,
+  });
 
   // Handlers
   const handleAspectChange = (aspect: AspectName) => {

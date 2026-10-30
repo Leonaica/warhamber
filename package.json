@@ -11,7 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview",
-    "deploy": "vite build --base=/warhamber/ && gh-pages -d dist"
+    "deploy": "vite build --base=/warhamber/ && cp dist/index.html dist/404.html && gh-pages -d dist"
   },
   "dependencies": {
     "react": "^19.2.0",
