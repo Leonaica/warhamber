@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { WEAPON_TAG_LIBRARY } from '../data/weaponTags';
 import type { WeaponTagDefinition } from '../types/character';
 import {
-  BASE_RAISE_DAMAGE, MAX_PEN, buildLedger, contributesArithmetic,
+  BASE_RAISE_DAMAGE, MAX_MAGNITUDE, MAX_PEN, buildLedger, contributesArithmetic,
   effectiveMagnitude, effectivePenetration, effectiveRaises, effectiveResistance,
   getTagKind, isDefaultActive, isInteractive,
   type AmountSources, type RollFacts, type SelectedTag,
@@ -154,5 +154,29 @@ describe('children', () => {
   });
   it('applies all children when none are excluded', () => {
     expect(buildLedger([sel(scatter)], NONE, SRC).magnitude).toBe(0);
+  });
+});
+
+describe('magnitude shifts', () => {
+  const mag = (n: number) => ({
+    id: `m${n}`, label: 'm', category: 't', kind: 'arithmetic' as const,
+    effects: [{ stage: 'magnitude' as const, op: 'add' as const, amount: n }],
+  });
+
+  it('shifts the pool by the full amount', () => {
+    expect(effectiveMagnitude(2, buildLedger([sel(mag(4))], NONE, SRC))).toBe(6);
+  });
+
+  it('clamps at the table maximum instead of falling back to Mag 3', () => {
+    expect(effectiveMagnitude(9, buildLedger([sel(mag(4))], NONE, SRC))).toBe(MAX_MAGNITUDE);
+  });
+});
+
+describe('child labels', () => {
+  it('labels every child effect', () => {
+    const bad = WEAPON_TAG_LIBRARY.flatMap(t =>
+      (t.effects ?? []).filter(e => e.child && !e.childLabel).map(e => `${t.id}:${e.child}`),
+    );
+    expect(bad).toEqual([]);
   });
 });

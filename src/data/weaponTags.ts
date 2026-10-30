@@ -353,7 +353,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   {
     id: 'tag-scatter',
     kind: 'arithmetic',
-    effects: [{ stage: 'magnitude', op: 'add', amount: 2, child: 'close', note: 'Touch/Close' }, { stage: 'magnitude', op: 'subtract', amount: 2, child: 'far', note: 'Medium+' }],
+    effects: [{ stage: 'magnitude', op: 'add', amount: 2, child: 'close', childLabel: 'Close', note: 'Touch/Close' }, { stage: 'magnitude', op: 'subtract', amount: 2, child: 'far', childLabel: 'Medium+', note: 'Medium+' }],
     label: 'Scatter',
     category: 'Area & Delivery',
     description: 'Shotgun-style spread',
@@ -619,7 +619,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   {
     id: 'tag-bane',
     kind: 'arithmetic',
-    effects: [{ stage: 'damageModifier', op: 'add', amount: 2, child: 'damage' }, { stage: 'raises', op: 'multiply', amount: 2, child: 'raises' }],
+    effects: [{ stage: 'damageModifier', op: 'add', amount: 2, child: 'damage', childLabel: '+2 dmg' }, { stage: 'raises', op: 'multiply', amount: 2, child: 'raises', childLabel: 'x2 raises' }],
     label: 'Bane',
     category: 'Alignment',
     description: 'Specific enemy slayer',
@@ -686,7 +686,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   {
     id: 'tag-pattern',
     kind: 'arithmetic',
-    effects: [{ stage: 'penetration', op: 'set', amount: 224, child: 'pen', note: 'Ignores Shadow armor' }, { stage: 'magnitude', op: 'add', amount: 4, child: 'mag' }],
+    effects: [{ stage: 'penetration', op: 'set', amount: 224, child: 'pen', childLabel: 'Pen 224', note: 'Ignores Shadow armor' }, { stage: 'magnitude', op: 'add', amount: 4, child: 'mag', childLabel: '+4 Mag' }],
     label: 'Pattern-Etched',
     category: 'Metaphysical',
     description: 'Etched with the true Pattern',
@@ -695,7 +695,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   {
     id: 'tag-logrus',
     kind: 'arithmetic',
-    effects: [{ stage: 'penetration', op: 'set', amount: 224, child: 'pen', note: 'Ignores Shadow armor' }, { stage: 'magnitude', op: 'add', amount: 4, child: 'mag' }],
+    effects: [{ stage: 'penetration', op: 'set', amount: 224, child: 'pen', childLabel: 'Pen 224', note: 'Ignores Shadow armor' }, { stage: 'magnitude', op: 'add', amount: 4, child: 'mag', childLabel: '+4 Mag' }],
     label: 'Logrus',
     category: 'Metaphysical',
     description: 'Weapon\'s surface twists and coils with the Logrus',
@@ -734,7 +734,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   {
     id: 'tag-true-name',
     kind: 'arithmetic',
-    effects: [{ stage: 'resistance', op: 'set', amount: 4, child: 'resist' }, { stage: 'armor', op: 'set', amount: 0, child: 'armor' }],
+    effects: [{ stage: 'resistance', op: 'set', amount: 4, child: 'resist', childLabel: 'Resist 4' }, { stage: 'armor', op: 'set', amount: 0, child: 'armor', childLabel: 'Armor 0' }],
     label: 'True Name',
     category: 'Metaphysical',
     description: 'Weapon is attuned to the True Name of a specific being',

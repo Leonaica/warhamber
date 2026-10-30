@@ -174,8 +174,16 @@ export function effectiveResistance(base: number, ledger: Ledger): number {
   return Math.max(0, ledger.resistanceSet !== null ? ledger.resistanceSet : base + ledger.resistanceDelta);
 }
 
+/** Magnitudes above this have no distinct pool in the damage table. */
+export const MAX_MAGNITUDE = 11;
+
+/**
+ * Effective magnitude. A magnitude shift moves the weapon's whole pool
+ * (Mag 2 + 4 rolls as Mag 6), so it is clamped to the table's range rather
+ * than allowed to fall off the end into the Mag 3 default.
+ */
 export function effectiveMagnitude(base: number, ledger: Ledger): number {
-  return Math.max(1, base + ledger.magnitude);
+  return Math.max(1, Math.min(MAX_MAGNITUDE, base + ledger.magnitude));
 }
 
 export function effectiveRaises(rawRaises: number, ledger: Ledger): number {

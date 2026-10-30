@@ -38,6 +38,7 @@ interface PlaysheetState {
   secondaryPoolRank?: number;
   secondaryReactionPoolKey?: ReactionPoolKey;
   secondaryReactionPoolMax?: number;
+  secondarySkillBonus?: number;
   defenseCombined?: boolean;
   weaponId?: string;
   attackIndex?: number;
@@ -218,7 +219,7 @@ export function ResolverPage() {
       secondary: resolveTest({
         attributePool: secondaryPoolEntry.pool,
         poolRank: secondaryPoolEntry.rank,
-        skillBonus: actorSkillBonus,
+        skillBonus: playsheetState?.secondarySkillBonus ?? actorSkillBonus,
         woundPenalty: actorWoundPenalty,
         situationalModifier: effectiveActorModifier,
         isContest: testType === 'contest',

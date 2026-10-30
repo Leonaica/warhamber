@@ -389,6 +389,8 @@ export type TagEffect = {
     per?: 'flat' | 'success' | 'raise';
     when?: TagWhen;
     child?: string;
+    /** Short label for the child's sub-toggle, e.g. 'Medium+'. */
+    childLabel?: string;
     /** Short qualifier shown beside the effect, e.g. 'When aiming'. */
     note?: string;
   };

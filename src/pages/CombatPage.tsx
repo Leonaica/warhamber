@@ -235,6 +235,18 @@ export function CombatPage() {
 
   const raises = Math.max(0, successes - 1);
 
+  // Units keep a magnitude shift from reading like a damage bonus.
+  const STAGE_UNIT: Record<string, string> = {
+    magnitude: 'Mag',
+    penetration: 'Pen',
+    attack: 'atk',
+    parry: 'par',
+    resistance: 'res',
+    damageModifier: 'dmg',
+    armor: 'arm',
+    raiseDamage: 'dmg/raise',
+  };
+
   // Narrative and second-test tags produce a card rather than arithmetic.
   const cardTags = selectedTags.flatMap(t => {
     const kind = getTagKind(t.def);
@@ -566,6 +578,9 @@ export function CombatPage() {
                       const { def, x } = resolved;
                       const isOn = ref.tagId in currentSelection;
                       const allChildIds = (def.effects ?? []).flatMap(e => (e.child ? [e.child] : []));
+                      const childLabels = new Map(
+                        (def.effects ?? []).flatMap(e => (e.child ? [[e.child, e.childLabel ?? e.child] as const] : [])),
+                      );
                       const dormant = (def.effects ?? []).some(e => e.when && !conditionMet(e.when, { raises, allLow: false }));
                       const state: TagToggleState = !isInteractive(def)
                         ? 'flavor'
@@ -573,19 +588,25 @@ export function CombatPage() {
                           ? (dormant ? 'dormant' : 'active')
                           : 'available';
                       const contributed = ledger.entries
-                        .filter(e => e.tagId === ref.tagId && !e.dormant)
-                        .reduce((sum, e) => (typeof e.value === 'number' ? sum + e.value : sum), 0);
+                        .filter(e => e.tagId === ref.tagId && !e.dormant && typeof e.value === 'number')
+                        .map(e => {
+                          const v = e.value as number;
+                          const unit = STAGE_UNIT[e.stage];
+                          return unit ? `${v > 0 ? '+' : ''}${v} ${unit}` : null;
+                        })
+                        .filter(Boolean)
+                        .join(' ');
                       return (
                         <TagToggle
                           key={ref.tagId}
                           tag={def}
                           x={x}
                           state={state}
-                          contribution={contributed !== 0 ? (contributed > 0 ? `+${contributed}` : String(contributed)) : undefined}
+                          contribution={contributed || undefined}
                           onToggle={() => toggleTag(ref.tagId)}
                           children={[...new Set(allChildIds)].map(id => ({
                             id,
-                            label: id,
+                            label: childLabels.get(id) ?? id,
                             on: (currentSelection[ref.tagId] ?? allChildIds).includes(id),
                             onToggle: () => toggleChild(ref.tagId, id, allChildIds),
                           }))}
@@ -1000,6 +1021,15 @@ export function CombatPage() {
 
               {/* Damage Breakdown */}
               <div className="bg-slate-700/50 rounded p-2 space-y-1 text-xs">
+                {damageResult.effectiveMagnitude !== attackMagnitude && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Magnitude:</span>
+                    <span className="text-amber-400">
+                      {attackMagnitude} → {damageResult.effectiveMagnitude}
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex justify-between">
                   <span className="text-slate-400">Roll:</span>
                   <span className="text-white">
@@ -1026,7 +1056,7 @@ export function CombatPage() {
 
                 {damageResult.ledgerModifier !== 0 && (
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Qualities:</span>
+                    <span className="text-slate-400">Qualities (dmg):</span>
                     <span className={damageResult.ledgerModifier > 0 ? 'text-green-400' : 'text-red-400'}>
                       {damageResult.ledgerModifier > 0 ? '+' : ''}{damageResult.ledgerModifier}
                     </span>
