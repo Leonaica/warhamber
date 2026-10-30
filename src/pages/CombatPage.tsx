@@ -687,6 +687,12 @@ export function CombatPage() {
                   </option>
                 ))}
               </select>
+              {ledgerMagnitude !== attackMagnitude && (
+                <div className="text-[10px] text-amber-400 mt-0.5">
+                  Effective: Mag {ledgerMagnitude}
+                  {' '}({DAMAGE_MAGNITUDE_TABLE.find(m => m.magnitude === ledgerMagnitude)?.pool.notation})
+                </div>
+              )}
             </div>
 
             <div>
@@ -694,14 +700,17 @@ export function CombatPage() {
               <StepperInput
                 value={attackPenetration}
                 onChange={(delta) => {
-                  const newVal = Math.min(Math.max(attackPenetration + delta, 0), 100);
+                  const newVal = Math.min(Math.max(attackPenetration + delta, 0), 224);
                   setAttackPenetration(newVal);
                   if (isPlayerDefender) gameState.updateOpponentCombatData({ attackPenetration: newVal });
                 }}
                 min={0}
-                max={100}
+                max={224}
                 className="text-white"
               />
+              {ledgerPen !== attackPenetration && (
+                <div className="text-[10px] text-amber-400 mt-0.5">Effective: Pen {ledgerPen}</div>
+              )}
             </div>
 
             <div>

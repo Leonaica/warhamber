@@ -686,6 +686,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   {
     id: 'tag-pattern',
     kind: 'arithmetic',
+    defaultActive: true,
     effects: [{ stage: 'penetration', op: 'set', amount: 224, child: 'pen', childLabel: 'Pen 224', note: 'Ignores Shadow armor' }, { stage: 'magnitude', op: 'add', amount: 4, child: 'mag', childLabel: '+4 Mag' }],
     label: 'Pattern-Etched',
     category: 'Metaphysical',
@@ -695,6 +696,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   {
     id: 'tag-logrus',
     kind: 'arithmetic',
+    defaultActive: true,
     effects: [{ stage: 'penetration', op: 'set', amount: 224, child: 'pen', childLabel: 'Pen 224', note: 'Ignores Shadow armor' }, { stage: 'magnitude', op: 'add', amount: 4, child: 'mag', childLabel: '+4 Mag' }],
     label: 'Logrus',
     category: 'Metaphysical',
