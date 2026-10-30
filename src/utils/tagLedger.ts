@@ -46,6 +46,7 @@ export interface LedgerEntry {
   tagId: string;
   label: string;
   stage: string;
+  op: string;
   value: number | string;
   dormant: boolean;
 }
@@ -158,7 +159,7 @@ export function buildLedger(
       if (effect.stage === 'override' && !dormant) ledger.overrideBy = sel.label;
 
       applyEffect(ledger, effect, value, dormant);
-      ledger.entries.push({ tagId: sel.tagId, label: sel.label, stage: effect.stage, value: dormant ? '—' : value, dormant });
+      ledger.entries.push({ tagId: sel.tagId, label: sel.label, stage: effect.stage, op: effect.op, value: dormant ? '—' : value, dormant });
     }
   }
 

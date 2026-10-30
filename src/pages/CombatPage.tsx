@@ -235,25 +235,6 @@ export function CombatPage() {
 
   const raises = Math.max(0, successes - 1);
 
-  // Units keep a magnitude shift from reading like a damage bonus.
-  const STAGE_UNIT: Record<string, string> = {
-    magnitude: 'Mag',
-    penetration: 'Pen',
-    attack: 'atk',
-    parry: 'par',
-    resistance: 'res',
-    damageModifier: 'dmg',
-    armor: 'arm',
-    raiseDamage: 'dmg/raise',
-  };
-
-  // Narrative and second-test tags produce a card rather than arithmetic.
-  const cardTags = selectedTags.flatMap(t => {
-    const kind = getTagKind(t.def);
-    if (kind !== 'narrative' && kind !== 'secondTest') return [];
-    return [{ ...t, kind, effect: formatTagEffect(t.def, t.ref.x) }];
-  });
-
   const ledger = buildLedger(
     selectedTags,
     { raises, allLow: false },
@@ -273,6 +254,34 @@ export function CombatPage() {
   const ledgerMagnitude = effectiveMagnitude(attackMagnitude, ledger);
   const ledgerDamageModifier =
     damageModifier + ledger.damageModifier + effectiveRaises(raises, ledger) * ledger.raiseDamage;
+
+  // Manual modifier plus the tag share, excluding raises (which have their
+  // own readout).
+  const totalDamageBonus = damageModifier + ledger.damageModifier;
+
+  // ORDER: `ledger` and everything derived from it must stay contiguous and
+  // above the blocks below. Anything inserted between `raises` and `ledger`
+  // that reads `ledger` is a temporal dead zone.
+
+  // Units keep a magnitude shift from reading like a damage bonus.
+  const STAGE_UNIT: Record<string, string> = {
+    magnitude: 'Mag',
+    penetration: 'Pen',
+    attack: 'atk',
+    parry: 'par',
+    resistance: 'res',
+    damageModifier: 'dmg',
+    armor: 'arm',
+    raiseDamage: 'dmg/raise',
+  };
+
+  // Narrative and second-test tags produce a card rather than arithmetic.
+  const cardTags = selectedTags.flatMap(t => {
+    const kind = getTagKind(t.def);
+    if (kind !== 'narrative' && kind !== 'secondTest') return [];
+    return [{ ...t, kind, effect: formatTagEffect(t.def, t.ref.x) }];
+  });
+
 
   const toggleTag = (tagId: string) => {
     setTagSelection(prev => {
@@ -593,7 +602,11 @@ export function CombatPage() {
                         .map(e => {
                           const v = e.value as number;
                           const unit = STAGE_UNIT[e.stage];
-                          return unit ? `${v > 0 ? '+' : ''}${v} ${unit}` : null;
+                          if (e.op === 'deny') return 'no parry';
+                          if (!unit) return null;
+                          if (e.op === 'multiply') return `\u00d7${v} ${unit}`;
+                          if (e.op === 'set') return `=${v} ${unit}`;
+                          return `${v > 0 ? '+' : ''}${v} ${unit}`;
                         })
                         .filter(Boolean)
                         .join(' ');
@@ -743,18 +756,28 @@ export function CombatPage() {
 
             <div>
               <label className="block text-xs text-slate-400 mb-0.5">Damage Modifier</label>
-              <StepperInput
-                value={damageModifier}
-                onChange={(delta) => {
-                  const newVal = Math.min(Math.max(damageModifier + delta, -100), 100);
-                  setDamageModifier(newVal);
-                  if (isPlayerDefender) gameState.updateOpponentCombatData({ damageModifier: newVal });
-                }}
-                min={-100}
-                max={100}
-                className={damageModifier >= 0 ? 'text-green-400' : 'text-red-400'}
-                displayFn={(v) => v >= 0 ? `+${v}` : String(v)}
-              />
+              <div className="flex items-center justify-between">
+                <StepperInput
+                  value={damageModifier}
+                  onChange={(delta) => {
+                    const newVal = Math.min(Math.max(damageModifier + delta, -100), 100);
+                    setDamageModifier(newVal);
+                    if (isPlayerDefender) gameState.updateOpponentCombatData({ damageModifier: newVal });
+                  }}
+                  min={-100}
+                  max={100}
+                  className={damageModifier >= 0 ? 'text-green-400' : 'text-red-400'}
+                  displayFn={(v) => v >= 0 ? `+${v}` : String(v)}
+                />
+                {totalDamageBonus !== 0 && (
+                  <span className={`text-[10px] ${totalDamageBonus > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {totalDamageBonus > 0 ? '+' : ''}{totalDamageBonus} dmg
+                    {ledger.damageModifier !== 0 && (
+                      <span className="text-slate-500"> ({ledger.damageModifier > 0 ? '+' : ''}{ledger.damageModifier} from qualities)</span>
+                    )}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>

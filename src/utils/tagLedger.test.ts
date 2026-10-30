@@ -180,3 +180,12 @@ describe('child labels', () => {
     expect(bad).toEqual([]);
   });
 });
+
+describe('ledger entry ops', () => {
+  it('records the op so multipliers are not shown as additions', () => {
+    const d = tag({ id: 'melta', effects: [{ stage: 'penetration', op: 'multiply', amount: 2 }] });
+    const entries = buildLedger([sel(d)], NONE, SRC).entries;
+    expect(entries[0].op).toBe('multiply');
+    expect(entries[0].value).toBe(2);
+  });
+});
