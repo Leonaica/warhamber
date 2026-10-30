@@ -3,13 +3,13 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useCharacter } from '../context/useCharacter';
 import { useGameState } from '../context/useGameState';
 import { WOUND_LABELS, WOUND_PENALTIES } from '../data/wounds';
-import { ASPECTS, type AspectName, type WeaponAttack, type ArmorAspect, type WeaponTagRef, type WeaponTagDefinition } from '../types/character';
+import { ASPECTS, type AspectName, type WeaponAttack, type ArmorAspect } from '../types/character';
 import type { CombatPageState } from '../types/navigation';
 import { DAMAGE_MAGNITUDE_TABLE, type DamageMagnitudeEntry } from '../data/damageTable';
 import { calculateDamage, getResistanceAttribute } from '../utils/damage';
 import type { DamageResult, WoundLevel } from '../utils/damage';
 import { calculateWoundProbabilities, type WoundProbabilities } from '../utils/probability';
-import { resolveTagRef, formatTagEffect, formatTagLabel, idsToRefs } from '../data/weaponTags';
+import { resolveTagRef, formatTagLabel, idsToRefs } from '../data/weaponTags';
 import { TagToggle, type TagToggleState } from '../components/TagToggle';
 import {
   buildLedger,
@@ -22,7 +22,6 @@ import {
   type SelectedTag,
 } from '../utils/tagLedger';
 import { conditionMet } from '../data/tagVocabulary';
-import { TagChip } from '../components/TagChip';
 import StepperInput from '../components/StepperInput';
 import { useTagResolveContext } from '../context/useTagResolveContext'
 import { calculateStacking } from '../data/wounds'
@@ -275,8 +274,6 @@ export function CombatPage() {
   };
 
   // Derived damage modifier from successes (raises)
-  const successesDamageModifier = (successes - 1) * 2;
-  const totalDamageModifier = damageModifier + successesDamageModifier;
 
   // Calculate wound probabilities
   const woundProbabilities = useMemo(() => {
@@ -677,9 +674,9 @@ export function CombatPage() {
                  max={20}
                  className={successes > 1 ? 'text-green-400' : 'text-white'}
                />
-               {successes > 1 && (
+               {raises > 0 && (
                  <span className="text-[10px] text-green-400">
-                   +{successesDamageModifier} dmg
+                   +{effectiveRaises(raises, ledger) * ledger.raiseDamage} dmg
                  </span>
                )}
              </div>
