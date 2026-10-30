@@ -9,7 +9,7 @@ import { DAMAGE_MAGNITUDE_TABLE, type DamageMagnitudeEntry } from '../data/damag
 import { calculateDamage, getResistanceAttribute } from '../utils/damage';
 import type { DamageResult, WoundLevel } from '../utils/damage';
 import { calculateWoundProbabilities, type WoundProbabilities } from '../utils/probability';
-import { resolveTagRef, formatTagLabel, idsToRefs } from '../data/weaponTags';
+import { resolveTagRef, formatTagLabel, formatTagEffect, idsToRefs } from '../data/weaponTags';
 import { TagToggle, type TagToggleState } from '../components/TagToggle';
 import {
   buildLedger,
@@ -19,6 +19,7 @@ import {
   effectiveResistance,
   isDefaultActive,
   isInteractive,
+  getTagKind,
   type SelectedTag,
 } from '../utils/tagLedger';
 import { conditionMet } from '../data/tagVocabulary';
@@ -200,8 +201,6 @@ export function CombatPage() {
   // Total resistance
   const totalResistance = resistanceRank + effectiveSizeModifier + resistanceModifier;
 
-  // Effective armor
-  const effectiveArmor = Math.max(0, armorValue - attackPenetration);
 
   // ---- qualities ----
   const selectionKey = `${selectedWeaponId}:${selectedAttackIndex}`;
@@ -236,6 +235,13 @@ export function CombatPage() {
 
   const raises = Math.max(0, successes - 1);
 
+  // Narrative and second-test tags produce a card rather than arithmetic.
+  const cardTags = selectedTags.flatMap(t => {
+    const kind = getTagKind(t.def);
+    if (kind !== 'narrative' && kind !== 'secondTest') return [];
+    return [{ ...t, kind, effect: formatTagEffect(t.def, t.ref.x) }];
+  });
+
   const ledger = buildLedger(
     selectedTags,
     { raises, allLow: false },
@@ -246,9 +252,10 @@ export function CombatPage() {
     },
   );
 
+  const ledgerPen = effectivePenetration(attackPenetration, ledger);
   const ledgerArmor = ledger.armorSet !== null
     ? ledger.armorSet
-    : Math.max(0, armorValue - effectivePenetration(attackPenetration, ledger));
+    : Math.max(0, armorValue - ledgerPen);
 
   const ledgerResistance = effectiveResistance(totalResistance, ledger);
   const ledgerMagnitude = effectiveMagnitude(attackMagnitude, ledger);
@@ -591,6 +598,27 @@ export function CombatPage() {
                   )}
                 </div>
               )}
+
+              {cardTags.length > 0 && (
+                <div className="space-y-1">
+                  {cardTags.map(card => (
+                    <div
+                      key={card.tagId}
+                      className="bg-slate-800 border border-slate-600 rounded p-1.5"
+                    >
+                      <div className="flex items-center gap-1 text-[10px] font-medium text-amber-300">
+                        {card.kind === 'secondTest' ? '🎲' : '📖'} {card.label}
+                      </div>
+                      <div className="text-[10px] text-slate-300 leading-tight">{card.effect}</div>
+                      {card.kind === 'secondTest' && (
+                        <div className="text-[9px] text-slate-500 mt-0.5">
+                          Resolve as a separate test against TN {card.ref.x ?? '—'}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </>
           )}
 
@@ -775,7 +803,7 @@ export function CombatPage() {
             <div className="bg-slate-700/50 rounded p-2 space-y-1.5">
               <div className="flex justify-between items-center">
                 <span className="text-xs text-slate-400">Resistance</span>
-                <span className="text-cyan-400 font-bold text-sm">{totalResistance}</span>
+                <span className="text-cyan-400 font-bold text-sm">{ledgerResistance}</span>
               </div>
               <div className="grid grid-cols-3 gap-x-3 gap-y-1 text-xs">
                 <div className="flex justify-between">
@@ -945,9 +973,9 @@ export function CombatPage() {
                   }
                 />
                 <div className="flex justify-between text-[10px]">
-                  <span className="text-slate-500">Pen −{attackPenetration}</span>
-                  <span className={`font-medium ${effectiveArmor === 0 ? 'text-slate-500' : 'text-green-400'}`}>
-                    = {effectiveArmor}
+                  <span className="text-slate-500">Pen −{ledgerPen}</span>
+                  <span className={`font-medium ${ledgerArmor === 0 ? 'text-slate-500' : 'text-green-400'}`}>
+                    = {ledgerArmor}
                   </span>
                 </div>
               </div>
