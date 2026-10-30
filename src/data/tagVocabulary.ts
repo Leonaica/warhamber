@@ -4,6 +4,8 @@ import type { Amount, TagEffect, TagWhen } from '../types/character';
 export interface RollFacts {
   raises: number;
   allLow: boolean;
+  /** See TagWhen.aiming. Defaults false where not applicable. */
+  aiming?: boolean;
 }
 
 export interface AmountSources {
@@ -16,6 +18,7 @@ export function conditionMet(when: TagWhen | undefined, facts: RollFacts): boole
   if (!when) return true;
   if (when.raisesAtLeast !== undefined && facts.raises < when.raisesAtLeast) return false;
   if (when.allLow !== undefined && facts.allLow !== when.allLow) return false;
+  if (when.aiming !== undefined && Boolean(facts.aiming) !== when.aiming) return false;
   return true;
 }
 

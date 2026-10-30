@@ -4,7 +4,7 @@ import { BASE_RAISE_DAMAGE, buildLedger, emptyLedger, type AmountSources, type S
 import type { WeaponTagDefinition } from '../types/character';
 
 const SRC: AmountSources = { strengthRank: 8, presenceRank: 4, armorValue: 0 };
-const NONE = { raises: 0, allLow: false };
+const NONE = { raises: 0, allLow: false, aiming: false };
 
 function tag(def: Partial<WeaponTagDefinition> & { id: string }): WeaponTagDefinition {
   return { label: def.id, category: 'test', ...def, kind: def.kind ?? 'arithmetic' };
@@ -60,7 +60,7 @@ describe('calculateDamage', () => {
       id: 'vorpal', kind: 'conditional',
       effects: [{ stage: 'override', op: 'set', target: 'woundLevel', amount: 'deathBlow', when: { raisesAtLeast: 2 } }],
     });
-    const ledger = buildLedger([sel(d)], { raises: 2, allLow: false }, SRC);
+    const ledger = buildLedger([sel(d)], { raises: 2, allLow: false, aiming: false }, SRC);
     const out = calculateDamage({
       weaponMagnitude: 3, weaponPenetration: 0, attackedAspect: 'Form',
       resistanceRank: 99, sizeModifier: 0, armorValue: 999, raises: 2, ledger,

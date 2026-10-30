@@ -60,8 +60,11 @@ export function ResolverPage() {
   // Actor configuration - initialize from playsheet state if available
   const [actorPoolRank, setActorPoolRank] = useState(playsheetState?.poolRank ?? 8);
   const [actorSkillBonus, setActorSkillBonus] = useState(playsheetState?.skillBonus ?? 0);
-  const [actorWoundPenalty, setActorWoundPenalty] = useState(playsheetState?.woundPenalty ?? 0);
+  // Fall back to live state so reaching the resolver directly still carries
+  // the wound penalty.
+  const [actorWoundPenalty, setActorWoundPenalty] = useState(playsheetState?.woundPenalty ?? gameState.woundPenalty);
   const [actorModifier, setActorModifier] = useState(0);
+  const [isAiming, setIsAiming] = useState(false);
   
   // Test type & target number (moved up so they're available for the sync block)
   const [testType, setTestType] = useState<'challenge' | 'contest'>('challenge');
@@ -140,7 +143,7 @@ export function ResolverPage() {
 
   const attackLedger = buildLedger(
     attackTags,
-    { raises: 0, allLow: false },
+    { raises: 0, allLow: false, aiming: isAiming },
     {
       strengthRank: character.attributeDiePools.Strength.rank,
       presenceRank: character.attributeDiePools.Presence.rank,
@@ -148,7 +151,14 @@ export function ResolverPage() {
     },
   );
 
-  const effectiveActorModifier = actorModifier + attackLedger.attack;
+  // Inaccurate weapons cannot Aim at all.
+  const cannotAim = attackTags.some(t => t.tagId === 'tag-inaccurate');
+  const aiming = isAiming && !cannotAim;
+  // Aiming adds twice the skill bonus; Accurate adds its own +2 on top via the
+  // ledger, gated on the aiming fact.
+  const aimBonus = aiming ? 2 * actorSkillBonus : 0;
+
+  const effectiveActorModifier = actorModifier + attackLedger.attack + aimBonus;
 
   const toggleAttackTag = (tagId: string) => {
     gameState.setTagSelection(prev => {
@@ -233,7 +243,7 @@ export function ResolverPage() {
   
   // Opponent configuration (for contests)
   const [opponentSkillBonus, setOpponentSkillBonus] = useState(0);
-  const [opponentWoundPenalty, setOpponentWoundPenalty] = useState(0);
+  const [opponentWoundPenalty, setOpponentWoundPenalty] = useState(gameState.opponentWoundPenalty);
   const [opponentModifier, setOpponentModifier] = useState(0);
   
   // Result state
@@ -866,7 +876,7 @@ export function ResolverPage() {
                     const { def, x } = resolved;
                     const isOn = ref.tagId in rollSelection;
                     const dormant = (def.effects ?? []).some(
-                      e => e.stage === 'attack' && e.when && !conditionMet(e.when, { raises: 0, allLow: false }),
+                      e => e.stage === 'attack' && e.when && !conditionMet(e.when, { raises: 0, allLow: false, aiming: isAiming }),
                     );
                     const state: TagToggleState = !isInteractive(def)
                       ? 'flavor'
@@ -884,6 +894,37 @@ export function ResolverPage() {
                 </div>
               </div>
             )}
+
+            {attackTagRefs.length > 0 && (
+
+              <label className={`flex items-center gap-2 text-xs ${cannotAim ? 'text-slate-500' : 'text-slate-300'}`}>
+
+                <input
+
+                  type="checkbox"
+
+                  checked={aiming}
+
+                  disabled={cannotAim}
+
+                  onChange={e => setIsAiming(e.target.checked)}
+
+                  className="rounded"
+
+                />
+
+                Aiming{aiming && actorSkillBonus !== 0 && (
+
+                  <span className="text-green-400">+{2 * actorSkillBonus}</span>
+
+                )}
+
+                {cannotAim && <span className="text-slate-500">— weapon cannot aim</span>}
+
+              </label>
+
+            )}
+
 
             <div>
               <label className="block text-xs text-slate-400 mb-0.5">Situational Modifier</label>

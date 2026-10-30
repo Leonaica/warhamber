@@ -447,7 +447,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
   {
     id: 'tag-accurate',
     kind: 'conditional',
-    effects: [{ stage: 'attack', op: 'add', amount: 2, note: 'When aiming' }, { stage: 'damageModifier', op: 'add', amount: 2, when: { raisesAtLeast: 1 } }],
+    effects: [{ stage: 'attack', op: 'add', amount: 2, when: { aiming: true } }, { stage: 'damageModifier', op: 'add', amount: 2, when: { raisesAtLeast: 1 } }],
     label: 'Accurate',
     category: 'Combat Handling',
     description: 'Well-balanced or precisely machined for accuracy',

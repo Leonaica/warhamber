@@ -59,6 +59,10 @@ export interface OpponentCombatData {
   materialSize: number;
   immaterialSize: number;
   resistanceModifier: number;
+  /** Feeds strength-bonus when testing an opponent attack from this device. */
+  strengthRank: number;
+  /** Feeds force when testing an opponent attack from this device. */
+  presenceRank: number;
 }
 
 export interface GameStateContextValue {
@@ -108,6 +112,8 @@ export const defaultOpponentCombatData: OpponentCombatData = {
   materialSize: 0,
   immaterialSize: 0,
   resistanceModifier: 0,
+  strengthRank: 8,
+  presenceRank: 8,
 };
 
 export const defaultWounds: WoundState = {

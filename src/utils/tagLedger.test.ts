@@ -10,8 +10,8 @@ import {
 import { conditionMet } from '../data/tagVocabulary';
 
 const SRC: AmountSources = { strengthRank: 8, presenceRank: 4, armorValue: 12 };
-const NONE: RollFacts = { raises: 0, allLow: false };
-const TWO: RollFacts = { raises: 2, allLow: false };
+const NONE: RollFacts = { raises: 0, allLow: false, aiming: false };
+const TWO: RollFacts = { raises: 2, allLow: false, aiming: false };
 
 function tag(def: Partial<WeaponTagDefinition> & { id: string }): WeaponTagDefinition {
   return { label: def.id, category: 'test', ...def, kind: def.kind ?? 'arithmetic' };
@@ -187,5 +187,33 @@ describe('ledger entry ops', () => {
     const entries = buildLedger([sel(d)], NONE, SRC).entries;
     expect(entries[0].op).toBe('multiply');
     expect(entries[0].value).toBe(2);
+  });
+});
+
+describe('multi-target tags', () => {
+  it('tells the reader to roll per target', () => {
+    const bad = WEAPON_TAG_LIBRARY
+      .filter(t => ['tag-blast', 'tag-spray'].includes(t.id))
+      .filter(t => !(t.effects ?? []).some(e => e.stage === 'flag' && e.note?.includes('separately')));
+    expect(bad.map(t => t.id)).toEqual([]);
+  });
+});
+
+describe('aiming', () => {
+  const accurate = tag({
+    id: 'acc',
+    kind: 'conditional',
+    effects: [
+      { stage: 'attack', op: 'add', amount: 2, when: { aiming: true } },
+      { stage: 'damageModifier', op: 'add', amount: 2, when: { raisesAtLeast: 1 } },
+    ],
+  });
+
+  it('withholds the attack bonus when not aiming', () => {
+    expect(buildLedger([sel(accurate)], { raises: 0, allLow: false, aiming: false }, SRC).attack).toBe(0);
+  });
+
+  it('grants it when aiming', () => {
+    expect(buildLedger([sel(accurate)], { raises: 0, allLow: false, aiming: true }, SRC).attack).toBe(2);
   });
 });

@@ -91,8 +91,9 @@ export function CombatPage() {
   const state = location.state as CombatPageState | null;
   const tagCtx = useTagResolveContext();
 
-  // Combat mode
-  const [combatMode, setCombatMode] = useState<'attacker' | 'defender'>(state?.mode || 'attacker');
+  // CombatPage is the attacker's calculator. Defence happens on the playsheet:
+  // you roll a Dodge or Parry to set the TN, then record the wound the GM names.
+  // The defender branches below are retained but constant, pending cleanup.
 
   // Weapon selection
   const [selectedWeaponId, setSelectedWeaponId] = useState<string>(state?.weaponId || '');
@@ -132,7 +133,7 @@ export function CombatPage() {
   );
 
   // Target selection
-  const applyToOpponent = combatMode === 'attacker';
+  const applyToOpponent = true;
 
   // Results
   const [damageResult, setDamageResult] = useState<DamageResult | null>(null);
@@ -163,7 +164,7 @@ export function CombatPage() {
     return character.armor.find(a => a.id === armorId) ?? null;
   }, [armorId, character.armor]);
 
-  const isPlayerDefender = combatMode === 'defender';
+  const isPlayerDefender = false;
   const resistanceAttr = getResistanceAttribute(attackedAspect);
 
   // Resistance rank
@@ -237,10 +238,16 @@ export function CombatPage() {
 
   const ledger = buildLedger(
     selectedTags,
-    { raises, allLow: false },
+    { raises, allLow: false, aiming: false },
     {
-      strengthRank: character.attributeDiePools.Strength.rank,
-      presenceRank: character.attributeDiePools.Presence.rank,
+      // In defender mode the attack belongs to the opponent, so their
+      // attributes drive strength-bonus and force, not ours.
+      strengthRank: isPlayerDefender
+        ? gameState.opponentCombatData.strengthRank
+        : character.attributeDiePools.Strength.rank,
+      presenceRank: isPlayerDefender
+        ? gameState.opponentCombatData.presenceRank
+        : character.attributeDiePools.Presence.rank,
       armorValue,
     },
   );
@@ -267,12 +274,12 @@ export function CombatPage() {
   const STAGE_UNIT: Record<string, string> = {
     magnitude: 'Mag',
     penetration: 'Pen',
-    attack: 'atk',
-    parry: 'par',
-    resistance: 'res',
-    damageModifier: 'dmg',
-    armor: 'arm',
-    raiseDamage: 'dmg/raise',
+    attack: 'Atk',
+    parry: 'Par',
+    resistance: 'Res',
+    damageModifier: 'Dmg',
+    armor: 'Arm',
+    raiseDamage: 'Dmg/raise',
   };
 
   // Narrative and second-test tags produce a card rather than arithmetic.
@@ -423,16 +430,6 @@ export function CombatPage() {
     }
   };
 
-  const handleModeSwitch = (newMode: 'attacker' | 'defender') => {
-    saveOpponentData();
-    setCombatMode(newMode);
-    setDamageResult(null);
-    setCustomResistanceRank(null);
-    setCustomArmor(null);
-    setCustomMaterialSize(null);
-    setCustomImmaterialSize(null);
-  };
-
   const handleNavigateBack = () => {
     saveOpponentData();
     navigate('/playsheet');
@@ -471,26 +468,6 @@ export function CombatPage() {
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <h1 className="text-base font-bold text-amber-400">⚔️ Combat</h1>
-            <div className="flex gap-1">
-              <button
-                onClick={() => handleModeSwitch('attacker')}
-                className={`px-2 py-1 rounded text-xs font-medium transition-colors ${combatMode === 'attacker'
-                    ? 'bg-red-600 text-white'
-                    : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                  }`}
-              >
-                🗡️ Attack
-              </button>
-              <button
-                onClick={() => handleModeSwitch('defender')}
-                className={`px-2 py-1 rounded text-xs font-medium transition-colors ${combatMode === 'defender'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                  }`}
-              >
-                🛡️ Defend
-              </button>
-            </div>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500">👾 Reset Opponent:</span>
@@ -606,6 +583,7 @@ export function CombatPage() {
                           if (!unit) return null;
                           if (e.op === 'multiply') return `\u00d7${v} ${unit}`;
                           if (e.op === 'set') return `=${v} ${unit}`;
+                          if (e.op === 'subtract') return `\u2212${v} ${unit}`;
                           return `${v > 0 ? '+' : ''}${v} ${unit}`;
                         })
                         .filter(Boolean)

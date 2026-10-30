@@ -363,6 +363,11 @@ export type Amount = number | 'x' | 'strength' | 'presence' | 'armorValue' | 'de
 export interface TagWhen {
   raisesAtLeast?: number;
   allLow?: boolean;
+  /**
+   * The one scene fact: whether this attack was set up with an Aim action.
+   * Everything else here is produced by the roll.
+   */
+  aiming?: boolean;
 }
 
 /**

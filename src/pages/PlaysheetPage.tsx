@@ -55,6 +55,7 @@ export function PlaysheetPage() {
   // combined Dodge+Parry is a single defence resolved twice, so it uses the
   // one skill rather than two.
   const [defenceSkill, setDefenceSkill] = useState<Partial<Record<AspectName, string>>>({});
+  const [parryWeapon, setParryWeapon] = useState<Partial<Record<AspectName, string>>>({});
 
   const renderIcon = (icon: IconEntry) => {
     return icon.library === 'fontawesome' ? (
@@ -294,21 +295,12 @@ export function PlaysheetPage() {
     });
   };
 
-  const goToCombatAsDefender = (aspect?: AspectName, armorId?: string) => {
-    navigate('/combat', {
-      state: {
-        mode: 'defender',
-        defenderAspect: aspect,
-        armorId,
-      } as CombatPageState
-    });
-  };
-
   const goToDefenseResolver = (
     attribute: AttributeName,
     poolKey: ReactionPoolKey,
     maxPool: number,
     skillBonus: number,
+    parryWeaponId?: string,
   ) => {
     const attrEntry = character.attributeDiePools[attribute];
     navigate('/resolver', {
@@ -319,6 +311,7 @@ export function PlaysheetPage() {
         attributeName: attribute,
         targetNumber: 4,
         defenseMode: true,
+        ...(parryWeaponId ? { parryWeaponId } : {}),
         reactionPoolKey: poolKey,
         reactionPoolMax: maxPool,
       }
@@ -986,12 +979,25 @@ export function PlaysheetPage() {
                             <span className="text-slate-600"> · {parryFinesse} ({parryPoolSize})</span>
                           </div>
                           <button
-                            onClick={() => goToDefenseResolver(parryAttr, parryKey, parryPoolSize, skillBonusFor(defenceSkill[aspect.id]))}
+                            onClick={() => goToDefenseResolver(parryAttr, parryKey, parryPoolSize, skillBonusFor(defenceSkill[aspect.id]), parryWeapon[aspect.id])}
                             disabled={parryDenied || parryRemaining <= 0}
                             className="w-full bg-amber-900/50 hover:bg-amber-700/50 disabled:opacity-30 disabled:cursor-not-allowed text-amber-300 rounded px-2 py-1 text-xs font-medium transition-all"
                           >
                             🛡️ Parry
                           </button>
+                          {character.weapons.length > 0 && (
+                            <select
+                              value={parryWeapon[aspect.id] ?? ''}
+                              onChange={e => setParryWeapon(prev => ({ ...prev, [aspect.id]: e.target.value }))}
+                              className="w-full bg-slate-600 border border-slate-500 rounded px-1 py-0.5 text-xs mt-1"
+                              title="Weapon used to parry"
+                            >
+                              <option value="">Unarmed</option>
+                              {character.weapons.map(w => (
+                                <option key={w.id} value={w.id}>{w.name}</option>
+                              ))}
+                            </select>
+                          )}
                         </div>
 
                         {/* Dodge + Parry — take the better */}
@@ -1050,12 +1056,6 @@ export function PlaysheetPage() {
                             <span className="text-base">{aspect.emoji}</span>
                             <span className="font-medium text-white text-sm">{aspect.name}</span>
                           </div>
-                          <button
-                            onClick={() => goToCombatAsDefender(aspect.id)}
-                            className="bg-blue-900/50 hover:bg-blue-700/50 text-white px-2 py-0.5 rounded text-xs font-medium"
-                          >
-                            🛡️ Defend
-                          </button>
                         </div>
                         <div className="grid grid-cols-2 gap-1 text-center text-xs">
                           <div>
@@ -1097,20 +1097,6 @@ export function PlaysheetPage() {
                             {' • '}Armor {piece.armor}
                           </div>
                           
-                          <div className="space-y-1">
-                            {piece.aspects.map(aspect => (
-                              <button
-                                key={aspect}
-                                onClick={() => goToCombatAsDefender(aspect, piece.id)}
-                                className="w-full flex items-center justify-between bg-blue-900/50 hover:bg-blue-700/50 border border-slate-600 hover:border-blue-500/50 rounded px-2 py-1 text-xs transition-all group"
-                              >
-                                <span className="text-slate-200 group-hover:text-white">
-                                  {aspectEmojis[aspect]} Defend {aspect}
-                                </span>
-                                <span className="text-slate-500 group-hover:text-blue-400">🛡️</span>
-                              </button>
-                            ))}
-                          </div>
                           
                           {piece.location && (
                             <div className="text-xs text-slate-500 mt-1">{piece.location}</div>
@@ -1131,6 +1117,9 @@ export function PlaysheetPage() {
                       {gameState.woundPenalty}/die penalty
                     </span>
                   )}
+                </div>
+                <div className="text-xs text-slate-500 mb-2">
+                  The GM names the wound; set it here.
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {ASPECTS.map(aspect => {
