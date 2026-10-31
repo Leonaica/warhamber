@@ -1,4 +1,4 @@
-import type { WeaponTagDefinition, WeaponTagRef, TagValueSource, TagResolveContext, AttributeName } from '../types/character';
+import type { WeaponTagDefinition, WeaponTagRef, TagValueSource, TagResolveContext, AttributeName, CharacterWeapon } from '../types/character';
 import { abbreviateAttribute } from './aspectAttributes';
 
 export const WEAPON_TAG_CATEGORIES = [
@@ -1120,4 +1120,36 @@ export function normalizeTagRefs(
     const x = Math.max(min, Math.min(max, ref.x));
     return { tagId: ref.tagId, x };
   });
+}
+
+/**
+ * Canonical tag order: alphabetical by label.
+ *
+ * Applied on read in the character provider, so the stored order is irrelevant
+ * and every consumer — chips, printed sheet, Homebrewery export — inherits the
+ * same order without sorting anything of its own.
+ */
+export function sortTagRefs(
+  refs: WeaponTagRef[],
+  customTags: WeaponTagDefinition[],
+  ctx: TagResolveContext,
+): WeaponTagRef[] {
+  const label = (ref: WeaponTagRef) =>
+    resolveTagRef(ref, customTags, ctx)?.def.label ?? ref.tagId;
+  return [...refs].sort((a, b) => label(a).localeCompare(label(b)));
+}
+
+/** Same order, applied across a character's weapons and legacy tagIds. */
+export function sortWeaponTags(
+  weapons: CharacterWeapon[],
+  customTags: WeaponTagDefinition[],
+): CharacterWeapon[] {
+  const ctx: TagResolveContext = {};
+  const toIdString = (ref: WeaponTagRef) =>
+    ref.x === undefined ? ref.tagId : `${ref.tagId}:${ref.x}`;
+  return weapons.map(w => ({
+    ...w,
+    ...(w.tags ? { tags: sortTagRefs(w.tags, customTags, ctx) } : {}),
+    ...(w.tagIds ? { tagIds: sortTagRefs(idsToRefs(w.tagIds), customTags, ctx).map(toIdString) } : {}),
+  }));
 }

@@ -17,6 +17,7 @@ import type {
 import { ATTRIBUTES } from '../types/character';
 import { getDiePoolEntry } from '../data/diePoolTable';
 import { calculateImmaterialSize, computeCharacter } from '../utils/calculations';
+import { sortWeaponTags } from '../data/weaponTags';
 import { DEFAULT_ICON } from '../data/icons';
 
 // Helper function to get default rating based on campaign limit
@@ -194,6 +195,13 @@ const removeArmor = useCallback((id: string) => {
     setPaceMultiplierState(prev => typeof value === 'function' ? value(prev) : value);
   }, []);
 
+  // Canonical order lives here, on read, so state can hold whatever order a
+  // tag arrived in and every consumer still sees alphabetical.
+  const sortedWeapons = useMemo(
+    () => sortWeaponTags(weapons, customTagsState),
+    [weapons, customTagsState],
+  );
+
   const computedCharacter = useMemo(() => {
     return computeCharacter(
       nameState,
@@ -205,12 +213,12 @@ const removeArmor = useCallback((id: string) => {
       artifactsState,
       alliesState,
       personalShadowsState,
-      weapons,
+      sortedWeapons,
       armorState,
       sizeState,
       customTagsState,
     );
-  }, [nameState, campaignLimitState, aspectsState, functionsState, skillsState, powersState, artifactsState, alliesState, personalShadowsState, weapons, armorState, sizeState, customTagsState]);
+  }, [nameState, campaignLimitState, aspectsState, functionsState, skillsState, powersState, artifactsState, alliesState, personalShadowsState, sortedWeapons, armorState, sizeState, customTagsState]);
 
   const attributeValues = useMemo(() => {
     const values: Record<AttributeName, number> = {} as Record<AttributeName, number>;
@@ -311,14 +319,14 @@ const removeArmor = useCallback((id: string) => {
       artifacts: artifactsState,
       allies: alliesState,
       personalShadows: personalShadowsState,
-      weapons,
+      weapons: sortedWeapons,
       armor: armorState,
       customTags: customTagsState,
       size: sizeState,
       paceMultiplier: paceMultiplierState,
     };
     return JSON.stringify(data, null, 2);
-  }, [nameState, avatarIconState, campaignLimitState, aspectsState, functionsState, aspectExplanationsState, functionExplanationsState, skillsState, powersState, artifactsState, alliesState, personalShadowsState, weapons, armorState, customTagsState, sizeState, paceMultiplierState]);
+  }, [nameState, avatarIconState, campaignLimitState, aspectsState, functionsState, aspectExplanationsState, functionExplanationsState, skillsState, powersState, artifactsState, alliesState, personalShadowsState, sortedWeapons, armorState, customTagsState, sizeState, paceMultiplierState]);
 
   const hasCharacter = nameState.trim() !== '' || skillsState.length > 0 || powersState.length > 0;
 
@@ -339,7 +347,7 @@ const removeArmor = useCallback((id: string) => {
     attributeDiePools,
     immaterialSize,
     pace,
-    weapons,
+    weapons: sortedWeapons,
     armor: armorState,
     customTags: customTagsState,
     size: sizeState,
