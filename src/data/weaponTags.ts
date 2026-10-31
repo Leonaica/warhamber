@@ -580,12 +580,12 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
     effect: 'Bypasses damage resistance of fey and certain fiends',
   },
   {
-    id: 'tag-mithral',
+    id: 'tag-mithril',
     kind: 'flavor',
-    label: 'Mithral',
+    label: 'Mithril',
     category: 'Material',
-    description: 'Forged from mithral silver',
-    effect: 'Half the weight of steel; non-magnetic; immune to rust',
+    description: 'Forged from mithril silver',
+    effect: 'Half the weight of steel; non-magnetic; immune to rust; +8 Form armor',
   },
   {
     id: 'tag-silvered',
