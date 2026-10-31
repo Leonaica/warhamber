@@ -163,10 +163,11 @@ export function CharacterSheet() {
                     const attr = ATTRIBUTES.find(a => a.func === func.id && a.aspect === aspect.id);
                     if (!attr) return <td key={aspect.id}></td>;
                     const value = funcRating + character.aspects[aspect.id];
-                    const pool = getDiePoolEntry(value).pool;
+                    const entry = getDiePoolEntry(value);
+                    const pool = entry.pool;
                     return (
                       <td key={aspect.id} className="attr-cell">
-                        <div className="attr-name">{attr.name}</div>
+                        <div className="attr-name">{attr.name} <span className="desc">R{entry.rank}</span></div>
                         <div className="attr-dice">{dieNotation(pool.dice)}</div>
                       </td>
                     );
@@ -490,12 +491,6 @@ export function CharacterSheet() {
         </div>   {/* .right-column */}
       </div>     {/* .two-column */}
     </div>       {/* .sheet-cell */}
-    <div className="sheet-running-foot">
-      <div className="foot-row">
-        <span>{c.name || 'Unnamed Character'} — WarhAmber</span>
-        <span>{c.totalPointsSpent} / {character.campaignLimit} pts</span>
-      </div>
-    </div>
       </div>         {/* .sheet-table */}
     </div> 
   );

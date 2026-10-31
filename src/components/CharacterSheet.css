@@ -5,7 +5,7 @@
 
 @page {
   size: A4;                /* change to letter if that is your paper */
-  margin: 12mm 8mm 20mm;   /* the bottom band is where the running foot lives */
+  margin: 12mm 8mm 20mm;   /* bottom band kept clear of the page edge */
 }
 
 /* Print-only: hidden on screen, revealed by the @media print block below. */
@@ -49,23 +49,6 @@
     font-size: 14px;
     color: #666;
     margin-top: 5px;
-  }
-
-  /* position: fixed repeats on every printed page in Chrome and Firefox.
-    It takes no layout space, hence the reserved @page bottom margin. */
-  .sheet-running-foot {
-    position: fixed;
-    bottom: -8mm;
-    left: 10mm;
-    right: 10mm;
-    display: flex;
-    justify-content: space-between;
-    font-size: 9px;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    color: #8b4513;
-    border-top: 0.5px solid #d8cbb8;
-    padding-top: 2px;
   }
 
   /* ---------- Attributes ---------- */

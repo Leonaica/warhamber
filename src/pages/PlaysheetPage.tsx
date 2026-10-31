@@ -701,6 +701,7 @@ export function PlaysheetPage() {
                                   >
                                     <div className={`font-medium text-xs ${isSelected ? 'text-amber-400' : 'text-slate-200'}`}>
                                       {attr.name}
+                                      <span className="ml-1 text-slate-500 font-normal">R{entry.rank}</span>
                                     </div>
                                     <div className="text-xs text-slate-400">
                                       {gscale !== null && gscale !== undefined ? `×${formatMultiplier(gscale)}` : `R${entry.rank}`}
@@ -944,6 +945,7 @@ export function PlaysheetPage() {
                             </div>
                             <div className="text-xs text-slate-500 mb-1">
                               {dodgeAttr} — {character.attributeDiePools[dodgeAttr].pool.notation}
+                              <span className="text-slate-600"> R{character.attributeDiePools[dodgeAttr].rank}</span>
                             </div>
                             <button
                               onClick={() => goToDefenseResolver(dodgeAttr, dodgeKey, dodgePoolSize, skillBonusFor(defenceSkill[aspect.id]))}
@@ -958,6 +960,7 @@ export function PlaysheetPage() {
                             <div className="text-xs text-slate-500 mb-1">⚠️ No Dodge (internal)</div>
                             <div className="text-xs text-slate-500 mb-1">
                               Reflexes — {character.attributeDiePools['Reflexes'].pool.notation}
+                              <span className="text-slate-600"> R{character.attributeDiePools['Reflexes'].rank}</span>
                             </div>
                             <button
                               onClick={() => goToSurpriseRoll('Reflexes', skillBonusFor(defenceSkill['Flesh']))}
@@ -978,6 +981,7 @@ export function PlaysheetPage() {
                           </div>
                           <div className="text-xs text-slate-500 mb-1">
                             {parryAttr} — {character.attributeDiePools[parryAttr].pool.notation}
+                            <span className="text-slate-600"> R{character.attributeDiePools[parryAttr].rank}</span>
                             <span className="text-slate-600"> · {parryFinesse} ({parryPoolSize})</span>
                           </div>
                           <button
