@@ -981,6 +981,29 @@ export function ResolverPage() {
               />
             </div>
 
+            {(primaryStageModifier !== 0 || (playsheetState?.defenseCombined && parryLedger.parry !== 0)) && (
+              <div className="bg-slate-700/50 rounded px-2 py-1 text-xs space-x-2">
+                {primaryStageModifier !== 0 && (
+                  <span>
+                    <span className="text-slate-400">
+                      {rollWeapon?.name ?? 'Weapon'} ({stageFilter === 'parry' ? 'Par' : 'Atk'}):
+                    </span>{' '}
+                    <span className={primaryStageModifier >= 0 ? 'text-green-400' : 'text-red-400'}>
+                      {primaryStageModifier >= 0 ? '+' : ''}{primaryStageModifier}
+                    </span>
+                  </span>
+                )}
+                {playsheetState?.defenseCombined && parryLedger.parry !== 0 && (
+                  <span>
+                    <span className="text-slate-400">Parry half:</span>{' '}
+                    <span className={parryLedger.parry > 0 ? 'text-green-400' : 'text-red-400'}>
+                      {parryLedger.parry > 0 ? '+' : ''}{parryLedger.parry}
+                    </span>
+                  </span>
+                )}
+              </div>
+            )}
+
             <div className="bg-slate-700/50 rounded px-2 py-1 text-xs">
               <span className="text-slate-400">Total: </span>
               <span className={actorTotalModifier >= 0 ? 'text-green-400' : 'text-red-400'}>
