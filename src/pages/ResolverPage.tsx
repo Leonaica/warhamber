@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useGameState } from '../context/useGameState';
 import { useTagResolveContext } from '../context/useTagResolveContext';
 import { useCharacter } from '../context/useCharacter';
-import type { AttributeName } from '../types/character';
+import type { AttributeName, TagStage, WeaponTagRef } from '../types/character';
 import { DIE_POOL_TABLE } from '../data/diePoolTable';
 import type { DiePoolEntry } from '../data/diePoolTable';
 import { 
@@ -41,6 +41,7 @@ interface PlaysheetState {
   secondarySkillBonus?: number;
   defenseCombined?: boolean;
   weaponId?: string;
+  parryWeaponId?: string;
   attackIndex?: number;
 }
 
@@ -65,6 +66,12 @@ export function ResolverPage() {
   const [actorWoundPenalty, setActorWoundPenalty] = useState(playsheetState?.woundPenalty ?? gameState.woundPenalty);
   const [actorModifier, setActorModifier] = useState(0);
   const [isAiming, setIsAiming] = useState(false);
+  // Which stage's weapon qualities are on screen. A parry roll uses the parry
+  // weapon and only its parry-stage effects, so the stage starts on parry
+  // whenever the playsheet supplied a parry weapon.
+  const [stageFilter, setStageFilter] = useState<TagStage>(
+    playsheetState?.parryWeaponId ? 'parry' : 'attack',
+  );
   
   // Test type & target number (moved up so they're available for the sync block)
   const [testType, setTestType] = useState<'challenge' | 'contest'>('challenge');
@@ -101,35 +108,49 @@ export function ResolverPage() {
     };
   })();
 
-  // ---- weapon qualities that affect the attack roll ----
-  // Only `attack`-stage effects belong here; damage-side tags stay on the
-  // combat page.
-  const rollWeapon = playsheetState?.weaponId
-    ? character.weapons.find(w => w.id === playsheetState.weaponId)
-    : undefined;
+  // ---- weapon qualities for the roll in play ----
+  // Attack- and parry-stage effects are collected separately: a parry roll
+  // uses the parry weapon and only its parry qualities, which never touch the
+  // attack. Damage-side stages stay on the combat page.
   const rollAttackIndex = playsheetState?.attackIndex ?? 0;
-  const rollSelectionKey = rollWeapon ? `${rollWeapon.id}:${rollAttackIndex}` : '';
+  const rollWeaponId = stageFilter === 'parry'
+    ? playsheetState?.parryWeaponId ?? playsheetState?.weaponId
+    : playsheetState?.weaponId;
+  const rollWeapon = rollWeaponId
+    ? character.weapons.find(w => w.id === rollWeaponId)
+    : undefined;
 
-  const attackTagRefs = useMemo(() => {
-    if (!rollWeapon) return [];
-    const refs = rollWeapon.tags ?? idsToRefs(rollWeapon.tagIds ?? []);
-    return refs.filter(ref => {
+  const { attackTagRefs, parryTagRefs } = useMemo(() => {
+    const refs = rollWeapon ? (rollWeapon.tags ?? idsToRefs(rollWeapon.tagIds ?? [])) : [];
+    const forStage = (stage: TagStage) => refs.filter(ref => {
       const def = resolveTagRef(ref, character.customTags, tagCtx)?.def;
-      return (def?.effects ?? []).some(e => e.stage === 'attack');
+      return (def?.effects ?? []).some(e => e.stage === stage);
     });
+    return { attackTagRefs: forStage('attack'), parryTagRefs: forStage('parry') };
   }, [rollWeapon, character.customTags, tagCtx]);
 
-  const rollSelection = gameState.tagSelection[rollSelectionKey] ?? (() => {
-    const out: Record<string, string[] | undefined> = {};
-    for (const ref of attackTagRefs) {
-      const def = resolveTagRef(ref, character.customTags, tagCtx)?.def;
-      if (def && isDefaultActive(def)) out[ref.tagId] = undefined;
-    }
-    return out;
-  })();
+  // Selection is keyed per stage, so a weapon that both attacks and parries
+  // keeps two independent chip sets instead of sharing one.
+  const selectionKeyFor = (stage: TagStage) =>
+    rollWeapon ? `${rollWeapon.id}:${rollAttackIndex}:${stage}` : '';
 
-  const attackTags = attackTagRefs.flatMap(ref => {
-    if (!(ref.tagId in rollSelection)) return [];
+  const selectionFor = (refs: WeaponTagRef[], stage: TagStage) => {
+    const key = selectionKeyFor(stage);
+    return gameState.tagSelection[key] ?? (() => {
+      const out: Record<string, string[] | undefined> = {};
+      for (const ref of refs) {
+        const def = resolveTagRef(ref, character.customTags, tagCtx)?.def;
+        if (def && isDefaultActive(def)) out[ref.tagId] = undefined;
+      }
+      return out;
+    })();
+  };
+
+  const tagsFor = (
+    refs: WeaponTagRef[],
+    selection: Record<string, string[] | undefined>,
+  ) => refs.flatMap(ref => {
+    if (!(ref.tagId in selection)) return [];
     const resolved = resolveTagRef(ref, character.customTags, tagCtx);
     if (!resolved) return [];
     return [{
@@ -137,28 +158,42 @@ export function ResolverPage() {
       label: formatTagLabel(resolved.def, resolved.x),
       ref,
       def: resolved.def,
-      activeChildren: rollSelection[ref.tagId],
+      activeChildren: selection[ref.tagId],
     }];
   });
 
-  const attackLedger = buildLedger(
-    attackTags,
-    { raises: 0, allLow: false, aiming: isAiming },
-    {
-      strengthRank: character.attributeDiePools.Strength.rank,
-      presenceRank: character.attributeDiePools.Presence.rank,
-      armorValue: 0,
-    },
-  );
+  const attackSelection = selectionFor(attackTagRefs, 'attack');
+  const parrySelection = selectionFor(parryTagRefs, 'parry');
+  const attackTags = tagsFor(attackTagRefs, attackSelection);
+  const parryTags = tagsFor(parryTagRefs, parrySelection);
+
+  const rollSelectionKey = selectionKeyFor(stageFilter);
+  const rollSelection = stageFilter === 'parry' ? parrySelection : attackSelection;
+  const visibleTagRefs = stageFilter === 'parry' ? parryTagRefs : attackTagRefs;
+
+  const rollFacts = { raises: 0, allLow: false, aiming: isAiming };
+  const amountSources = {
+    strengthRank: character.attributeDiePools.Strength.rank,
+    presenceRank: character.attributeDiePools.Presence.rank,
+    armorValue: 0,
+  };
+  const attackLedger = buildLedger(attackTags, rollFacts, amountSources);
+  const parryLedger = buildLedger(parryTags, rollFacts, amountSources);
 
   // Inaccurate weapons cannot Aim at all.
   const cannotAim = attackTags.some(t => t.tagId === 'tag-inaccurate');
   const aiming = isAiming && !cannotAim;
-  // Aiming adds twice the skill bonus; Accurate adds its own +2 on top via the
+  // Aiming is an attack action, so it never applies to a defence roll.
+  // It adds twice the skill bonus; Accurate adds its own +2 on top via the
   // ledger, gated on the aiming fact.
-  const aimBonus = aiming ? 2 * actorSkillBonus : 0;
+  const aimBonus = aiming && !playsheetState?.defenseMode ? 2 * actorSkillBonus : 0;
 
-  const effectiveActorModifier = actorModifier + attackLedger.attack + aimBonus;
+  // Only the stage on screen feeds the roll in front of you — except on a
+  // combined defence, where the primary roll is a Dodge and carries no weapon
+  // qualities at all. The parry half takes its own in maybeRunSecondary.
+  const stageModifier = stageFilter === 'parry' ? parryLedger.parry : attackLedger.attack;
+  const primaryStageModifier = playsheetState?.defenseCombined ? 0 : stageModifier;
+  const effectiveActorModifier = actorModifier + primaryStageModifier + aimBonus;
 
   const toggleAttackTag = (tagId: string) => {
     gameState.setTagSelection(prev => {
@@ -182,6 +217,7 @@ export function ResolverPage() {
         setTargetNumber(playsheetState.targetNumber);
       }
       setIsDefenseMode(!!playsheetState.defenseMode);
+      setStageFilter(playsheetState.parryWeaponId ? 'parry' : 'attack');
       setHasPlaysheetData(true);
     }
   }
@@ -231,7 +267,9 @@ export function ResolverPage() {
         poolRank: secondaryPoolEntry.rank,
         skillBonus: playsheetState?.secondarySkillBonus ?? actorSkillBonus,
         woundPenalty: actorWoundPenalty,
-        situationalModifier: effectiveActorModifier,
+        // The secondary roll is always the parry, so it takes the parry
+        // weapon's own modifiers rather than whatever stage is on screen.
+        situationalModifier: actorModifier + parryLedger.parry + aimBonus,
         isContest: testType === 'contest',
         ...(testType === 'contest' ? { opponentRank: opponentPoolEntry.rank } : {}),
         targetNumber,
@@ -864,19 +902,38 @@ export function ResolverPage() {
               </div>
             </div>
 
-            {attackTagRefs.length > 0 && (
+            {(attackTagRefs.length > 0 || parryTagRefs.length > 0) && (
               <div className="bg-slate-700/40 rounded p-1.5 space-y-1">
-                <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">
-                  Qualities
+                <div className="flex items-center justify-between">
+                  <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">
+                    {stageFilter === 'parry' ? 'Parry qualities' : 'Qualities'}
+                  </div>
+                  {playsheetState?.parryWeaponId && (
+                    <div className="flex gap-0.5">
+                      {(['attack', 'parry'] as TagStage[]).map(stage => (
+                        <button
+                          key={stage}
+                          onClick={() => setStageFilter(stage)}
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                            stageFilter === stage
+                              ? 'bg-amber-500 text-slate-900'
+                              : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                          }`}
+                        >
+                          {stage === 'attack' ? 'Attack' : 'Parry'}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  {attackTagRefs.map(ref => {
+                  {visibleTagRefs.map(ref => {
                     const resolved = resolveTagRef(ref, character.customTags, tagCtx);
                     if (!resolved) return null;
                     const { def, x } = resolved;
                     const isOn = ref.tagId in rollSelection;
                     const dormant = (def.effects ?? []).some(
-                      e => e.stage === 'attack' && e.when && !conditionMet(e.when, { raises: 0, allLow: false, aiming: isAiming }),
+                      e => e.stage === stageFilter && e.when && !conditionMet(e.when, { raises: 0, allLow: false, aiming: isAiming }),
                     );
                     const state: TagToggleState = !isInteractive(def)
                       ? 'flavor'
@@ -895,34 +952,20 @@ export function ResolverPage() {
               </div>
             )}
 
-            {attackTagRefs.length > 0 && (
-
+            {attackTagRefs.length > 0 && !playsheetState?.defenseMode && (
               <label className={`flex items-center gap-2 text-xs ${cannotAim ? 'text-slate-500' : 'text-slate-300'}`}>
-
                 <input
-
                   type="checkbox"
-
                   checked={aiming}
-
                   disabled={cannotAim}
-
                   onChange={e => setIsAiming(e.target.checked)}
-
                   className="rounded"
-
                 />
-
                 Aiming{aiming && actorSkillBonus !== 0 && (
-
                   <span className="text-green-400">+{2 * actorSkillBonus}</span>
-
                 )}
-
                 {cannotAim && <span className="text-slate-500">— weapon cannot aim</span>}
-
               </label>
-
             )}
 
 

@@ -321,6 +321,7 @@ export function PlaysheetPage() {
   const goToDefenseResolverCombined = (
     primaryAttr: AttributeName, primaryKey: ReactionPoolKey, primaryMax: number, primaryBonus: number,
     secondaryAttr: AttributeName, secondaryKey: ReactionPoolKey, secondaryMax: number, secondaryBonus: number,
+    parryWeaponId?: string,
   ) => {
     const primaryEntry = character.attributeDiePools[primaryAttr];
     const secondaryEntry = character.attributeDiePools[secondaryAttr];
@@ -339,6 +340,7 @@ export function PlaysheetPage() {
         secondarySkillBonus: secondaryBonus,
         secondaryReactionPoolKey: secondaryKey,
         secondaryReactionPoolMax: secondaryMax,
+        ...(parryWeaponId ? { parryWeaponId } : {}),
         defenseCombined: true,
       },
     });
@@ -1006,6 +1008,7 @@ export function PlaysheetPage() {
                             onClick={() => goToDefenseResolverCombined(
                               dodgeAttr, dodgeKey, dodgePoolSize, skillBonusFor(defenceSkill[aspect.id]),
                               parryAttr, parryKey, parryPoolSize, skillBonusFor(defenceSkill[aspect.id]),
+                              parryWeapon[aspect.id],
                             )}
                             disabled={parryDenied || dodgeRemaining <= 0 || parryRemaining <= 0}
                             className="w-full mt-1 bg-violet-900/50 hover:bg-violet-700/50 disabled:opacity-30 disabled:cursor-not-allowed text-violet-300 rounded px-2 py-1 text-xs font-medium transition-all"
