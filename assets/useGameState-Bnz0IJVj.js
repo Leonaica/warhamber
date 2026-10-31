@@ -1,1 +1,0 @@
-import{b as e}from"./react-CzuVT-vD.js";import{G as r}from"./index-SKVTqnFg.js";function s(){const t=e.useContext(r);if(!t)throw new Error("useGameState must be used within a GameStateProvider");return t}export{s as u};
