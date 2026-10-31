@@ -827,7 +827,7 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
     label: 'Manifestation',
     category: 'Utility',
     description: 'Exists only when manifested',
-    effect: 'Weapon forms and dissapates at will',
+    effect: 'Weapon forms and dissipates at will',
   },
   {
     id: 'tag-oathbound',
