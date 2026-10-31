@@ -416,6 +416,15 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
     effect: 'Doubles thrown range for this weapon (e.g., Short becomes Medium)',
   },
   {
+    id: 'tag-path',
+    kind: 'narrative',
+    effects: [{ stage: 'flag', op: 'flag', note: "hits all targets along path" }],
+    label: 'Path',
+    category: 'Range & Movement',
+    description: 'Path attack',
+    effect: 'Fully affects all targets along its path',
+  },
+  {
     id: 'tag-returning',
     kind: 'narrative',
     effects: [{ stage: 'flag', op: 'flag', note: "Returns to hand at end of round" }],
