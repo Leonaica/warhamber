@@ -816,7 +816,9 @@ export function ResolverPage() {
       {/* Compact Header */}
       <div className="bg-slate-800 rounded px-3 py-1.5 flex items-center justify-between">
         <h1 className="text-base font-bold text-amber-400">
-          {isDefenseMode ? '🛡️ Defense Roll Resolver' : '🎲 Attribute Test Resolver'}
+          {isDefenseMode
+            ? '🛡️ Defense Roll Resolver'
+            : playsheetState?.weaponId ? '⚔️ Attack Roll Resolver' : '🎲 Attribute Test Resolver'}
         </h1>
         {hasPlaysheetData && playsheetState && (
           <div className="flex items-center gap-2">
@@ -1015,17 +1017,37 @@ export function ResolverPage() {
           {/* Target Number (Challenge) or Opponent (Contest) */}
           {testType === 'challenge' ? (
             <div className="bg-slate-800 rounded p-2">
-              <label className="block text-xs text-slate-400 mb-0.5">Target Number</label>
-              <StepperInput
-                value={targetNumber}
-                onChange={handleTargetNumberChange}
-                min={1}
-                step={4}
-                max={224}
-              />
-              <div className="text-xs text-slate-500 mt-0.5">
-                Scale: {formatScale(resultToScale(targetNumber))}
-              </div>
+              {isDefenseMode ? (
+                <>
+                  <div className="text-xs text-slate-400 mb-0.5">Floor</div>
+                  <div className="text-sm text-slate-300">4</div>
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    You are not beating a TN — you are producing one. Report the result as
+                    rolled; if it is under 4, the attacker uses the default TN 4 instead.
+                  </div>
+                </>
+              ) : (
+                <>
+                  <label className="block text-xs text-slate-400 mb-0.5">Target Number</label>
+                  <StepperInput
+                    value={targetNumber}
+                    onChange={handleTargetNumberChange}
+                    min={1}
+                    step={4}
+                    max={224}
+                  />
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    Scale: {formatScale(resultToScale(targetNumber))}
+                  </div>
+                  {playsheetState?.weaponId && (
+                    <div className="text-xs text-slate-500 mt-1">
+                      The GM gives you this: the defender's dodge or parry result, or 4 if they
+                      did not defend. Minor opponents can be rolled as a contest instead, using
+                      the GM's numbers rather than a full sheet.
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           ) : (
             <div className="bg-slate-800 rounded p-2 space-y-2">
@@ -1329,20 +1351,40 @@ export function ResolverPage() {
                     <div className="space-y-2">
                       {renderActionResult(shown, label)}
                       <div className={`text-center p-2 rounded ${
-                        shown.successes > 0 ? 'bg-green-900/30' : 'bg-red-900/30'
+                        isDefenseMode
+                          ? 'bg-slate-700/50'
+                          : shown.successes > 0 ? 'bg-green-900/30' : 'bg-red-900/30'
                       }`}>
                         <div className="text-sm font-bold">
                           {isDefenseMode
-                            ? (shown.result > 4
-                              ? `🛡️ Defense ${shown.result} — New TN: ${shown.result}`
-                              : `🛡️ Defense ${shown.result} — TN remains 4`)
+                            ? `🛡️ Defense ${shown.result} — report this`
                             : (shown.successes > 0
                               ? `✓ Success! Beat TN ${targetNumber} by ${shown.result - targetNumber}`
                               : `✗ Failed by ${targetNumber - shown.result}`)}
                         </div>
+                        {isDefenseMode && shown.result < 4 && (
+                          <div className="text-xs text-amber-300 mt-1">
+                            Under the floor — use the default TN 4. Dodging or parrying never
+                            makes you easier to hit than standing still.
+                          </div>
+                        )}
                         {reverseRaises > 0 && (
                           <div className="text-xs text-violet-300 text-center">
                             ⚔️ {reverseRaises} reverse raise{reverseRaises > 1 ? 's' : ''} for the defender
+                          </div>
+                        )}
+                        {isDefenseMode ? (
+                          <div className="text-xs text-slate-400 text-center mt-1">
+                            Report your result to the GM — it becomes the attacker's TN. If
+                            you are hit, mark the wound on the Defense tab.
+                          </div>
+                        ) : (
+                          <div className="text-xs text-slate-400 text-center mt-1">
+                            {playsheetState?.weaponId
+                              ? (shown.successes > 0
+                                ? 'Hit — announce it, then resolve damage below.'
+                                : 'Miss — announce it and go back to the sheet.')
+                              : 'Announce the result to the table, then go back to the sheet.'}
                           </div>
                         )}
                       </div>
@@ -1351,6 +1393,14 @@ export function ResolverPage() {
                 })()
               )}
             </div>
+          )}
+          {result && (
+            <button
+              onClick={() => navigate('/playsheet')}
+              className="w-full bg-slate-700 hover:bg-slate-600 text-slate-300 py-1.5 rounded text-sm transition-colors"
+            >
+              ← Back to Sheet
+            </button>
           )}
           {result && playsheetState?.weaponId && handOffSuccesses > 0 && (
             <button

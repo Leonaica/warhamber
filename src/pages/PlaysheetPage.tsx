@@ -617,7 +617,7 @@ export function PlaysheetPage() {
                     onClick={goToResolver}
                     className="bg-amber-500 hover:bg-amber-400 text-slate-900 px-4 py-1 rounded font-medium text-sm"
                   >
-                    🎲 Resolve Attack
+                    🎲 {selectedWeaponInfo ? 'Resolve Attack' : 'Resolve Action'}
                   </button>
                 </div>
               </div>
@@ -650,7 +650,7 @@ export function PlaysheetPage() {
                 <div className="bg-slate-800 rounded-lg p-3">
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="text-base font-bold text-amber-400">Attributes</h2>
-                    <span className="text-xs text-slate-500">Click to select for rolling</span>
+                    <span className="text-xs text-slate-500">Click to select for rolling — add a weapon below for an attack</span>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
