@@ -279,12 +279,6 @@ export function PlaysheetPage() {
     });
   };
 
-  const getSelectedSkillBonus = () => {
-    if (!selectedSkill) return 0;
-    const skill = character.skills.find(s => s.skillId === selectedSkill);
-    return skill ? getSkillModifier(skill.rating) : 0;
-  };
-
   const goToCombatAsAttacker = (weaponId: string, attackIndex: number = 0) => {
     navigate('/combat', {
       state: {
@@ -581,13 +575,24 @@ export function PlaysheetPage() {
                   <span className="bg-slate-700 px-2 py-1 rounded text-white text-sm">
                     {selectedAttribute}
                   </span>
-                  {selectedSkill && (
-                    <>
-                      <span className="text-slate-400">+</span>
-                      <span className="bg-slate-700 px-2 py-1 rounded text-white text-sm">
-                        {selectedSkill} ({getSelectedSkillBonus() >= 0 ? '+' : ''}{getSelectedSkillBonus()}/die)
-                      </span>
-                    </>
+                  {character.skills.length > 0 && (
+                    <select
+                      value={selectedSkill ?? ''}
+                      onChange={e => setSelectedSkill(e.target.value || null)}
+                      className="bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-white"
+                      title="Skill applied to this roll"
+                    >
+                      <option value="">No skill</option>
+                      {character.skills.map(entry => {
+                        const def = SKILLS.find(k => k.id === entry.skillId);
+                        const bonus = getSkillModifier(entry.rating);
+                        return (
+                          <option key={entry.skillId} value={entry.skillId}>
+                            {entry.specialty || def?.name || entry.skillId} ({bonus >= 0 ? '+' : ''}{bonus})
+                          </option>
+                        );
+                      })}
+                    </select>
                   )}
                   {gameState.woundPenalty < 0 && (
                     <>
