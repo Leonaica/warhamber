@@ -16,6 +16,7 @@ import {
 } from '../utils/resolution';
 import { isBandAvailable, resultToScale } from '../data/actionEffortTable';
 import { resolveTagRef, formatTagLabel, idsToRefs } from '../data/weaponTags';
+import { findWeapon, isPowerWeaponId } from '../utils/powerAttack';
 import { TagToggle, type TagToggleState } from '../components/TagToggle';
 import { buildLedger, isDefaultActive, isInteractive } from '../utils/tagLedger';
 import { conditionMet } from '../data/tagVocabulary';
@@ -116,9 +117,8 @@ export function ResolverPage() {
   const rollWeaponId = stageFilter === 'parry'
     ? playsheetState?.parryWeaponId ?? playsheetState?.weaponId
     : playsheetState?.weaponId;
-  const rollWeapon = rollWeaponId
-    ? character.weapons.find(w => w.id === rollWeaponId)
-    : undefined;
+  const rollWeapon = rollWeaponId ? findWeapon(character, rollWeaponId) : undefined;
+  const rollAttack = rollWeapon?.attacks[rollAttackIndex];
 
   const { attackTagRefs, parryTagRefs } = useMemo(() => {
     const refs = rollWeapon ? (rollWeapon.tags ?? idsToRefs(rollWeapon.tagIds ?? [])) : [];
@@ -1044,6 +1044,12 @@ export function ResolverPage() {
                       The GM gives you this: the defender's dodge or parry result, or 4 if they
                       did not defend. Minor opponents can be rolled as a contest instead, using
                       the GM's numbers rather than a full sheet.
+                    </div>
+                  )}
+                  {rollWeaponId && isPowerWeaponId(rollWeaponId) && rollAttack && (
+                    <div className="text-xs text-slate-500 mt-1">
+                      {rollAttack.type} at Magnitude {rollAttack.magnitude} sets a base TN of{' '}
+                      {4 * rollAttack.magnitude}. The defender's result raises it.
                     </div>
                   )}
                 </>

@@ -10,6 +10,7 @@ import { calculateDamage, getResistanceAttribute } from '../utils/damage';
 import type { DamageResult, WoundLevel } from '../utils/damage';
 import { calculateWoundProbabilities, type WoundProbabilities } from '../utils/probability';
 import { resolveTagRef, formatTagLabel, formatTagEffect, idsToRefs } from '../data/weaponTags';
+import { findWeapon, allWeapons, isPowerWeaponId } from '../utils/powerAttack';
 import { TagToggle, type TagToggleState } from '../components/TagToggle';
 import {
   buildLedger,
@@ -101,7 +102,7 @@ export function CombatPage() {
 
   // Compute initial attack values from weapon
   const initialWeapon = state?.weaponId
-    ? character.weapons.find(w => w.id === state.weaponId)
+    ? findWeapon(character, state.weaponId)
     : null;
   const initialAttackIndex = state?.attackIndex ?? 0;
   const initialAttack = initialWeapon?.attacks[initialAttackIndex];
@@ -148,8 +149,8 @@ export function CombatPage() {
   // Get selected weapon
   const selectedWeapon = useMemo(() => {
     if (!selectedWeaponId) return null;
-    return character.weapons.find(w => w.id === selectedWeaponId) || null;
-  }, [selectedWeaponId, character.weapons]);
+    return findWeapon(character, selectedWeaponId) || null;
+  }, [selectedWeaponId, character]);
 
   // Get current attack
   const weaponAttack = useMemo((): WeaponAttack | null => {
@@ -336,7 +337,7 @@ export function CombatPage() {
     setSelectedWeaponId(weaponId);
     setSelectedAttackIndex(0);
     if (weaponId) {
-      const weapon = character.weapons.find(w => w.id === weaponId);
+      const weapon = findWeapon(character, weaponId);
       if (weapon && weapon.attacks.length > 0) {
         const attack = weapon.attacks[0];
         setAttackAspect(attack.aspect);
@@ -523,6 +524,13 @@ export function CombatPage() {
                   {character.weapons.map(w => (
                     <option key={w.id} value={w.id}>{w.name}</option>
                   ))}
+                  {character.powers.length > 0 && (
+                    <optgroup label="Powers">
+                      {allWeapons(character).filter(w => isPowerWeaponId(w.id)).map(w => (
+                        <option key={w.id} value={w.id}>{w.name}</option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </div>
 

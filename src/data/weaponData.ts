@@ -66,6 +66,7 @@ export const ATTACK_TYPE_LABELS: Record<AttackType, string> = {
   Asphyxiation: 'Asphyxiation — Denying oxygen or gas exchange without chemical interference',
   Burnout: 'Burnout — Breaking cells through energy overload or thermal extremes',
   Decay: 'Decay — Accelerating breakdown or transformation of living tissue',
+  Leeching: 'Leeching — Siphoning vitality out while leaving the tissue intact',
   // Mind
   Shattering: 'Shattering — Mental fortitude (Willpower) broken by psychic assault, terror, torture, or overwhelming pressure',
   Degradation: 'Degradation — Processing capacity (Intelligence) degraded by neuron damage, logic corruption, or cognitive overload',

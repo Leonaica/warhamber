@@ -182,6 +182,16 @@ export interface Power {
   description: string;
   requirements: string;
   keyAttributes: AttributeName[];
+  /**
+   * Aspect this power borrows its attribute expressions from. A power is a
+   * virtual aspect; it borrows from a real one rather than having its own.
+   * This sizes attributes only — the attack's own aspect lives on the form.
+   */
+  attributeAspect?: AspectName;
+  /** Can be used to attack directly, with no intermediary weapon or device. */
+  attackForms?: boolean;
+  /** Sub-powers that have no attack forms of their own. */
+  subPowersWithoutAttack?: string[];
   levels: PowerLevel[];
   prerequisites?: PowerPrerequisite[];
   repeatable?: boolean; // Can the power be taken multiple times?
@@ -283,7 +293,7 @@ type FormAttackType =
   | 'Annihilation' | 'Slashing' | 'Piercing' | 'Distortion' | 'Shockwave';
 
 type FleshAttackType =
-  | 'Poisoning' | 'Infection' | 'Asphyxiation' | 'Burnout' | 'Decay';
+  | 'Poisoning' | 'Infection' | 'Asphyxiation' | 'Burnout' | 'Decay' | 'Leeching';
 
 type MindAttackType =
   | 'Shattering' | 'Degradation' | 'Erasure' | 'Dissolution' | 'Subversion';
@@ -479,8 +489,21 @@ export const WEAPON_RANGES: { step: number; value: WeaponRange; label: string; d
   { step: 20, value: 'Continental',      label: 'Continental',        distance: '~2,000 km',  description: 'Intercontinental-range missiles' },
 ];
 
+/** One shape a power's attack can take. Aspect and type are per form. */
+export interface PowerAttackForm {
+  name: string;
+  aspect: AspectName;
+  type: AttackType;
+  /** Discipline this form belongs to, where a power is split into them. */
+  subPower?: string;
+  /** Mechanical qualifier carried onto the attack, e.g. Energy or Direct. */
+  note?: string;
+}
+
 export interface WeaponAttack {
   id: string;
+  /** Display name for an attack form, where the weapon carries several. */
+  name?: string;
   aspect: AspectName;
   type: AttackType;
   magnitude: number;

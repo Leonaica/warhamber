@@ -3,6 +3,8 @@ import type { Power } from '../types/character';
 export const POWERS: Power[] = [
   {
     id: 'pattern',
+    attributeAspect: 'Mind',
+    attackForms: false,
     name: 'Pattern',
     emoji: '🔷',
     category: 'Substance',
@@ -21,6 +23,8 @@ export const POWERS: Power[] = [
   },
   {
     id: 'logrus',
+    attributeAspect: 'Spirit',
+    attackForms: true,
     name: 'Logrus',
     emoji: '🐉',
     category: 'Substance',
@@ -40,6 +44,8 @@ export const POWERS: Power[] = [
   },
   {
     id: 'tarot',
+    attributeAspect: 'Mind',
+    attackForms: false,
     name: 'Tarot',
     emoji: '🃏',
     category: 'Substance',
@@ -57,6 +63,8 @@ export const POWERS: Power[] = [
   },
   {
     id: 'shapeShifting',
+    attributeAspect: 'Flesh',
+    attackForms: true,
     name: 'Shape Shifting',
     emoji: '🦋',
     category: 'Substance',
@@ -74,6 +82,8 @@ export const POWERS: Power[] = [
   },
   {
     id: 'brokenPattern',
+    attributeAspect: 'Mind',
+    attackForms: false,
     name: 'Broken Pattern',
     emoji: '🧩',
     category: 'Semi-Substance',
@@ -87,6 +97,8 @@ export const POWERS: Power[] = [
   },
   {
     id: 'primeMagic',
+    attributeAspect: 'Mind',
+    attackForms: true,
     name: 'Prime Magic',
     emoji: '✴️',
     category: 'Semi-Substance',
@@ -107,6 +119,9 @@ export const POWERS: Power[] = [
   },
   {
     id: 'psionics',
+    attributeAspect: 'Spirit',
+    attackForms: true,
+    subPowersWithoutAttack: ['Divination'],
     name: 'Psionics',
     emoji: '🌀',
     category: 'Semi-Substance',
@@ -131,6 +146,8 @@ export const POWERS: Power[] = [
   },
   {
     id: 'pactMagic',
+    attributeAspect: 'Spirit',
+    attackForms: true,
     name: 'Pact Magic',
     emoji: '🔮',
     category: 'Shadow',
@@ -145,6 +162,8 @@ export const POWERS: Power[] = [
   },
   {
     id: 'formulaicMagic',
+    attributeAspect: 'Mind',
+    attackForms: true,
     name: 'Formulaic Magic',
     emoji: '📜',
     category: 'Shadow',
@@ -159,6 +178,8 @@ export const POWERS: Power[] = [
   },
   {
     id: 'innateMagic',
+    attributeAspect: 'Spirit',
+    attackForms: true,
     name: 'Innate Magic',
     emoji: '🧘',
     category: 'Shadow',
@@ -173,6 +194,8 @@ export const POWERS: Power[] = [
   },
   {
     id: 'artifice',
+    attributeAspect: 'Form',
+    attackForms: false,
     name: 'Artifice',
     emoji: '⚙️',
     category: 'Shadow',
@@ -198,6 +221,7 @@ export const POWERS: Power[] = [
   },
   {
     id: 'minorPower',
+    attackForms: true,
     name: 'Minor Power',
     emoji: '⚡',
     category: 'Shadow',

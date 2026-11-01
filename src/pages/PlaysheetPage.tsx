@@ -4,7 +4,7 @@ import { useCharacter } from '../context/useCharacter';
 import { useGameState } from '../context/useGameState';
 import type { ReactionPoolKey } from '../context/GameStateContext';
 import {  WOUND_LABELS, WOUND_PENALTIES, type WoundLevel } from '../data/wounds';
-import { ASPECTS, FUNCTIONS, ATTRIBUTES, SIZE_OPTIONS, RATING_SCALE, RATING_LABELS, type AspectName, type AttributeName, type ArmorAspect, type PowerCategory } from '../types/character';
+import { ASPECTS, FUNCTIONS, ATTRIBUTES, SIZE_OPTIONS, RATING_SCALE, RATING_LABELS, WEAPON_RANGES, type AspectName, type AttributeName, type ArmorAspect, type PowerCategory } from '../types/character';
 import { ICONS, DEFAULT_ICON, type IconEntry } from '../data/icons';
 import { DIE_POOL_TABLE } from '../data/diePoolTable';
 import type { DiePoolEntry } from '../data/diePoolTable';
@@ -17,6 +17,7 @@ import { generateHomebreweryMarkdown } from '../utils/homebreweryExport';
 import { CharacterSheet } from '../components/CharacterSheet';
 import { formatWeaponLogistics } from '../data/weaponData';
 import { resolveTagRef, idsToRefs } from '../data/weaponTags';
+import { powerAttackWeapon, findWeapon, isPowerWeaponId } from '../utils/powerAttack';
 import type { WeaponTagRef } from '../types/character';
 import type { CombatPageState } from '../types/navigation';
 import { TagChip } from '../components/TagChip';
@@ -249,10 +250,10 @@ export function PlaysheetPage() {
 
   const selectedWeaponInfo = useMemo(() => {
     if (!selectedWeapon) return null;
-    const weapon = character.weapons.find(w => w.id === selectedWeapon.weaponId);
+    const weapon = findWeapon(character, selectedWeapon.weaponId);
     const attack = weapon?.attacks[selectedWeapon.attackIndex];
     return weapon && attack ? { weapon, attack } : null;
-  }, [selectedWeapon, character.weapons]);
+  }, [selectedWeapon, character]);
 
   const goToResolver = () => {
     if (!selectedAttribute) return;
@@ -273,6 +274,10 @@ export function PlaysheetPage() {
           ? {
               weaponId: selectedWeaponInfo.weapon.id,
               attackIndex: selectedWeapon.attackIndex,
+              // Firing at Magnitude X costs a base TN of 4×X.
+              ...(isPowerWeaponId(selectedWeaponInfo.weapon.id)
+                ? { targetNumber: 4 * selectedWeaponInfo.attack.magnitude }
+                : {}),
             }
           : {}),
       }
@@ -1273,6 +1278,45 @@ export function PlaysheetPage() {
                             {power.emoji} {display.title}
                           </div>
                           <div className="text-xs text-amber-400">{display.systemReference}</div>
+                          {(() => {
+                            const atk = powerAttackWeapon(powerEntry, character);
+                            if (!atk) return null;
+                            const isAtkSel = selectedWeapon?.weaponId === atk.id;
+                            const chosen = isAtkSel ? selectedWeapon.attackIndex : 0;
+                            const form = atk.attacks[chosen] ?? atk.attacks[0];
+                            return (
+                              <div className="mt-1.5 space-y-1">
+                                {atk.attacks.length > 1 && (
+                                  <select
+                                    value={chosen}
+                                    onChange={e => setSelectedWeapon({ weaponId: atk.id, attackIndex: Number(e.target.value) })}
+                                    className="w-full bg-slate-600 border border-slate-500 rounded px-1 py-0.5 text-xs"
+                                    title="Attack form"
+                                  >
+                                    {atk.attacks.map((a, i) => (
+                                      <option key={a.id} value={i}>{a.name}</option>
+                                    ))}
+                                  </select>
+                                )}
+                                <button
+                                  onClick={() => setSelectedWeapon(isAtkSel ? null : { weaponId: atk.id, attackIndex: chosen })}
+                                  className={`w-full rounded px-2 py-1 text-left text-xs transition-all ${
+                                    isAtkSel
+                                      ? 'bg-orange-800/60 ring-1 ring-amber-500/50 text-white'
+                                      : 'bg-orange-900/40 hover:bg-orange-900/60 text-orange-200'
+                                  }`}
+                                  title="Attack with this power"
+                                >
+                                  ⚔️ {form.name} — {form.aspect}-{form.type} · Mag {form.magnitude} ·{' '}
+                                  Pen {form.penetration} ·{' '}
+                                  {WEAPON_RANGES.find(r => r.value === form.range)?.label} · TN {form.magnitude * 4}
+                                </button>
+                                {form.condition && (
+                                  <div className="text-[10px] text-slate-400 leading-tight">{form.condition}</div>
+                                )}
+                              </div>
+                            );
+                          })()}
                           {power.keyAttributes.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1.5">
                               {power.keyAttributes.map(attrName => {
