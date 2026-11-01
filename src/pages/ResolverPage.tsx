@@ -16,11 +16,13 @@ import {
 } from '../utils/resolution';
 import { isBandAvailable, resultToScale } from '../data/actionEffortTable';
 import { resolveTagRef, formatTagLabel, idsToRefs } from '../data/weaponTags';
-import { findWeapon, isPowerWeaponId } from '../utils/powerAttack';
+import { findWeapon, powerCaps, powerEntryForId } from '../utils/powerAttack';
 import { TagToggle, type TagToggleState } from '../components/TagToggle';
 import { buildLedger, isDefaultActive, isInteractive } from '../utils/tagLedger';
 import { conditionMet } from '../data/tagVocabulary';
 import type { EffortBand, ActionResult, ContestResult } from '../types/resolution';
+import { WEAPON_RANGES } from '../types/character';
+import { SOAK_ATTRIBUTES } from '../data/aspectAttributes';
 import StepperInput from '../components/StepperInput';
 import type { ReactionPoolKey } from '../context/GameStateContext';
 
@@ -43,8 +45,17 @@ interface PlaysheetState {
   defenseCombined?: boolean;
   weaponId?: string;
   parryWeaponId?: string;
+  /** Casting a power without attacking with it. */
+  powerEntryId?: string;
   attackIndex?: number;
 }
+
+type SpendKey = 'magnitude' | 'range' | 'penetration' | 'targets' | 'radius' | 'qualities';
+
+/** Successes each dimension costs, per the Energy Price List. */
+const SPEND_COST: Record<SpendKey, number> = {
+  magnitude: 2, range: 1, penetration: 1, targets: 1, radius: 3, qualities: 2,
+};
 
 export function ResolverPage() {
   const location = useLocation();
@@ -119,6 +130,57 @@ export function ResolverPage() {
     : playsheetState?.weaponId;
   const rollWeapon = rollWeaponId ? findWeapon(character, rollWeaponId) : undefined;
   const rollAttack = rollWeapon?.attacks[rollAttackIndex];
+
+  // Power rolls accumulate energy across actions, then spend it on the shape.
+  const [gathered, setGathered] = useState(0);
+  // Actions spent gathering. The count is the casting time, so it is shown
+  // rather than inferred.
+  const [gatherActions, setGatherActions] = useState(0);
+  const [spend, setSpend] = useState<Record<SpendKey, number>>({
+    magnitude: 0, range: 0, penetration: 0, targets: 0, radius: 0, qualities: 0,
+  });
+
+  const powerEntry = rollWeaponId ? powerEntryForId(character, rollWeaponId) : undefined;
+  // A cast has no weapon: the entry arrives on its own.
+  const castEntry = playsheetState?.powerEntryId
+    ? character.powers.find(p => p.id === playsheetState.powerEntryId)
+    : undefined;
+  const capsEntry = powerEntry ?? castEntry;
+  const caps = capsEntry ? powerCaps(capsEntry, character) : null;
+  const internal = rollAttack?.internal ?? false;
+
+  // A declared effect is prebuilt: its level is paid up front and its shape comes
+  // with it. Spontaneous casting pays one for existence and buys the rest.
+  const [declared, setDeclared] = useState(false);
+  const [level, setLevel] = useState(1);
+
+  // The level buys the prebuilt shape, so seeding it is the whole point of the
+  // mode: magnitude tracks the level, clamped to the cap.
+  const seedFromLevel = (nextLevel: number) => {
+    if (!caps) return;
+    setSpend(prev => ({ ...prev, magnitude: Math.min(caps.magnitude, Math.max(0, nextLevel - 1)) }));
+  };
+
+  const setDeclaredLevel = (next: number) => {
+    const clamped = Math.max(1, next);
+    setLevel(clamped);
+    setTargetNumber(4 * clamped);
+    seedFromLevel(clamped);
+  };
+
+  const toggleDeclared = () => {
+    // Costs differ between the modes, so a carried-over spend would be charged
+    // twice. Start clean either way.
+    setSpend({ magnitude: 0, range: 0, penetration: 0, targets: 0, radius: 0, qualities: 0 });
+    if (declared) {
+      setDeclared(false);
+      setTargetNumber(4);
+    } else {
+      setDeclared(true);
+      setTargetNumber(4 * level);
+      seedFromLevel(level);
+    }
+  };
 
   const { attackTagRefs, parryTagRefs } = useMemo(() => {
     const refs = rollWeapon ? (rollWeapon.tags ?? idsToRefs(rollWeapon.tagIds ?? [])) : [];
@@ -195,6 +257,22 @@ export function ResolverPage() {
   const primaryStageModifier = playsheetState?.defenseCombined ? 0 : stageModifier;
   const effectiveActorModifier = actorModifier + primaryStageModifier + aimBonus;
 
+  // Spontaneous: one for the base effect, then the table. Declared: the level
+  // covers the shape, so only Qualities are still bought.
+  const spent = declared
+    ? level + SPEND_COST.qualities * spend.qualities
+    : 1
+      + SPEND_COST.magnitude * spend.magnitude
+      + SPEND_COST.range * spend.range
+      + SPEND_COST.penetration * spend.penetration
+      + SPEND_COST.targets * spend.targets
+      + SPEND_COST.radius * spend.radius
+      + SPEND_COST.qualities * spend.qualities;
+
+  const bumpSpend = (key: SpendKey, delta: number, cap: number) => {
+    setSpend(prev => ({ ...prev, [key]: Math.max(0, Math.min(cap, prev[key] + delta)) }));
+  };
+
   const toggleAttackTag = (tagId: string) => {
     gameState.setTagSelection(prev => {
       const sel = { ...(prev[rollSelectionKey] ?? rollSelection) };
@@ -217,6 +295,14 @@ export function ResolverPage() {
         setTargetNumber(playsheetState.targetNumber);
       }
       setIsDefenseMode(!!playsheetState.defenseMode);
+      // An internal effect cannot be dodged or parried, so it is always a contest.
+      if (rollAttack?.internal) setTestType('contest');
+      // Nothing about a previous roll should survive into this one.
+      setDeclared(false);
+      setLevel(1);
+      setGathered(0);
+      setGatherActions(0);
+      setSpend({ magnitude: 0, range: 0, penetration: 0, targets: 0, radius: 0, qualities: 0 });
       setStageFilter(playsheetState.parryWeaponId ? 'parry' : 'attack');
       setHasPlaysheetData(true);
     }
@@ -428,6 +514,8 @@ export function ResolverPage() {
 
   // Handle resolution
   const handleBaseline = () => {
+    setGathered(0);
+    setGatherActions(0);
     if (testType === 'challenge') {
       const res = resolveTest({
         attributePool: actorPoolEntry.pool,
@@ -470,7 +558,11 @@ export function ResolverPage() {
     setLastApproach('Baseline (Green)');
   };
   
-  const handleRoll = () => {
+  const handleRoll = (keepGathered = false) => {
+    if (!keepGathered) {
+      setGathered(0);
+      setGatherActions(0);
+    }
     if (testType === 'challenge') {
       const res = resolveTest({
         attributePool: actorPoolEntry.pool,
@@ -514,6 +606,8 @@ export function ResolverPage() {
   };
   
   const handleSurge = (band: EffortBand) => {
+    setGathered(0);
+    setGatherActions(0);
     const surgeCost = getSurgeCost(band);
     if (hasCharacter && currentSurge < surgeCost) return;
 
@@ -1028,17 +1122,35 @@ export function ResolverPage() {
                 </>
               ) : (
                 <>
-                  <label className="block text-xs text-slate-400 mb-0.5">Target Number</label>
-                  <StepperInput
-                    value={targetNumber}
-                    onChange={handleTargetNumberChange}
-                    min={1}
-                    step={4}
-                    max={224}
-                  />
-                  <div className="text-xs text-slate-500 mt-0.5">
-                    Scale: {formatScale(resultToScale(targetNumber))}
-                  </div>
+                  {declared ? (
+                    internal ? (
+                      <div className="text-xs text-slate-400">
+                        Level <span className="text-slate-200 font-medium">{level}</span>
+                        <span className="text-slate-500">
+                          {' '}— contested, so the defender's roll is the TN, not a fixed number
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-slate-400">
+                        Target Number: <span className="text-slate-200 font-medium">{targetNumber}</span>
+                        <span className="text-slate-500"> — {level} × 4, set by the declared level</span>
+                      </div>
+                    )
+                  ) : (
+                    <>
+                      <label className="block text-xs text-slate-400 mb-0.5">Target Number</label>
+                      <StepperInput
+                        value={targetNumber}
+                        onChange={handleTargetNumberChange}
+                        min={1}
+                        step={4}
+                        max={224}
+                      />
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        Scale: {formatScale(resultToScale(targetNumber))}
+                      </div>
+                    </>
+                  )}
                   {playsheetState?.weaponId && (
                     <div className="text-xs text-slate-500 mt-1">
                       The GM gives you this: the defender's dodge or parry result, or 4 if they
@@ -1046,11 +1158,18 @@ export function ResolverPage() {
                       the GM's numbers rather than a full sheet.
                     </div>
                   )}
-                  {rollWeaponId && isPowerWeaponId(rollWeaponId) && rollAttack && (
-                    <div className="text-xs text-slate-500 mt-1">
-                      {rollAttack.type} at Magnitude {rollAttack.magnitude} sets a base TN of{' '}
-                      {4 * rollAttack.magnitude}. The defender's result raises it.
+                  {internal ? (
+                    <div className="text-xs text-sky-300 mt-1">
+                      Internal effect — no dodge or parry. Contest the defender's{' '}
+                      {rollAttack && SOAK_ATTRIBUTES[rollAttack.aspect]} instead.
                     </div>
+                  ) : (
+                    caps && (
+                      <div className="text-xs text-slate-500 mt-1">
+                        Base TN is 4 — the defender's result raises it. Every success is energy to
+                        spend on the effect; unused successes are overflow.
+                      </div>
+                    )
                   )}
                 </>
               )}
@@ -1217,7 +1336,7 @@ export function ResolverPage() {
             })}
 
               <button
-                onClick={handleRoll}
+                onClick={() => handleRoll()}
                 className="bg-slate-600 hover:bg-slate-500 text-white rounded px-1.5 py-2 transition-colors"
               >
                 <div className="font-bold">🎲 Roll</div>
@@ -1400,6 +1519,162 @@ export function ResolverPage() {
               )}
             </div>
           )}
+          {result && caps && (
+            <div className="bg-slate-800 rounded p-2 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold text-amber-400">Spend Energy</h2>
+                <span className="text-xs text-slate-400">
+                  {gathered + handOffSuccesses} energy
+                  {gathered > 0 && <span className="text-slate-500"> (incl. {gathered} gathered)</span>}
+                  {gatherActions > 0 && (
+                    <span className="text-amber-400">
+                      {' '}· {gatherActions + 1} action{gatherActions + 1 > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between text-xs">
+                <button
+                  onClick={toggleDeclared}
+                  className={`rounded px-2 py-0.5 border ${
+                    declared
+                      ? 'bg-amber-500 text-slate-900 border-amber-400'
+                      : 'bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600'
+                  }`}
+                  title="Prebuilt effect: pay the level, shape comes with it"
+                >
+                  Declared
+                </button>
+                {declared ? (
+                  <span className="flex items-center gap-1">
+                    <button
+                      onClick={() => setDeclaredLevel(level - 1)}
+                      disabled={level <= 1}
+                      className="w-5 h-5 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-30 text-white"
+                    >
+                      −
+                    </button>
+                    <span className="text-amber-300 font-medium">Level {level}</span>
+                    <button
+                      onClick={() => setDeclaredLevel(level + 1)}
+                      className="w-5 h-5 rounded bg-slate-700 hover:bg-slate-600 text-white"
+                    >
+                      +
+                    </button>
+                  </span>
+                ) : (
+                  <span className="text-slate-500">spontaneous — shape is bought</span>
+                )}
+              </div>
+
+              <div className={`text-xs text-center rounded py-1 ${
+                spent > gathered + handOffSuccesses
+                  ? 'bg-red-900/30 text-red-300'
+                  : 'bg-slate-700/50 text-slate-300'
+              }`}>
+                {spent > gathered + handOffSuccesses
+                  ? `Short by ${spent - (gathered + handOffSuccesses)}`
+                  : `${gathered + handOffSuccesses - spent} overflow`}
+              </div>
+
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                {([
+                  ['magnitude', 'Magnitude', caps.magnitude, 1, caps.magnitude],
+                  ['range', 'Range', caps.range, 1, caps.range],
+                  // Penetration buys in tens but caps in points: the ceiling is
+                  // ceil(cap / 10) tranches, and the granted value clamps.
+                  ['penetration', 'Penetration', Math.ceil(caps.penetration / 10), 10, caps.penetration],
+                  ['targets', 'Targets', caps.targets, 1, caps.targets],
+                  ['radius', 'Radius', caps.radius, 1, caps.radius],
+                  ['qualities', 'Qualities', caps.qualities, 1, caps.qualities],
+                ] as [SpendKey, string, number, number, number][]).map(([key, label, steps, mult, ceiling]) => (
+                  <div key={key} className="flex items-center justify-between gap-1 text-xs">
+                    <span className="text-slate-400">
+                      {label}
+                      <span className="text-slate-600">
+                        {' '}{declared && key !== 'qualities' ? 'free' : `${SPEND_COST[key]}/ea`}
+                      </span>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <button
+                        onClick={() => bumpSpend(key, -1, steps)}
+                        disabled={spend[key] === 0}
+                        className="w-5 h-5 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-30 text-white"
+                      >
+                        −
+                      </button>
+                      <span className={spend[key] > 0 ? 'text-amber-300 font-medium' : 'text-slate-500'}>
+                        {Math.min(spend[key] * mult, ceiling)}/{ceiling}
+                      </span>
+                      <button
+                        onClick={() => bumpSpend(key, 1, steps)}
+                        disabled={spend[key] >= steps}
+                        className="w-5 h-5 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-30 text-white"
+                      >
+                        +
+                      </button>
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="text-xs text-slate-400 border-t border-slate-700 pt-1 space-y-0.5">
+                <div>
+                  Magnitude: <span className="text-slate-200">{1 + spend.magnitude}</span>
+                  <span className="text-slate-600"> · </span>
+                  Penetration:{' '}
+                  <span className="text-slate-200">{Math.min(spend.penetration * 10, caps.penetration)}</span>
+                  <span className="text-slate-600"> · </span>
+                  Targets: <span className="text-slate-200">{1 + spend.targets}</span>
+                </div>
+                <div>
+                  Range:{' '}
+                  <span className="text-slate-200">
+                    {WEAPON_RANGES.find(r => r.step === 1 + spend.range)?.label ?? 'Touch'}
+                  </span>
+                  <span className="text-slate-500">
+                    {' '}({WEAPON_RANGES.find(r => r.step === 1 + spend.range)?.distance ?? '~1 m'})
+                  </span>
+                  {spend.radius > 0 && (
+                    <>
+                      <span className="text-slate-600"> · </span>
+                      AoE:{' '}
+                      <span className="text-slate-200">
+                        {WEAPON_RANGES.find(r => r.step === spend.radius)?.label ?? 'Touch'}
+                      </span>
+                      <span className="text-slate-500">
+                        {' '}({WEAPON_RANGES.find(r => r.step === spend.radius)?.distance ?? '~1 m'} radius)
+                      </span>
+                    </>
+                  )}
+                  {spend.qualities > 0 && (
+                    <>
+                      <span className="text-slate-600"> · </span>
+                      Qualities: <span className="text-slate-200">{spend.qualities}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  // Bank this roll before taking the next, or its successes are
+                  // lost when the new result replaces it. Gathering is how you
+                  // reach a spend you have already set, so it is never gated on
+                  // being able to afford it yet.
+                  setGathered(g => g + handOffSuccesses);
+                  setGatherActions(a => a + 1);
+                  handleRoll(true);
+                }}
+                className="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 rounded py-1 text-xs"
+              >
+                🎲 Gather Again
+                {spent > gathered + handOffSuccesses
+                  && ` — short ${spent - (gathered + handOffSuccesses)}`}
+              </button>
+            </div>
+          )}
           {result && (
             <button
               onClick={() => navigate('/playsheet')}
@@ -1416,7 +1691,15 @@ export function ResolverPage() {
                     mode: 'attacker',
                     weaponId: playsheetState.weaponId,
                     attackIndex: playsheetState.attackIndex ?? 0,
-                    successes: handOffSuccesses,
+                    // A power's successes are consumed by the shape, not paid out
+                    // as raises.
+                    successes: caps ? 0 : handOffSuccesses,
+                    ...(caps
+                      ? {
+                          magnitude: 1 + spend.magnitude,
+                          penetration: Math.min(spend.penetration * 10, caps.penetration),
+                        }
+                      : {}),
                   },
                 });
               }}

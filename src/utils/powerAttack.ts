@@ -22,7 +22,7 @@ export function isPowerWeaponId(id: string): boolean {
 interface WeaponSource {
   weapons: CharacterWeapon[];
   powers: CharacterPower[];
-  attributeDiePools: Record<AttributeName, { rank: number }>;
+  attributeDiePools: Record<AttributeName, { rank: number; pool: { max: number } }>;
 }
 
 function entryText(entry: CharacterPower): string {
@@ -71,7 +71,7 @@ function rangeFor(rank: number): WeaponRange {
  */
 export function powerAttackWeapon(
   entry: CharacterPower,
-  character: WeaponSource,
+  _character: WeaponSource,
 ): CharacterWeapon | null {
   const def = POWERS.find(p => p.id === entry.powerId);
   if (!def) return null;
@@ -80,25 +80,22 @@ export function powerAttackWeapon(
   if (forms.length === 0) return null;
 
   // Attributes come from the power's borrowed aspect; the attacks keep their own.
-  const borrowed = powerAspect(def);
-  const pools = character.attributeDiePools;
-  const magnitude = Math.min(11, Math.max(1, Math.ceil(pools[attrFor('Force', borrowed)].rank / 2)));
-  const penetration = Math.min(224, Math.max(0, Math.ceil(pools[attrFor('Resist', borrowed)].rank / 2)));
-  const range = rangeFor(pools[attrFor('Perceive', borrowed)].rank);
-
   return {
     id: `${POWER_WEAPON_PREFIX}${entry.id}`,
     name: entry.label || def.name,
     category: 'Spell',
     handedness: 'Hands free',
+    // The weapon carries the base effect. What the caps allow is bought with
+    // successes in the resolver, not baked in here.
     attacks: forms.map((form, i) => ({
       id: `${POWER_WEAPON_PREFIX}${entry.id}:${i}`,
       name: form.name,
+      internal: form.internal,
       aspect: form.aspect,
       type: form.type,
-      magnitude,
-      penetration,
-      range,
+      magnitude: 1,
+      penetration: 0,
+      range: rangeFor(1),
       ...(form.note ? { isConditional: true, condition: form.note } : {}),
     })),
   };
@@ -117,4 +114,52 @@ export function allWeapons(character: WeaponSource): CharacterWeapon[] {
     .map(entry => powerAttackWeapon(entry, character))
     .filter((w): w is CharacterWeapon => w !== null);
   return [...character.weapons, ...fromPowers];
+}
+
+export interface PowerCaps {
+  magnitude: number;
+  penetration: number;
+  range: number;
+  targets: number;
+  radius: number;
+  qualities: number;
+}
+
+/**
+ * Ceilings on what successes may buy for this power, from its Key Attributes.
+ * Magnitude halves because the damage table is bounded; penetration caps at the
+ * Resist pool's face value, so d12 is 12 and 2d12+d4 is 28.
+ */
+export function powerCaps(entry: CharacterPower, character: WeaponSource): PowerCaps | null {
+  const def = POWERS.find(p => p.id === entry.powerId);
+  if (!def) return null;
+
+  const borrowed = powerAspect(def);
+  const pools = character.attributeDiePools;
+  const finesse = pools[attrFor('Finesse', borrowed)].rank;
+
+  return {
+    magnitude: Math.min(11, Math.max(1, Math.ceil(pools[attrFor('Force', borrowed)].rank / 2))),
+    penetration: Math.max(0, pools[attrFor('Resist', borrowed)].pool.max),
+    range: Math.max(1, pools[attrFor('Perceive', borrowed)].rank),
+    targets: Math.max(1, finesse),
+    radius: Math.max(1, Math.ceil(finesse / 2)),
+    qualities: Math.max(0, finesse),
+  };
+}
+
+/** The power entry behind a power weapon id, if the id names one. */
+export function powerEntryForId(character: WeaponSource, id: string): CharacterPower | undefined {
+  if (!isPowerWeaponId(id)) return undefined;
+  return character.powers.find(p => `${POWER_WEAPON_PREFIX}${p.id}` === id);
+}
+
+/** The attribute that activates a power: always its Force attribute. */
+export function powerActivationAttribute(
+  entry: CharacterPower,
+  _character: WeaponSource,
+): AttributeName | undefined {
+  const def = POWERS.find(p => p.id === entry.powerId);
+  if (!def) return undefined;
+  return attrFor('Force', powerAspect(def));
 }

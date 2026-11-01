@@ -15,4 +15,7 @@ export interface CombatPageState {
   armorId?: string;
   /** Successes carried over from an attack roll; drives the raise damage bonus. */
   successes?: number;
+  /** Spent power shape, overriding the weapon's base effect. */
+  magnitude?: number;
+  penetration?: number;
 }

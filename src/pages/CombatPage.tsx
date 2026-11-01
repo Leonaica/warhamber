@@ -112,12 +112,13 @@ export function CombatPage() {
     initialAttack?.aspect || state?.defenderAspect || gameState.opponentCombatData.attackAspect
   );
   const [attackMagnitude, setAttackMagnitude] = useState(
-    initialAttack?.magnitude || gameState.opponentCombatData.attackMagnitude
+    state?.magnitude ?? initialAttack?.magnitude ?? gameState.opponentCombatData.attackMagnitude
   );
   const [attackPenetration, setAttackPenetration] = useState<number>(
-    initialAttack
-      ? (Array.isArray(initialAttack.penetration) ? initialAttack.penetration[0] : initialAttack.penetration)
-      : gameState.opponentCombatData.attackPenetration
+    state?.penetration
+      ?? (initialAttack
+        ? (Array.isArray(initialAttack.penetration) ? initialAttack.penetration[0] : initialAttack.penetration)
+        : gameState.opponentCombatData.attackPenetration)
   );
   const [successes, setSuccesses] = useState(state?.successes ?? 1);
   const [damageModifier, setDamageModifier] = useState(

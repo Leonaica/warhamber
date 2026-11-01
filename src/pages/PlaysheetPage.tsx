@@ -17,7 +17,7 @@ import { generateHomebreweryMarkdown } from '../utils/homebreweryExport';
 import { CharacterSheet } from '../components/CharacterSheet';
 import { formatWeaponLogistics } from '../data/weaponData';
 import { resolveTagRef, idsToRefs } from '../data/weaponTags';
-import { powerAttackWeapon, findWeapon, isPowerWeaponId } from '../utils/powerAttack';
+import { powerAttackWeapon, powerCaps, powerActivationAttribute, findWeapon } from '../utils/powerAttack';
 import type { WeaponTagRef } from '../types/character';
 import type { CombatPageState } from '../types/navigation';
 import { TagChip } from '../components/TagChip';
@@ -42,6 +42,7 @@ export function PlaysheetPage() {
   const [activeTab, setActiveTab] = useState<TabId>('actions');
   const [selectedAttribute, setSelectedAttribute] = useState<AttributeName | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
+  const [selectedPower, setSelectedPower] = useState<string | null>(null);
   const [healModalAspect, setHealModalAspect] = useState<AspectName | null>(null);
   const [healPoolRank, setHealPoolRank] = useState(5);
   const [healSkillBonus, setHealSkillBonus] = useState(0);
@@ -255,10 +256,19 @@ export function PlaysheetPage() {
     return weapon && attack ? { weapon, attack } : null;
   }, [selectedWeapon, character]);
 
+  const selectedPowerEntry = selectedPower
+    ? character.powers.find(p => p.id === selectedPower)
+    : undefined;
+  const selectedPowerAttr = selectedPowerEntry
+    ? powerActivationAttribute(selectedPowerEntry, character)
+    : undefined;
+
   const goToResolver = () => {
-    if (!selectedAttribute) return;
-    
-    const attrEntry = character.attributeDiePools[selectedAttribute];
+    // Casting forces the power's Force attribute; a plain test uses the pick.
+    const attribute = selectedPowerAttr ?? selectedAttribute;
+    if (!attribute) return;
+
+    const attrEntry = character.attributeDiePools[attribute];
     const skillBonus = selectedSkill 
       ? getSkillModifier(character.skills.find(s => s.skillId === selectedSkill)?.rating || 'Average')
       : 0;
@@ -268,16 +278,13 @@ export function PlaysheetPage() {
         poolRank: attrEntry.rank,
         skillBonus,
         woundPenalty: gameState.woundPenalty,
-        attributeName: selectedAttribute,
+        attributeName: attribute,
         skillName: selectedSkill,
+        ...(selectedPowerEntry ? { powerEntryId: selectedPowerEntry.id } : {}),
         ...(selectedWeapon && selectedWeaponInfo
           ? {
               weaponId: selectedWeaponInfo.weapon.id,
               attackIndex: selectedWeapon.attackIndex,
-              // Firing at Magnitude X costs a base TN of 4×X.
-              ...(isPowerWeaponId(selectedWeaponInfo.weapon.id)
-                ? { targetNumber: 4 * selectedWeaponInfo.attack.magnitude }
-                : {}),
             }
           : {}),
       }
@@ -572,14 +579,19 @@ export function PlaysheetPage() {
           </div>
 
           {/* Roll Selection Bar */}
-          {selectedAttribute && (
+          {(selectedAttribute || selectedPower) && (
             <div className="bg-amber-900/30 border border-amber-500/50 rounded-lg p-3">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center gap-2">
                   <span className="text-amber-400 font-medium text-sm">Roll:</span>
                   <span className="bg-slate-700 px-2 py-1 rounded text-white text-sm">
-                    {selectedAttribute}
+                    {selectedPowerAttr ?? selectedAttribute}
                   </span>
+                  {selectedPowerEntry && (
+                    <span className="bg-violet-900/50 px-2 py-1 rounded text-violet-200 text-sm">
+                      ✨ {selectedPowerEntry.label || 'Power'}
+                    </span>
+                  )}
                   {character.skills.length > 0 && (
                     <select
                       value={selectedSkill ?? ''}
@@ -618,7 +630,7 @@ export function PlaysheetPage() {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => { setSelectedAttribute(null); setSelectedSkill(null); setSelectedWeapon(null); }}
+                    onClick={() => { setSelectedAttribute(null); setSelectedSkill(null); setSelectedWeapon(null); setSelectedPower(null); }}
                     className="bg-slate-600 hover:bg-slate-500 text-slate-200 px-3 py-1 rounded text-sm"
                   >
                     Clear
@@ -627,7 +639,7 @@ export function PlaysheetPage() {
                     onClick={goToResolver}
                     className="bg-amber-500 hover:bg-amber-400 text-slate-900 px-4 py-1 rounded font-medium text-sm"
                   >
-                    🎲 {selectedWeaponInfo ? 'Resolve Attack' : 'Resolve Action'}
+                    🎲 {selectedPower ? 'Resolve Power' : selectedWeaponInfo ? 'Resolve Attack' : 'Resolve Action'}
                   </button>
                 </div>
               </div>
@@ -1278,9 +1290,25 @@ export function PlaysheetPage() {
                             {power.emoji} {display.title}
                           </div>
                           <div className="text-xs text-amber-400">{display.systemReference}</div>
+                          <button
+                            onClick={() => {
+                              const isSel = selectedPower === powerEntry.id;
+                              setSelectedPower(isSel ? null : powerEntry.id);
+                              setSelectedWeapon(null);
+                            }}
+                            className={`w-full mt-1.5 rounded px-2 py-1 text-left text-xs transition-all ${
+                              selectedPower === powerEntry.id
+                                ? 'bg-violet-800/60 ring-1 ring-violet-400/60 text-white'
+                                : 'bg-violet-900/40 hover:bg-violet-900/60 text-violet-200'
+                            }`}
+                            title="Cast this power — gathering successes works here too"
+                          >
+                            ✨ Cast
+                          </button>
                           {(() => {
                             const atk = powerAttackWeapon(powerEntry, character);
                             if (!atk) return null;
+                            const caps = powerCaps(powerEntry, character);
                             const isAtkSel = selectedWeapon?.weaponId === atk.id;
                             const chosen = isAtkSel ? selectedWeapon.attackIndex : 0;
                             const form = atk.attacks[chosen] ?? atk.attacks[0];
@@ -1307,10 +1335,15 @@ export function PlaysheetPage() {
                                   }`}
                                   title="Attack with this power"
                                 >
-                                  ⚔️ {form.name} — {form.aspect}-{form.type} · Mag {form.magnitude} ·{' '}
-                                  Pen {form.penetration} ·{' '}
-                                  {WEAPON_RANGES.find(r => r.value === form.range)?.label} · TN {form.magnitude * 4}
+                                  ⚔️ {form.name} — {form.aspect}-{form.type} · 1 success
                                 </button>
+                                {caps && (
+                                  <div className="text-[10px] text-slate-500 leading-tight">
+                                    Caps — Mag {caps.magnitude} · Pen {caps.penetration} · Range{' '}
+                                    {WEAPON_RANGES.find(r => r.step === caps.range)?.label} · Targets{' '}
+                                    {caps.targets} · Radius {caps.radius} · Qualities {caps.qualities}
+                                  </div>
+                                )}
                                 {form.condition && (
                                   <div className="text-[10px] text-slate-400 leading-tight">{form.condition}</div>
                                 )}

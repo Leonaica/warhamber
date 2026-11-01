@@ -498,12 +498,16 @@ export interface PowerAttackForm {
   subPower?: string;
   /** Mechanical qualifier carried onto the attack, e.g. Energy or Direct. */
   note?: string;
+  /** Lands inside the target: contested against Resist, never dodged or parried. */
+  internal?: boolean;
 }
 
 export interface WeaponAttack {
   id: string;
   /** Display name for an attack form, where the weapon carries several. */
   name?: string;
+  /** Lands inside the target: contested against Resist, never dodged or parried. */
+  internal?: boolean;
   aspect: AspectName;
   type: AttackType;
   magnitude: number;
