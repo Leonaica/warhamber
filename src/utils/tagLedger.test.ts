@@ -144,6 +144,19 @@ describe('overrides and denial', () => {
   });
 });
 
+describe('resolved variable values', () => {
+  const d = tag({ id: 'agi', effects: [{ stage: 'parry', op: 'add', amount: 'x' }] });
+
+  it('reads a derived value carried on the selected tag', () => {
+    const derived: SelectedTag = { tagId: d.id, label: d.label, ref: { tagId: d.id }, def: d, x: 8 };
+    expect(buildLedger([derived], NONE, SRC).parry).toBe(8);
+  });
+
+  it('falls back to the ref value when none was resolved', () => {
+    expect(buildLedger([sel(d, 3)], NONE, SRC).parry).toBe(3);
+  });
+});
+
 describe('children', () => {
   const scatter = tag({ id: 's', effects: [
     { stage: 'magnitude', op: 'add', amount: 2, child: 'close' },

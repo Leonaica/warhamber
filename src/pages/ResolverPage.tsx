@@ -219,6 +219,7 @@ export function ResolverPage() {
       tagId: ref.tagId,
       label: formatTagLabel(resolved.def, resolved.x),
       ref,
+      x: resolved.x,
       def: resolved.def,
       activeChildren: selection[ref.tagId],
     }];
@@ -253,7 +254,11 @@ export function ResolverPage() {
   // Only the stage on screen feeds the roll in front of you — except on a
   // combined defence, where the primary roll is a Dodge and carries no weapon
   // qualities at all. The parry half takes its own in maybeRunSecondary.
-  const stageModifier = stageFilter === 'parry' ? parryLedger.parry : attackLedger.attack;
+  // A defence roll is never an attack, so on one the attack stage never applies
+  // even if the toggle was left on it.
+  const stageModifier = stageFilter === 'parry' || isDefenseMode
+    ? parryLedger.parry
+    : attackLedger.attack;
   const primaryStageModifier = playsheetState?.defenseCombined ? 0 : stageModifier;
   const effectiveActorModifier = actorModifier + primaryStageModifier + aimBonus;
 
@@ -1004,7 +1009,7 @@ export function ResolverPage() {
                   <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">
                     {stageFilter === 'parry' ? 'Parry qualities' : 'Qualities'}
                   </div>
-                  {playsheetState?.parryWeaponId && (
+                  {playsheetState?.parryWeaponId && !isDefenseMode && (
                     <div className="flex gap-0.5">
                       {(['attack', 'parry'] as TagStage[]).map(stage => (
                         <button
@@ -1082,7 +1087,7 @@ export function ResolverPage() {
                 {primaryStageModifier !== 0 && (
                   <span>
                     <span className="text-slate-400">
-                      {rollWeapon?.name ?? 'Weapon'} ({stageFilter === 'parry' ? 'Par' : 'Atk'}):
+                      {rollWeapon?.name ?? 'Weapon'} ({stageFilter === 'parry' || isDefenseMode ? 'Par' : 'Atk'}):
                     </span>{' '}
                     <span className={primaryStageModifier >= 0 ? 'text-green-400' : 'text-red-400'}>
                       {primaryStageModifier >= 0 ? '+' : ''}{primaryStageModifier}

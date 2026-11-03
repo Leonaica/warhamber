@@ -37,6 +37,12 @@ export interface SelectedTag {
   tagId: string;
   label: string;
   ref: WeaponTagRef;
+  /**
+   * The value this tag resolves to: `ref.x` for a fixed variable, the value
+   * read from the character for a derived one. A derived variable never writes
+   * `x` onto the ref, so the ref alone reports 0.
+   */
+  x?: number;
   def: WeaponTagDefinition;
   /** Child ids left enabled. Omitted = all children enabled. */
   activeChildren?: string[];
@@ -153,7 +159,7 @@ export function buildLedger(
 
       const dormant = !conditionMet(effect.when, facts);
       const amount = 'amount' in effect ? effect.amount : undefined;
-      const value = scale(resolveAmount(amount, sel.ref.x, src), effect.per, facts);
+      const value = scale(resolveAmount(amount, sel.x ?? sel.ref.x, src), effect.per, facts);
 
       if (effect.op === 'deny' && !dormant) ledger.deniedBy.push(sel.label);
       if (effect.stage === 'override' && !dormant) ledger.overrideBy = sel.label;

@@ -232,6 +232,7 @@ export function CombatPage() {
       label: formatTagLabel(resolved.def, resolved.x),
       ref,
       def: resolved.def,
+      x: resolved.x,
       activeChildren: currentSelection[ref.tagId],
     }];
   });
@@ -288,7 +289,7 @@ export function CombatPage() {
   const cardTags = selectedTags.flatMap(t => {
     const kind = getTagKind(t.def);
     if (kind !== 'narrative' && kind !== 'secondTest') return [];
-    return [{ ...t, kind, effect: formatTagEffect(t.def, t.ref.x) }];
+    return [{ ...t, kind, effect: formatTagEffect(t.def, t.x ?? t.ref.x) }];
   });
 
 
@@ -634,7 +635,7 @@ export function CombatPage() {
                       <div className="text-[10px] text-slate-300 leading-tight">{card.effect}</div>
                       {card.kind === 'secondTest' && (
                         <div className="text-[9px] text-slate-500 mt-0.5">
-                          Resolve as a separate test against TN {card.ref.x ?? '—'}
+                          Resolve as a separate test against TN {card.x ?? card.ref.x ?? '—'}
                         </div>
                       )}
                     </div>
