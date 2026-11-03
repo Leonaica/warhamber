@@ -25,6 +25,8 @@ interface WeaponTagEditorProps {
   customTags?: WeaponTagDefinition[];
   onChange: (tags: WeaponTagRef[]) => void;
   onNewCustomTags: (tags: WeaponTagDefinition[]) => void;
+  /** Replace a custom tag definition in place, keeping its id. */
+  onUpsertCustomTag: (def: WeaponTagDefinition) => void;
 }
 
 interface ResolvedTag {
@@ -38,6 +40,7 @@ export function WeaponTagEditor({
   customTags = [],
   onChange,
   onNewCustomTags,
+  onUpsertCustomTag,
 }: WeaponTagEditorProps) {
   const [activePanel, setActivePanel] = useState<'none' | 'browse' | 'custom'>('none');
   const [filter, setFilter] = useState('');
@@ -58,6 +61,7 @@ export function WeaponTagEditor({
   const [ctVarUnit, setCtVarUnit] = useState('');
   const [ctSource, setCtSource] = useState('');
   const [ctSourceLabel, setCtSourceLabel] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (activePanel === 'browse' && filterRef.current) {
@@ -108,32 +112,25 @@ export function WeaponTagEditor({
     onChange(tags.map(t => t.tagId === tagId ? { ...t, x } : t));
   };
 
-  const handleCreateCustomTag = () => {
+  const handleSaveCustomTag = () => {
     if (!ctLabel.trim()) return;
 
     const category = ctCategory === '__other__' ? ctCustomCategory.trim() : ctCategory;
     if (!category) return;
 
-    // Dedup by label
+    // A label collision only matters against a different quality.
     const existing = findTagByLabel(ctLabel, allCustomTags);
-    if (existing) {
+    if (existing && existing.id !== editingId) {
       if (!selectedTagIds.has(existing.id)) {
         toggleTag(existing.id);
       }
       setNotice(`A quality named "${ctLabel}" already exists—selected it for you.`);
-      resetCustomForm();
+      closeCustomForm();
       return;
     }
 
-    const newTag: WeaponTagDefinition = {
-      id: crypto.randomUUID(),
-      label: ctLabel.trim(),
-      kind: 'flavor',
-      category,
-      ...(ctDescription.trim() && { description: ctDescription.trim() }),
-      ...(ctEffect.trim() && { effect: ctEffect.trim() }),
-      ...(ctHasVariable && ctVarMax >= ctVarMin && {
-        variable: {
+    const variable = ctHasVariable && ctVarMax >= ctVarMin
+      ? {
           min: ctVarMin,
           max: ctVarMax,
           default: Math.max(ctVarMin, Math.min(ctVarMax, ctVarDefault)),
@@ -142,23 +139,38 @@ export function WeaponTagEditor({
             derivedFrom: parseSourceKey(ctSource),
             sourceLabel: ctSourceLabel.trim() || tagSourceAbbr(parseSourceKey(ctSource)!),
           }),
-        },
-      }),
+        }
+      : undefined;
+
+    const def: WeaponTagDefinition = {
+      id: editingId ?? crypto.randomUUID(),
+      label: ctLabel.trim(),
+      kind: 'flavor',
+      category,
+      ...(ctDescription.trim() && { description: ctDescription.trim() }),
+      ...(ctEffect.trim() && { effect: ctEffect.trim() }),
+      ...(variable && { variable }),
     };
 
-    const updated = [...newCustomTags, newTag];
-    setNewCustomTags(updated);
-    onNewCustomTags(updated);
+    if (editingId) {
+      onUpsertCustomTag(def);
+      setNotice(`Updated "${def.label}".`);
+    } else {
+      const updated = [...newCustomTags, def];
+      setNewCustomTags(updated);
+      onNewCustomTags(updated);
 
-    const newRef: WeaponTagRef = newTag.variable && !newTag.variable.derivedFrom
-      ? { tagId: newTag.id, x: newTag.variable.default }
-      : { tagId: newTag.id };
-    onChange([...tags, newRef]);
+      const newRef: WeaponTagRef = def.variable && !def.variable.derivedFrom
+        ? { tagId: def.id, x: def.variable.default }
+        : { tagId: def.id };
+      onChange([...tags, newRef]);
+    }
 
-    resetCustomForm();
+    closeCustomForm();
   };
 
   const resetCustomForm = () => {
+    setEditingId(null);
     setCtLabel('');
     setCtCategory('Inherent');
     setCtCustomCategory('');
@@ -169,10 +181,42 @@ export function WeaponTagEditor({
     setCtVarMax(4);
     setCtVarDefault(1);
     setCtVarUnit('');
-    setActivePanel('none');
-    setCtSource(''); 
+    setCtSource('');
     setCtSourceLabel('');
+  };
 
+  const closeCustomForm = () => {
+    resetCustomForm();
+    setActivePanel('none');
+  };
+
+  const startNewCustomTag = () => {
+    resetCustomForm();
+    setActivePanel('custom');
+  };
+
+  const startEditCustomTag = (def: WeaponTagDefinition) => {
+    resetCustomForm();
+    setEditingId(def.id);
+    setCtLabel(def.label);
+    const known = (WEAPON_TAG_CATEGORIES as readonly string[]).includes(def.category);
+    setCtCategory(known ? def.category : '__other__');
+    setCtCustomCategory(known ? '' : def.category);
+    setCtDescription(def.description ?? '');
+    setCtEffect(def.effect ?? '');
+    const v = def.variable;
+    setCtHasVariable(!!v);
+    if (v) {
+      setCtVarMin(v.min);
+      setCtVarMax(v.max);
+      setCtVarDefault(v.default);
+      setCtVarUnit(v.unit ?? '');
+      if (v.derivedFrom) {
+        setCtSource(v.derivedFrom.kind === 'attributeRank' ? `attr:${v.derivedFrom.attribute}` : v.derivedFrom.kind);
+        setCtSourceLabel(v.sourceLabel ?? '');
+      }
+    }
+    setActivePanel('custom');
   };
 
   // Filter logic
@@ -209,7 +253,7 @@ export function WeaponTagEditor({
             {activePanel === 'browse' ? '▲ Hide Library' : '▼ Browse Library'}
           </button>
           <button
-            onClick={() => setActivePanel(activePanel === 'custom' ? 'none' : 'custom')}
+            onClick={() => (activePanel === 'custom' ? closeCustomForm() : startNewCustomTag())}
             className={`text-xs px-2 py-1 rounded transition-colors ${
               activePanel === 'custom'
                 ? 'bg-amber-500 text-slate-900'
@@ -292,27 +336,39 @@ export function WeaponTagEditor({
                       const tagColor = getTagColor(tag.category);
                       const tooltip = [formatTagEffect(tag, resolveVariableDefault(tag, resolveCtx)), tag.description]
                         .filter(Boolean).join(' — ') || tag.label;
+                      const isCustom = allCustomTags.some(t => t.id === tag.id);
                       return (
-                        <button
-                          key={tag.id}
-                          title={tooltip}
-                          onClick={() => toggleTag(tag.id)}
-                          className={`inline-flex items-center rounded-full border px-2.5 py-1 text-sm transition-colors ${
-                            isSelected
-                              ? `${tagColor.selectedBg} ${tagColor.text} ${tagColor.border}`
-                              : `bg-slate-800/50 text-slate-400 border-slate-600 hover:bg-slate-700/60 ${tagColor.hover}`
-                          }`}
-                        >
-                          {isSelected && <span className="mr-1">✓</span>}
-                          {tag.label}
-                          {tag.variable && (
-                            <span className="ml-1 text-xs opacity-60">
-                              {tag.variable.derivedFrom
-                                ? `(${tag.variable.sourceLabel ?? describeTagSource(tag.variable.derivedFrom)})`
-                                : `(${tag.variable.unit ?? ''}${tag.variable.min}–${tag.variable.unit ?? ''}${tag.variable.max})`}
-                            </span>
+                        <div key={tag.id} className="inline-flex items-center">
+                          <button
+                            title={tooltip}
+                            onClick={() => toggleTag(tag.id)}
+                            className={`inline-flex items-center rounded-full border px-2.5 py-1 text-sm transition-colors ${
+                              isSelected
+                                ? `${tagColor.selectedBg} ${tagColor.text} ${tagColor.border}`
+                                : `bg-slate-800/50 text-slate-400 border-slate-600 hover:bg-slate-700/60 ${tagColor.hover}`
+                            }`}
+                          >
+                            {isSelected && <span className="mr-1">✓</span>}
+                            {tag.label}
+                            {tag.variable && (
+                              <span className="ml-1 text-xs opacity-60">
+                                {tag.variable.derivedFrom
+                                  ? `(${tag.variable.sourceLabel ?? describeTagSource(tag.variable.derivedFrom)})`
+                                  : `(${tag.variable.unit ?? ''}${tag.variable.min}–${tag.variable.unit ?? ''}${tag.variable.max})`}
+                              </span>
+                            )}
+                          </button>
+                          {isCustom && (
+                            <button
+                              onClick={() => startEditCustomTag(tag)}
+                              title={`Edit "${tag.label}"`}
+                              aria-label={`Edit ${tag.label}`}
+                              className="ml-0.5 text-xs text-slate-500 hover:text-amber-400 px-1"
+                            >
+                              ✎
+                            </button>
                           )}
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -326,6 +382,12 @@ export function WeaponTagEditor({
       {/* Custom tag form */}
       {activePanel === 'custom' && (
         <div className="bg-slate-700/30 rounded p-3 space-y-4">
+          {editingId && (
+            <p className="text-xs text-amber-400">
+              Editing "{ctLabel || 'quality'}". Changes apply when you save the weapon.
+            </p>
+          )}
+
           {/* Identity section */}
           <div className="space-y-2">
             <h5 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Identity</h5>
@@ -505,11 +567,11 @@ export function WeaponTagEditor({
           </div>
 
           <button
-            onClick={handleCreateCustomTag}
+            onClick={handleSaveCustomTag}
             disabled={!ctLabel.trim() || (ctCategory === '__other__' && !ctCustomCategory.trim())}
             className="bg-amber-500 hover:bg-amber-400 disabled:bg-slate-600 disabled:text-slate-400 text-slate-900 px-3 py-1.5 rounded text-sm font-medium"
           >
-            Create Quality
+            {editingId ? 'Save Changes' : 'Create Quality'}
           </button>
         </div>
       )}

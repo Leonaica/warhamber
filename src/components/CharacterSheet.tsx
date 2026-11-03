@@ -5,7 +5,7 @@ import { calculateSkillCap, calculateSkillMaximum } from '../utils/calculations'
 import { POWERS } from '../data/powers';
 import { getDiePoolEntry } from '../data/diePoolTable';
 import { formatMagnitude, formatRange } from '../data/weaponData'
-import { resolveTagRef, idsToRefs, formatTagLabel, formatTagEffect } from '../data/weaponTags';
+import { resolveTagRef, idsToRefs, formatTagLabel, tagDetailText } from '../data/weaponTags';
 import { useCharacter } from '../context/useCharacter'
 import { useTagResolveContext } from '../context/useTagResolveContext'
 import { buildMythicTraits } from '../utils/powerDisplay';
@@ -306,7 +306,7 @@ export function CharacterSheet() {
                         <td>
                           <div className="tag-list">
                           {resolvedTags.map(({ def, x }) => {
-                              const effectText = formatTagEffect(def, x);
+                              const effectText = tagDetailText(def, x);
                               return (
                                 <div key={def.id} className="tag-entry">
                                   <strong>{formatTagLabel(def, x)}</strong>

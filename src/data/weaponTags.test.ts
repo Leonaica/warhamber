@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sortTagRefs, sortWeaponTags } from './weaponTags';
+import { sortTagRefs, sortWeaponTags, tagDetailText } from './weaponTags';
 import type { CharacterWeapon, WeaponTagDefinition } from '../types/character';
 
 const def = (id: string, label: string): WeaponTagDefinition =>
@@ -31,6 +31,20 @@ describe('sortTagRefs', () => {
   it('falls back to the tag id for an unresolvable ref', () => {
     const out = sortTagRefs([{ tagId: 'tag-missing' }, { tagId: 'tag-aaa' }], customTags, {});
     expect(out.map(r => r.tagId)).toEqual(['tag-aaa', 'tag-missing']);
+  });
+});
+
+describe('tagDetailText', () => {
+  it('interpolates the effect prose when the tag has one', () => {
+    expect(tagDetailText({ ...def('tag-x', 'X'), effect: '+{x} damage' }, 2)).toBe('+2 damage');
+  });
+
+  it('falls back to the description, which is all a custom tag ever has', () => {
+    expect(tagDetailText({ ...def('tag-y', 'Y'), description: 'Coils like a serpent' })).toBe('Coils like a serpent');
+  });
+
+  it('returns undefined when there is neither', () => {
+    expect(tagDetailText(def('tag-z', 'Z'))).toBeUndefined();
   });
 });
 

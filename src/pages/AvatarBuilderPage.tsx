@@ -1284,8 +1284,12 @@ export function AvatarBuilderPage() {
                       onSave={(weaponData, newCustomTags) => {
                         if (newCustomTags.length > 0) {
                           character.setCustomTags(prev => {
-                            const known = new Set(prev.map(t => t.id));
-                            return [...prev, ...newCustomTags.filter(t => !known.has(t.id))];
+                            const incoming = new Map(newCustomTags.map(t => [t.id, t]));
+                            const next = prev.map(t => incoming.get(t.id) ?? t);
+                            for (const t of newCustomTags) {
+                              if (!prev.some(p => p.id === t.id)) next.push(t);
+                            }
+                            return next;
                           });
                         }
                         if (editingWeapon) {

@@ -11,7 +11,7 @@ import { POWERS } from '../data/powers';
 import { getDiePoolEntry } from '../data/diePoolTable';
 import { getPowerDisplay } from './powerDisplay';
 import { formatWeaponLogistics } from '../data/weaponData';
-import { resolveTagRef, idsToRefs, formatTagEffect } from '../data/weaponTags';
+import { resolveTagRef, idsToRefs, tagDetailText } from '../data/weaponTags';
 import type { WeaponTagRef } from '../types/character';
 import { SOAK_ATTRIBUTES, PARRY_POOL_ATTRIBUTES, DODGE_ATTRIBUTES, abbreviateAttribute } from '../data/aspectAttributes';
 import type { PaceValues } from '../context/CharacterContext';
@@ -326,8 +326,10 @@ export function generateHomebreweryMarkdown(
         const penFormatted = formatPenetration(attack.penetration);
         const penText = penFormatted ? ` Pen ${penFormatted}` : '';
         const rangeLabel = WEAPON_RANGES.find(r => r.value === attack.range)?.label || attack.range;
-        const conditionalText = attack.isConditional ? ` ➡️${attack.condition ? ` (${attack.condition})` : ''}` : '';
-        return `${conditionalText} ${aspectName}-${attack.type} ${attack.magnitude}${penText} ${rangeLabel}`;
+        const conditionalPrefix = attack.isConditional
+          ? `➡️${attack.condition ? ` (${attack.condition})` : ''} `
+          : '';
+        return `${conditionalPrefix}${aspectName}-${attack.type} ${attack.magnitude}${penText} ${rangeLabel}`;
       });
       
       const parenthetical = attackTexts.join('; ');
@@ -341,8 +343,8 @@ export function generateHomebreweryMarkdown(
       const tagTexts = refs.map(ref => {
         const resolved = resolveTagRef(ref, customTags, tagCtx);
         if (!resolved) return null;
-        const effectText = formatTagEffect(resolved.def, resolved.x);
-        return effectText ? `*${resolved.def.label}* (${effectText})` : resolved.def.label;
+        const detail = tagDetailText(resolved.def, resolved.x);
+        return detail ? `*${resolved.def.label}* (${detail})` : `*${resolved.def.label}*`;
       }).filter((t): t is string => t !== null);
       const tagsSection = tagTexts.length > 0 ? `. ***Qualities:*** ${tagTexts.join(', ')}` : '';
       

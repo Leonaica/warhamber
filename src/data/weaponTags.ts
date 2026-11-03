@@ -501,6 +501,21 @@ export const WEAPON_TAG_LIBRARY: WeaponTagDefinition[] = [
     effect: '+3 to parry, -2 to attack',
   },
   {
+    id: 'tag-enhancement',
+    kind: 'arithmetic',
+    defaultActive: true,
+    effects: [
+      { stage: 'attack', op: 'add', amount: 'x', per: 'flat' },
+      { stage: 'damageModifier', op: 'add', amount: 'x', per: 'flat' },
+      { stage: 'flag', op: 'flag', note: "Bypasses resistance to mundane weapons" },
+    ],
+    label: 'Enhancement',
+    category: 'Combat Handling',
+    description: 'Crafted or enchanted to strike truer and bite deeper',
+    effect: '+{x} to attack and +{x} Damage Modifier. Counts as a magical weapon for resistance purposes',
+    variable: { min: 1, max: 5, default: 1, step: 1 },
+  },
+  {
     id: 'tag-energy',
     kind: 'arithmetic',
     defaultActive: true,
@@ -1089,6 +1104,18 @@ export function formatTagEffect(
   if (!def.effect) return undefined;
   if (x === undefined) return def.effect;
   return def.effect.replace(/\{x\}/g, String(x));
+}
+
+/**
+ * Detail line for a tag: hand-written effect prose where the tag carries it,
+ * otherwise its description. Custom tags only ever have the latter — the
+ * custom-tag form writes `effect` and `description` and never `effects`.
+ */
+export function tagDetailText(
+  def: WeaponTagDefinition,
+  x?: number
+): string | undefined {
+  return formatTagEffect(def, x) ?? def.description;
 }
 
 /**

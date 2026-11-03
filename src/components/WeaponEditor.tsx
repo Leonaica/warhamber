@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { 
   AspectName, AttackType, WeaponAttack, CharacterWeapon, WeaponCapacity, WeaponCategory, WeaponHandedness, 
   WeaponRange, WeaponReloadTime, WeaponTagDefinition, WeaponTagRef } from '../types/character';
@@ -42,6 +42,24 @@ export function WeaponEditor({ weapon, customTags, onSave, onCancel }: WeaponEdi
   const [newCustomTags, setNewCustomTags] = useState<WeaponTagDefinition[]>(() =>
     (customTags || []).filter(ct => tags.some(t => t.tagId === ct.id))
   );
+
+  // Edits to already-saved custom tags, held until the weapon is saved so that
+  // Cancel on the modal discards them along with everything else.
+  const [editedCustomTags, setEditedCustomTags] = useState<WeaponTagDefinition[]>([]);
+
+  const upsertCustomTag = (def: WeaponTagDefinition) => {
+    if (newCustomTags.some(t => t.id === def.id)) {
+      setNewCustomTags(prev => prev.map(t => t.id === def.id ? def : t));
+      return;
+    }
+    setEditedCustomTags(prev => [...prev.filter(t => t.id !== def.id), def]);
+  };
+
+  const effectiveCustomTags = useMemo(() => {
+    if (editedCustomTags.length === 0) return customTags;
+    const overrides = new Map(editedCustomTags.map(t => [t.id, t]));
+    return customTags.map(t => overrides.get(t.id) ?? t);
+  }, [customTags, editedCustomTags]);
 
   const hasAmmoValues = !!(capacityMin || reloadTime);
 
@@ -92,8 +110,8 @@ export function WeaponEditor({ weapon, customTags, onSave, onCancel }: WeaponEdi
       attacks,
       capacity,
       reloadTime: reloadTime || undefined,
-      tags: normalizeTagRefs(tags, [...customTags, ...newCustomTags]),
-    }, newCustomTags);
+      tags: normalizeTagRefs(tags, [...effectiveCustomTags, ...newCustomTags]),
+    }, [...editedCustomTags, ...newCustomTags]);
   };
 
   const capacityMinIndex = WEAPON_CAPACITY_OPTIONS.findIndex(c => c.value === capacityMin);
@@ -438,9 +456,10 @@ export function WeaponEditor({ weapon, customTags, onSave, onCancel }: WeaponEdi
       {/* Section: Qualities (rendered by WeaponTagEditor with its own header) */}
       <WeaponTagEditor
         tags={tags}
-        customTags={customTags}
+        customTags={effectiveCustomTags}
         onChange={setTags}
         onNewCustomTags={setNewCustomTags}
+        onUpsertCustomTag={upsertCustomTag}
       />
 
       {/* Validation feedback */}
