@@ -11,7 +11,6 @@ import type {
   AttributeName,
   CharacterWeapon,
   CharacterArmor,
-  RatingValue,
   WeaponTagDefinition,
 } from '../types/character';
 import { ATTRIBUTES } from '../types/character';
@@ -19,14 +18,7 @@ import { getDiePoolEntry } from '../data/diePoolTable';
 import { calculateImmaterialSize, computeCharacter } from '../utils/calculations';
 import { sortWeaponTags } from '../data/weaponTags';
 import { DEFAULT_ICON } from '../data/icons';
-
-// Helper function to get default rating based on campaign limit
-function getDefaultRating(campaignLimit: number): RatingValue {
-  if (campaignLimit > -1) return 0 as RatingValue;
-  if (campaignLimit > -41) return -5 as RatingValue;
-  if (campaignLimit > -81) return -10 as RatingValue;
-  return -15 as RatingValue; // campaignLimit >= -81
-}
+import { getDefaultRating } from '../utils/defaultRating';
 
 const defaultAspects: CharacterAspectRatings = {
   Form: 0,

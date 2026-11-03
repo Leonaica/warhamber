@@ -18,6 +18,7 @@ import { ArmorEditor } from '../components/ArmorEditor';
 import type { CharacterWeapon } from '../types/character';
 import StepperInput from '../components/StepperInput';
 import AutoTextarea from '../components/AutoTextarea'
+import { AttributeSolverModal } from '../components/AttributeSolverModal'
 
 export function AvatarBuilderPage() {
   const character = useCharacter();
@@ -31,6 +32,7 @@ export function AvatarBuilderPage() {
 
   // Keep only local UI state:
   const [showIconPicker, setShowIconPicker] = useState(false);
+  const [showSolver, setShowSolver] = useState(false);
   
   const renderIcon = (icon: IconEntry) => {
     return icon.library === 'fontawesome' ? (
@@ -47,6 +49,16 @@ export function AvatarBuilderPage() {
 
   const handleFunctionChange = (functionId: string, value: RatingValue) => {
     character.setFunctions(prev => ({ ...prev, [functionId]: value }));
+  };
+
+  // The solver writes both grids at once, so it commits through one handler.
+  const handleSolverCommit = (
+    functions: Record<string, number>,
+    aspects: Record<string, number>,
+  ) => {
+    character.setAspects(prev => ({ ...prev, ...aspects } as typeof prev));
+    character.setFunctions(prev => ({ ...prev, ...functions } as typeof prev));
+    setShowSolver(false);
   };
 
   const handleAspectExplanationChange = (aspectId: string, explanation: string) => {
@@ -495,9 +507,18 @@ export function AvatarBuilderPage() {
 
           {/* Attributes Grid - 4x4 table */}
           <div className="bg-slate-800 rounded-lg p-4 lg:col-span-2 xl:col-span-1">
-            <h2 className="text-lg font-bold text-amber-400 mb-4 flex items-center gap-2">
-              <span>📊</span> Attributes <span className="text-slate-500 text-sm font-normal">= Function + Aspect</span>
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-amber-400 flex items-center gap-2">
+                <span>📊</span> Attributes <span className="text-slate-500 text-sm font-normal">= Function + Aspect</span>
+              </h2>
+              <button
+                onClick={() => setShowSolver(true)}
+                className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-2 py-1 rounded text-xs"
+                title="Work backwards from attributes you already know"
+              >
+                Import Attributes
+              </button>
+            </div>
             
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -1446,6 +1467,13 @@ export function AvatarBuilderPage() {
       {/* Live preview — also this page's print target */}
       <CharacterSheet />
       {/* Icon Picker Modal */}
+      {showSolver && (
+        <AttributeSolverModal
+          campaignLimit={character.campaignLimit}
+          onClose={() => setShowSolver(false)}
+          onCommit={handleSolverCommit}
+        />
+      )}
       <IconPicker
         isOpen={showIconPicker}
         onClose={() => setShowIconPicker(false)}
