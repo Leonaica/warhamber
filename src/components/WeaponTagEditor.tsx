@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import type { WeaponTagDefinition, WeaponTagRef } from '../types/character';
+import type { WeaponTagDefinition, WeaponTagRef, TagEffect, TagStage, TagKind } from '../types/character';
 import { ATTRIBUTES } from '../types/character';
 import {
   WEAPON_TAG_CATEGORIES,
@@ -15,10 +15,133 @@ import {
   tagSourceAbbr,
   describeTagSource,
   resolveVariableDefault,
+  describeEffects,
 } from '../data/weaponTags';
 import { TagChip } from './TagChip';
 import StepperInput from './StepperInput';
 import { useTagResolveContext } from '../context/useTagResolveContext'
+
+type EffectOp = 'add' | 'subtract' | 'multiply' | 'set' | 'deny' | 'flag';
+type AmountMode = 'number' | 'x' | 'strength' | 'presence' | 'armorValue';
+type WhenMode = 'none' | 'raises' | 'allLow' | 'aiming';
+
+interface EffectDraft {
+  stage: TagStage;
+  op: EffectOp;
+  amountMode: AmountMode;
+  amountValue: number;
+  per: 'flat' | 'success' | 'raise';
+  whenMode: WhenMode;
+  whenRaises: number;
+  note: string;
+}
+
+const STAGE_OPTIONS: { value: TagStage; label: string }[] = [
+  { value: 'attack', label: 'Attack' },
+  { value: 'parry', label: 'Parry' },
+  { value: 'damageModifier', label: 'Damage Modifier' },
+  { value: 'magnitude', label: 'Magnitude' },
+  { value: 'penetration', label: 'Penetration' },
+  { value: 'resistance', label: 'Target Resistance' },
+  { value: 'raises', label: 'Raises' },
+  { value: 'raiseDamage', label: 'Damage per Raise' },
+  { value: 'reroll', label: 'Reroll damage' },
+  { value: 'override', label: 'Wound level override' },
+  { value: 'flag', label: 'Note only' },
+];
+
+const OP_LABELS: Record<EffectOp, string> = {
+  add: '+ add',
+  subtract: '− subtract',
+  multiply: '× multiply',
+  set: '= set',
+  deny: 'deny',
+  flag: 'flag',
+};
+
+// Mirrors EffectByStage, so an illegal pairing is unreachable from the UI.
+const OPS: Record<TagStage, EffectOp[]> = {
+  attack: ['add', 'subtract'],
+  parry: ['add', 'subtract', 'deny'],
+  raises: ['multiply', 'add'],
+  raiseDamage: ['set', 'add', 'subtract'],
+  magnitude: ['add', 'subtract'],
+  penetration: ['add', 'subtract', 'multiply', 'set'],
+  resistance: ['add', 'subtract', 'set'],
+  armor: ['set'],
+  damageModifier: ['add', 'subtract'],
+  reroll: ['flag'],
+  override: ['set'],
+  flag: ['flag'],
+};
+
+const newEffectDraft = (): EffectDraft => ({
+  stage: 'attack',
+  op: 'add',
+  amountMode: 'number',
+  amountValue: 1,
+  per: 'flat',
+  whenMode: 'none',
+  whenRaises: 1,
+  note: '',
+});
+
+const hasAmount = (d: EffectDraft) =>
+  d.op !== 'deny' && d.stage !== 'flag' && d.stage !== 'reroll' && d.stage !== 'override';
+
+const hasPer = (d: EffectDraft) => hasAmount(d) && (d.op === 'add' || d.op === 'subtract');
+
+function draftToEffect(d: EffectDraft): TagEffect {
+  const out: Record<string, unknown> = { stage: d.stage, op: d.op };
+
+  if (hasAmount(d)) {
+    out.amount = d.amountMode === 'number' ? d.amountValue : d.amountMode;
+    if (d.per !== 'flat') out.per = d.per;
+  }
+  if (d.stage === 'flag') out.note = d.note.trim();
+  if (d.stage === 'override') {
+    out.amount = 'deathBlow';
+    out.target = 'woundLevel';
+    if (d.note.trim()) out.note = d.note.trim();
+  }
+  if (d.whenMode === 'raises') out.when = { raisesAtLeast: d.whenRaises };
+  if (d.whenMode === 'allLow') out.when = { allLow: true };
+  if (d.whenMode === 'aiming') out.when = { aiming: true };
+
+  return out as TagEffect;
+}
+
+function effectToDraft(e: TagEffect): EffectDraft {
+  const d = newEffectDraft();
+  d.stage = e.stage;
+  d.op = e.op;
+
+  if ('amount' in e && e.amount !== undefined) {
+    if (e.amount === 'x') d.amountMode = 'x';
+    else if (e.amount === 'strength' || e.amount === 'presence' || e.amount === 'armorValue') d.amountMode = e.amount;
+    else if (typeof e.amount === 'number') {
+      d.amountMode = 'number';
+      d.amountValue = e.amount;
+    }
+  }
+  if ('per' in e && e.per) d.per = e.per;
+  if (e.stage === 'flag' || e.note) d.note = e.note ?? '';
+  if ('when' in e && e.when) {
+    if (e.when.raisesAtLeast !== undefined) {
+      d.whenMode = 'raises';
+      d.whenRaises = e.when.raisesAtLeast;
+    } else if (e.when.allLow) d.whenMode = 'allLow';
+    else if (e.when.aiming) d.whenMode = 'aiming';
+  }
+  return d;
+}
+
+// A flavour tag carrying effects is skipped by buildLedger, so derive the kind.
+function deriveKind(effects: TagEffect[], secondTest: boolean): TagKind {
+  const mechanical = effects.filter(e => e.stage !== 'flag');
+  if (mechanical.length === 0) return secondTest ? 'secondTest' : 'narrative';
+  return mechanical.some(e => 'when' in e && e.when) ? 'conditional' : 'arithmetic';
+}
 
 interface WeaponTagEditorProps {
   tags: WeaponTagRef[];
@@ -62,6 +185,9 @@ export function WeaponTagEditor({
   const [ctSource, setCtSource] = useState('');
   const [ctSourceLabel, setCtSourceLabel] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [ctEffects, setCtEffects] = useState<EffectDraft[]>([]);
+  const [ctDefaultActive, setCtDefaultActive] = useState(true);
+  const [ctSecondTest, setCtSecondTest] = useState(false);
 
   useEffect(() => {
     if (activePanel === 'browse' && filterRef.current) {
@@ -112,6 +238,22 @@ export function WeaponTagEditor({
     onChange(tags.map(t => t.tagId === tagId ? { ...t, x } : t));
   };
 
+  const addEffect = () => setCtEffects(prev => [...prev, newEffectDraft()]);
+
+  const updateEffect = (index: number, patch: Partial<EffectDraft>) => {
+    setCtEffects(prev => prev.map((d, i) => {
+      if (i !== index) return d;
+      const next = { ...d, ...patch };
+      if (patch.stage && !OPS[patch.stage].includes(next.op)) {
+        next.op = OPS[patch.stage][0];
+      }
+      return next;
+    }));
+  };
+
+  const removeEffect = (index: number) =>
+    setCtEffects(prev => prev.filter((_, i) => i !== index));
+
   const handleSaveCustomTag = () => {
     if (!ctLabel.trim()) return;
 
@@ -142,13 +284,17 @@ export function WeaponTagEditor({
         }
       : undefined;
 
+    const effects = ctEffects.map(draftToEffect);
+
     const def: WeaponTagDefinition = {
       id: editingId ?? crypto.randomUUID(),
       label: ctLabel.trim(),
-      kind: 'flavor',
+      kind: deriveKind(effects, ctSecondTest),
       category,
       ...(ctDescription.trim() && { description: ctDescription.trim() }),
       ...(ctEffect.trim() && { effect: ctEffect.trim() }),
+      ...(effects.length > 0 && { effects }),
+      ...(effects.length > 0 && ctDefaultActive && { defaultActive: true }),
       ...(variable && { variable }),
     };
 
@@ -171,6 +317,9 @@ export function WeaponTagEditor({
 
   const resetCustomForm = () => {
     setEditingId(null);
+    setCtEffects([]);
+    setCtDefaultActive(true);
+    setCtSecondTest(false);
     setCtLabel('');
     setCtCategory('Inherent');
     setCtCustomCategory('');
@@ -204,6 +353,9 @@ export function WeaponTagEditor({
     setCtCustomCategory(known ? '' : def.category);
     setCtDescription(def.description ?? '');
     setCtEffect(def.effect ?? '');
+    setCtEffects((def.effects ?? []).map(effectToDraft));
+    setCtDefaultActive(def.defaultActive ?? false);
+    setCtSecondTest(def.kind === 'secondTest');
     const v = def.variable;
     setCtHasVariable(!!v);
     if (v) {
@@ -233,6 +385,10 @@ export function WeaponTagEditor({
     : allAvailableTags;
 
   const categories = getOrderedCategories(filteredTags);
+
+  const previewText = ctEffects.length > 0
+    ? describeEffects(ctEffects.map(draftToEffect))
+    : undefined;
 
   return (
     <div className="space-y-3">
@@ -564,6 +720,163 @@ export function WeaponTagEditor({
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Effects section */}
+          <div className="space-y-2 border-t border-slate-600 pt-2">
+            <div className="flex items-center justify-between">
+              <h5 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Effects</h5>
+              <button
+                onClick={addEffect}
+                className="text-xs bg-slate-700 hover:bg-slate-600 rounded px-2 py-0.5"
+              >
+                + Add Effect
+              </button>
+            </div>
+            {ctEffects.length === 0 ? (
+              <p className="text-xs text-slate-500 italic">
+                No effects — this quality is flavor only.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {ctEffects.map((d, i) => (
+                  <div key={i} className="bg-slate-800/60 rounded p-2 space-y-2">
+                    <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                      <select
+                        value={d.stage}
+                        onChange={e => updateEffect(i, { stage: e.target.value as TagStage })}
+                        className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white"
+                      >
+                        {!STAGE_OPTIONS.some(o => o.value === d.stage) && (
+                          <option value={d.stage}>{d.stage} (legacy)</option>
+                        )}
+                        {STAGE_OPTIONS.map(o => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={d.op}
+                        onChange={e => updateEffect(i, { op: e.target.value as EffectOp })}
+                        disabled={OPS[d.stage].length === 1}
+                        className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white disabled:opacity-50"
+                      >
+                        {OPS[d.stage].map(op => (
+                          <option key={op} value={op}>{OP_LABELS[op]}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => removeEffect(i)}
+                        aria-label="Remove effect"
+                        className="text-slate-500 hover:text-red-400 text-xs px-1"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    {hasAmount(d) && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <select
+                          value={d.amountMode}
+                          onChange={e => updateEffect(i, { amountMode: e.target.value as AmountMode })}
+                          className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white"
+                        >
+                          <option value="number">Fixed</option>
+                          <option value="x">X (variable)</option>
+                          <option value="strength">Strength Rank</option>
+                          <option value="presence">Presence Rank</option>
+                          <option value="armorValue">Armor value hit</option>
+                        </select>
+                        {d.amountMode === 'number' ? (
+                          <input
+                            type="number"
+                            value={d.amountValue}
+                            onChange={e => updateEffect(i, { amountValue: parseInt(e.target.value) || 0 })}
+                            className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white"
+                          />
+                        ) : (
+                          <span className="text-xs text-slate-500 self-center">
+                            {d.amountMode === 'x' ? 'Uses the X value' : 'Reads from the character'}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {hasPer(d) && (
+                      <select
+                        value={d.per}
+                        onChange={e => updateEffect(i, { per: e.target.value as EffectDraft['per'] })}
+                        className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white"
+                      >
+                        <option value="flat">Once, flat</option>
+                        <option value="success">Per success</option>
+                        <option value="raise">Per Raise</option>
+                      </select>
+                    )}
+
+                    {(d.stage === 'flag' || d.stage === 'override') && (
+                      <input
+                        type="text"
+                        value={d.note}
+                        onChange={e => updateEffect(i, { note: e.target.value })}
+                        placeholder={d.stage === 'flag' ? 'e.g. Target cannot Surge for 1 round' : 'Optional note'}
+                        className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white"
+                      />
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <select
+                        value={d.whenMode}
+                        onChange={e => updateEffect(i, { whenMode: e.target.value as WhenMode })}
+                        className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white"
+                      >
+                        <option value="none">Always</option>
+                        <option value="raises">On N+ Raises</option>
+                        <option value="allLow">On all low dice</option>
+                        <option value="aiming">When aiming</option>
+                      </select>
+                      {d.whenMode === 'raises' && (
+                        <input
+                          type="number"
+                          min={1}
+                          value={d.whenRaises}
+                          onChange={e => updateEffect(i, { whenRaises: parseInt(e.target.value) || 1 })}
+                          className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white"
+                        />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {previewText && (
+              <p className="text-xs text-slate-400">
+                <span className="text-slate-500">Reads as: </span>{previewText}
+              </p>
+            )}
+
+            {ctEffects.length > 0 && (
+              <div className="flex flex-wrap gap-3 pt-1">
+                <label className="flex items-center gap-2 text-xs text-slate-400">
+                  <input
+                    type="checkbox"
+                    checked={ctDefaultActive}
+                    onChange={e => setCtDefaultActive(e.target.checked)}
+                  />
+                  Active by default
+                </label>
+                {ctEffects.every(e => e.stage === 'flag') && (
+                  <label className="flex items-center gap-2 text-xs text-slate-400">
+                    <input
+                      type="checkbox"
+                      checked={ctSecondTest}
+                      onChange={e => setCtSecondTest(e.target.checked)}
+                    />
+                    Target makes a test
+                  </label>
+                )}
+              </div>
+            )}
           </div>
 
           <button

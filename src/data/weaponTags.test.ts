@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sortTagRefs, sortWeaponTags, tagDetailText } from './weaponTags';
+import { sortTagRefs, sortWeaponTags, tagDetailText, describeEffects } from './weaponTags';
 import type { CharacterWeapon, WeaponTagDefinition } from '../types/character';
 
 const def = (id: string, label: string): WeaponTagDefinition =>
@@ -45,6 +45,42 @@ describe('tagDetailText', () => {
 
   it('returns undefined when there is neither', () => {
     expect(tagDetailText(def('tag-z', 'Z'))).toBeUndefined();
+  });
+
+  it('synthesises from effects ahead of the description', () => {
+    const t = {
+      ...def('tag-e', 'E'),
+      description: 'lore only',
+      effects: [{ stage: 'attack' as const, op: 'add' as const, amount: 1 }],
+    };
+    expect(tagDetailText(t)).toBe('+1 to attack');
+  });
+});
+
+describe('describeEffects', () => {
+  it('renders a flat modifier', () => {
+    expect(describeEffects([{ stage: 'attack', op: 'add', amount: 2 }])).toBe('+2 to attack');
+  });
+
+  it('renders a per-success effect', () => {
+    expect(describeEffects([{ stage: 'penetration', op: 'add', amount: 'x', per: 'success' }]))
+      .toBe('+{x} Pen per success');
+  });
+
+  it('appends the condition', () => {
+    expect(describeEffects([{ stage: 'attack', op: 'add', amount: 1, when: { raisesAtLeast: 2 } }]))
+      .toBe('+1 to attack on 2+ Raises');
+  });
+
+  it('joins several effects', () => {
+    expect(describeEffects([
+      { stage: 'attack', op: 'add', amount: 2 },
+      { stage: 'damageModifier', op: 'add', amount: 1 },
+    ])).toBe('+2 to attack; +1 Damage Modifier');
+  });
+
+  it('returns undefined for an empty list', () => {
+    expect(describeEffects([])).toBeUndefined();
   });
 });
 

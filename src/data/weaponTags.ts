@@ -1,4 +1,4 @@
-import type { WeaponTagDefinition, WeaponTagRef, TagValueSource, TagResolveContext, AttributeName, CharacterWeapon } from '../types/character';
+import type { WeaponTagDefinition, WeaponTagRef, TagValueSource, TagResolveContext, AttributeName, CharacterWeapon, TagEffect, TagStage, Amount } from '../types/character';
 import { abbreviateAttribute } from './aspectAttributes';
 
 export const WEAPON_TAG_CATEGORIES = [
@@ -1106,16 +1106,80 @@ export function formatTagEffect(
   return def.effect.replace(/\{x\}/g, String(x));
 }
 
+const STAGE_PHRASE: Record<TagStage, string> = {
+  attack: 'to attack',
+  parry: 'to parry',
+  raises: 'to Raises',
+  raiseDamage: 'damage per Raise',
+  magnitude: 'Magnitude',
+  penetration: 'Pen',
+  resistance: 'target Resistance',
+  armor: 'target armor',
+  damageModifier: 'Damage Modifier',
+  reroll: 'damage',
+  override: 'wound level',
+  flag: '',
+};
+
+function amountText(a: Amount | undefined): string {
+  if (a === undefined) return '';
+  if (a === 'x') return '{x}';
+  if (a === 'strength') return '{x} (Strength Rank)';
+  if (a === 'presence') return '{x} (Presence Rank)';
+  if (a === 'armorValue') return 'the Armor value';
+  if (a === 'deathBlow') return 'a Death Blow';
+  return String(a);
+}
+
 /**
- * Detail line for a tag: hand-written effect prose where the tag carries it,
- * otherwise its description. Custom tags only ever have the latter — the
- * custom-tag form writes `effect` and `description` and never `effects`.
+ * Readable text for a structured effect list. Custom qualities carry no
+ * hand-written prose, so this is what chips, the print sheet and the
+ * Homebrewery export show for them.
+ */
+export function describeEffects(
+  effects: TagEffect[] | undefined
+): string | undefined {
+  if (!effects?.length) return undefined;
+
+  return effects.map(e => {
+    const w = 'when' in e ? e.when : undefined;
+    const when = !w
+      ? ''
+      : w.raisesAtLeast !== undefined
+        ? ` on ${w.raisesAtLeast}+ Raises`
+        : w.allLow
+          ? ' on all low dice'
+          : w.aiming
+            ? ' when aiming'
+            : '';
+
+    if (e.stage === 'flag') return `${e.note}${when}`;
+    if (e.stage === 'reroll') return `Reroll ${STAGE_PHRASE[e.stage]}${when}`;
+    if (e.stage === 'override') return `${STAGE_PHRASE[e.stage]} set to a Death Blow${when}`;
+    if (e.op === 'deny') return `${STAGE_PHRASE[e.stage]} denied${when}`;
+
+    const amt = amountText('amount' in e ? e.amount : undefined);
+    if (e.op === 'set') return `${STAGE_PHRASE[e.stage]} set to ${amt}${when}`;
+
+    const sign = e.op === 'add' ? '+' : e.op === 'subtract' ? '-' : '×';
+    const per = 'per' in e && e.per === 'success'
+      ? ' per success'
+      : 'per' in e && e.per === 'raise'
+        ? ' per Raise'
+        : '';
+    return `${sign}${amt} ${STAGE_PHRASE[e.stage]}${per}${when}`;
+  }).join('; ');
+}
+
+/**
+ * Detail line for a tag: hand-written effect prose, else text synthesised from
+ * its structured effects, else its description.
  */
 export function tagDetailText(
   def: WeaponTagDefinition,
   x?: number
 ): string | undefined {
-  return formatTagEffect(def, x) ?? def.description;
+  return formatTagEffect(def, x) ?? describeEffects(def.effects) ?? def.description;
 }
 
 /**
