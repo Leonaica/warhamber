@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sortTagRefs, sortWeaponTags, tagDetailText, describeEffects } from './weaponTags';
+import { sortTagRefs, sortWeaponTags, tagDetailText, describeEffects, resolveTagRef, normalizeTagRefs } from './weaponTags';
 import type { CharacterWeapon, WeaponTagDefinition } from '../types/character';
 
 const def = (id: string, label: string): WeaponTagDefinition =>
@@ -97,5 +97,43 @@ describe('sortWeaponTags', () => {
     const [out] = sortWeaponTags([weapon([])], customTags);
     expect(out.tags).toEqual([]);
     expect(out.tagIds).toBeUndefined();
+  });
+});
+
+describe('derived variables', () => {
+  const derived = (max = 20): WeaponTagDefinition => ({
+    id: 'tag-der', label: 'Der', category: 't', kind: 'arithmetic',
+    variable: { min: 0, max, default: 8, derivedFrom: { kind: 'attributeRank', attribute: 'Agility' } },
+    effects: [{ stage: 'parry', op: 'add', amount: 'x' }],
+  });
+
+  it('reads the value from the character', () => {
+    expect(resolveTagRef({ tagId: 'tag-der' }, [derived()], { attributeDiePools: { Agility: { rank: 8 } } })?.x).toBe(8);
+  });
+
+  it('clamps to the variable maximum', () => {
+    expect(resolveTagRef({ tagId: 'tag-der' }, [derived(5)], { attributeDiePools: { Agility: { rank: 12 } } })?.x).toBe(5);
+  });
+
+  it('clamps to the variable minimum', () => {
+    const d = derived();
+    d.variable!.min = 3;
+    expect(resolveTagRef({ tagId: 'tag-der' }, [d], { attributeDiePools: { Agility: { rank: 1 } } })?.x).toBe(3);
+  });
+
+  it('falls back to the default when the source is absent', () => {
+    expect(resolveTagRef({ tagId: 'tag-der' }, [derived()], {})?.x).toBe(8);
+  });
+
+  it('prefers an explicit ref value', () => {
+    expect(resolveTagRef({ tagId: 'tag-der', x: 3 }, [derived()], { attributeDiePools: { Agility: { rank: 8 } } })?.x).toBe(3);
+  });
+
+  it('leaves a derived x unset when normalising', () => {
+    expect(normalizeTagRefs([{ tagId: 'tag-der' }], [derived()])).toEqual([{ tagId: 'tag-der' }]);
+  });
+
+  it('returns nothing for an unknown tag', () => {
+    expect(resolveTagRef({ tagId: 'nope' }, [], {})).toBeUndefined();
   });
 });

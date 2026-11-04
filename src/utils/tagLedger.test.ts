@@ -231,21 +231,25 @@ describe('aiming', () => {
   });
 });
 
-describe('aiming', () => {
-  const accurate = tag({
-    id: 'acc',
-    kind: 'conditional',
-    effects: [
-      { stage: 'attack', op: 'add', amount: 2, when: { aiming: true } },
-      { stage: 'damageModifier', op: 'add', amount: 2, when: { raisesAtLeast: 1 } },
-    ],
+describe('kind and effects agree', () => {
+  it('gives no non-contributing kind a non-flag effect', () => {
+    // Narrative and secondTest tags carry flag effects by design; anything
+    // arithmetic on them would be silently skipped by buildLedger.
+    expect(WEAPON_TAG_LIBRARY
+      .filter(t => !contributesArithmetic(t))
+      .flatMap(t => (t.effects ?? [])
+        .filter(e => e.stage !== 'flag')
+        .map(e => `${t.id}:${e.stage}`)))
+      .toEqual([]);
   });
 
-  it('withholds the attack bonus when not aiming', () => {
-    expect(buildLedger([sel(accurate)], { raises: 0, allLow: false, aiming: false }, SRC).attack).toBe(0);
-  });
-
-  it('grants it when aiming', () => {
-    expect(buildLedger([sel(accurate)], { raises: 0, allLow: false, aiming: true }, SRC).attack).toBe(2);
-  });
+  it.each(['arithmetic', 'conditional', 'narrative', 'secondTest', 'flavor'] as const)(
+    'only %s tags reach the ledger when they carry effects',
+    kind => {
+      const d = tag({ id: `k-${kind}`, kind, effects: [{ stage: 'magnitude', op: 'add', amount: 1 }] });
+      const l = buildLedger([sel(d)], NONE, SRC);
+      expect(l.magnitude).toBe(contributesArithmetic(d) ? 1 : 0);
+      expect(l.entries.length).toBe(contributesArithmetic(d) ? 1 : 0);
+    },
+  );
 });
