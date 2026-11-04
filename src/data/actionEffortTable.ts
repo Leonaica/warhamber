@@ -103,7 +103,7 @@ export function isBandAvailable(pool: DiePool, band: EffortBand): boolean {
 export function getScaleForPool(pool: DiePool, band: EffortBand = 'orange'): number | null {
   // Get base notation (strip divisor suffix if present)
   const baseNotation = pool.divisor 
-    ? pool.notation.replace(/\/\d+$/, '')
+    ? pool.notation.replace(/[÷\/]\d+$/, '')
     : pool.notation;
   
   const tableEntry = ACTION_EFFORT_TABLE[baseNotation];

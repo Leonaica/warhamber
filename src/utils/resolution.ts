@@ -329,8 +329,12 @@ export function resolveTest(context: ResolutionContext): ActionResult {
   let result = rollTotal + totalModifier;
   const capped = result > redMax;
   if (capped) result = redMax;
-  
-  const band = getEffortBand(attributePool, result) ?? 'green';
+
+  // A critical failure fails before any modifier applies: the bonus is never
+  // spent, so nothing is scored from it and it yields no TN as a defence.
+  if (criticalFailure) result = 0;
+
+  const band = criticalFailure ? null : (getEffortBand(attributePool, result) ?? 'green');
   
   return {
     result,
