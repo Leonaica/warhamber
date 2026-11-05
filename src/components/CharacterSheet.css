@@ -264,9 +264,9 @@
 
   /* Column widths are per-table */
   .aspects-state-table th:nth-child(1) { width: 15%; }  /* Aspect */
-  .aspects-state-table th:nth-child(2) { width: 40%; }  /* Wounds */
-  .aspects-state-table th:nth-child(3) { width: 16%; }  /* Parry */
-  .aspects-state-table th:nth-child(4) { width: 16%; }  /* Dodge */
+  .aspects-state-table th:nth-child(2) { width: 25%; }  /* Wounds */
+  .aspects-state-table th:nth-child(3) { width: 23%; }  /* Parry */
+  .aspects-state-table th:nth-child(4) { width: 24%; }  /* Dodge */
   .aspects-state-table th:nth-child(5) { width: 13%; }  /* Soak */
 
   .weapons-block .equipment-table th:nth-child(2) { width: 12%; }  /* Category */
